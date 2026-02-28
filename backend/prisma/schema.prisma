@@ -1,0 +1,347 @@
+generator client {
+  provider = "prisma-client-js"
+}
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPER_ADMIN
+  CLUB_ADMIN
+  EDITOR
+  FAN
+}
+
+enum MembershipStatus {
+  NONE
+  ACTIVE
+  EXPIRED
+}
+
+enum MatchType {
+  LEAGUE
+  CUP
+  FRIENDLY
+}
+
+enum TicketStatus {
+  RESERVED
+  PAID
+  CANCELLED
+}
+
+enum OrderStatus {
+  PENDING
+  PAID
+  FULFILLED
+  CANCELLED
+  REFUNDED
+}
+
+enum OrderType {
+  SHOP
+  MEMBERSHIP
+  TICKETS
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+  DOC
+}
+
+model User {
+  id              String           @id @default(cuid())
+  email           String           @unique
+  passwordHash    String
+  name            String?
+  role            Role             @default(FAN)
+  membership      MembershipStatus @default(NONE)
+  membershipUntil DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  tickets         Ticket[]
+  orders          Order[]
+}
+
+model MediaAsset {
+  id        String    @id @default(cuid())
+  type      MediaType
+  title     String?
+  path      String    // store just the object path/key (e.g. "news/2026/02/hero.jpg")
+  mimeType  String?
+  width     Int?
+  height    Int?
+  bytes     Int?
+  createdAt DateTime  @default(now())
+
+  // Opposite relations (required for named relations)
+  newsHeroFor        NewsPost[]    @relation("NewsHeroMedia")
+  portraitsFor       TeamMember[]  @relation("TeamMemberPortrait")
+  productHeroFor     Product[]     @relation("ProductHeroMedia")
+  highlightThumbFor  Highlight[]   @relation("HighlightThumbnail")
+  highlightVideoFor  Highlight[]   @relation("HighlightVideo")
+  sponsorLogoFor     Sponsor[]     @relation("SponsorLogo")
+
+  siteHeaderLogoFor      SiteSetting[] @relation("HeaderLogo")
+  sitePartnerLogoFor     SiteSetting[] @relation("PartnerLogo")
+  siteHomeShopImageFor   SiteSetting[] @relation("HomeShopImage")
+  siteHomeMembershipFor  SiteSetting[] @relation("HomeMembershipImage")
+  siteHeroMediaFor       SiteSetting[] @relation("HeroMedia")
+}
+
+model NewsPost {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  title       String
+  excerpt     String
+  contentHtml String      @db.LongText
+  publishedAt DateTime?
+  isFeatured  Boolean     @default(false)
+
+  heroMediaId String?
+  heroMedia   MediaAsset? @relation("NewsHeroMedia", fields: [heroMediaId], references: [id])
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([publishedAt])
+}
+
+model TeamMember {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  fullName    String
+  jerseyNo    String?
+  position    String
+  team        String      // Men's First Team / Women's / Youth
+  bioHtml     String?     @db.LongText
+  funFact     String?
+
+  portraitId  String?
+  portrait    MediaAsset? @relation("TeamMemberPortrait", fields: [portraitId], references: [id])
+
+  isStaff     Boolean     @default(false)
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([team, position])
+}
+
+model Match {
+  id          String    @id @default(cuid())
+  competition String
+  matchType   MatchType @default(LEAGUE)
+  season      String    // 2025/26
+  kickoffAt   DateTime
+
+  venue       String?
+  isHome      Boolean
+  opponent    String
+
+  homeScore   Int?
+  awayScore   Int?
+  status      String     @default("SCHEDULED") // SCHEDULED | LIVE | FT | POSTPONED
+
+  ticketEvent TicketEvent?
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([kickoffAt])
+  @@index([season])
+}
+
+model TicketEvent {
+  id          String   @id @default(cuid())
+  matchId     String   @unique
+  match       Match    @relation(fields: [matchId], references: [id])
+  title       String
+  salesOpenAt DateTime
+  salesCloseAt DateTime
+  currency    String   @default("KES")
+  isActive    Boolean  @default(true)
+
+  tiers       TicketTier[]
+  tickets     Ticket[]
+}
+
+model TicketTier {
+  id          String      @id @default(cuid())
+  eventId     String
+  event       TicketEvent @relation(fields: [eventId], references: [id])
+  name        String      // VIP, Regular, Terrace
+  price       Int
+  capacity    Int
+  sold        Int         @default(0)
+  createdAt   DateTime    @default(now())
+
+  tickets     Ticket[]
+
+  @@unique([eventId, name])
+}
+
+model Ticket {
+  id        String       @id @default(cuid())
+  userId    String
+  user      User         @relation(fields: [userId], references: [id])
+  eventId   String
+  event     TicketEvent  @relation(fields: [eventId], references: [id])
+  tierId    String
+  tier      TicketTier   @relation(fields: [tierId], references: [id])
+  status    TicketStatus @default(RESERVED)
+  quantity  Int          @default(1)
+  total     Int
+  code      String       @unique
+  qrDataUrl String?      @db.LongText
+  createdAt DateTime     @default(now())
+}
+
+model Product {
+  id          String      @id @default(cuid())
+  slug        String      @unique
+  title       String
+  description String?     @db.LongText
+  category    String?     // e.g. KIT, MERCH
+  kitType     String?     // HOME | AWAY | THIRD (when category=KIT)
+  price       Int
+  currency    String      @default("KES")
+  isActive    Boolean     @default(true)
+
+  heroMediaId String?
+  heroMedia   MediaAsset? @relation("ProductHeroMedia", fields: [heroMediaId], references: [id])
+
+  orderItems  OrderItem[]
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  type      OrderType   @default(SHOP)
+  status    OrderStatus @default(PENDING)
+  currency  String      @default("KES")
+  total     Int
+  metadata  String?     @db.LongText
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  items     OrderItem[]
+}
+
+model Highlight {
+  id            String      @id @default(cuid())
+  title         String
+
+  // NEW: use uploaded video stored as MediaAsset VIDEO
+  videoMediaId  String?
+  videoMedia    MediaAsset? @relation("HighlightVideo", fields: [videoMediaId], references: [id])
+
+  // Back-compat: if you already stored absolute URLs
+  videoUrl      String?     @db.LongText
+
+  durationSec   Int?
+  publishedAt   DateTime?
+
+  thumbnailId   String?
+  thumbnail     MediaAsset? @relation("HighlightThumbnail", fields: [thumbnailId], references: [id])
+
+  sort          Int         @default(0)
+  isActive      Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+}
+
+model PaymentTransaction {
+  id          String   @id @default(cuid())
+  provider    String   // MPESA, CARD, MANUAL
+  reference   String?  // checkoutRequestId / external ref
+  amount      Int
+  currency    String   @default("KES")
+  status      String   @default("PENDING") // PENDING | SUCCESS | FAILED
+  orderId     String?
+  ticketId    String?
+  userId      String
+  createdAt   DateTime @default(now())
+}
+
+model OrderItem {
+  id        String   @id @default(cuid())
+  orderId   String
+  order     Order    @relation(fields: [orderId], references: [id])
+  productId String
+  product   Product  @relation(fields: [productId], references: [id])
+  qty       Int
+  unitPrice Int
+  lineTotal Int
+}
+
+model FAQ {
+  id         String   @id @default(cuid())
+  question   String
+  answerHtml String   @db.LongText
+  sort       Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+}
+
+model Sponsor {
+  id        String      @id @default(cuid())
+  name      String
+  tier      String      // Official Partner, Partner, etc.
+  website   String?
+
+  logoId    String?
+  logo      MediaAsset? @relation("SponsorLogo", fields: [logoId], references: [id])
+
+  sort      Int         @default(0)
+  isActive  Boolean     @default(true)
+}
+
+model SocialLink {
+  id        String   @id @default(cuid())
+  platform  String
+  url       String
+  sort      Int      @default(0)
+  isActive  Boolean  @default(true)
+}
+
+model SiteSetting {
+  id          String  @id @default("global")
+  clubName    String
+  tagline     String?
+  foundedYear Int?
+  email       String?
+  phone       String?
+  stadium     String?
+  address     String?
+
+  membershipUrl String?
+  ticketsUrl    String?
+  shopUrl       String?
+
+  headerLogoId  String?
+  headerLogo    MediaAsset? @relation("HeaderLogo", fields: [headerLogoId], references: [id])
+
+  partnerName   String?
+  partnerLogoId String?
+  partnerLogo   MediaAsset? @relation("PartnerLogo", fields: [partnerLogoId], references: [id])
+
+  homeShopImageId String?
+  homeShopImage   MediaAsset? @relation("HomeShopImage", fields: [homeShopImageId], references: [id])
+
+  homeMembershipImageId String?
+  homeMembershipImage   MediaAsset? @relation("HomeMembershipImage", fields: [homeMembershipImageId], references: [id])
+
+  heroTitle    String?
+  heroSubtitle String? @db.LongText
+
+  heroMediaId  String?
+  heroMedia    MediaAsset? @relation("HeroMedia", fields: [heroMediaId], references: [id])
+
+  updatedAt   DateTime @updatedAt
+}

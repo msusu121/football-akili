@@ -1,0 +1,183 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Fonts closer to reference */
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap");
+
+:root{
+  color-scheme: light;
+
+  --brand:#f08a24;       /* orange */
+  --brand-2:#f3c739;     /* yellow */
+  --ink:#0b1020;
+  --muted:#6b7280;
+  --line:rgba(0,0,0,.10);
+
+  --paper:#fbf9f4;
+  --footer:#070a10;
+}
+
+html, body { height: 100%; }
+
+body{
+  margin:0;
+  font-family: "Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  color: var(--ink);
+  background: var(--paper);
+}
+
+/* ===== Background watermark (use on <main className="page-pattern">) ===== */
+.page-pattern{
+  background-color: var(--paper);
+  background-image:
+    /* soft dots */
+    radial-gradient(circle at 1px 1px, rgba(0,0,0,.028) 1px, transparent 1px),
+    /* big grid */
+    linear-gradient(rgba(0,0,0,.018) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,0,0,.018) 1px, transparent 1px);
+  background-size: 24px 24px, 140px 140px, 140px 140px;
+  background-position: 0 0, 0 0, 0 0;
+}
+
+/* ===== Shared helpers (keep these because your JSX uses them) ===== */
+.text-ink{ color: var(--ink); }
+.text-muted{ color: var(--muted); }
+.border-line{ border-color: var(--line); }
+
+.bg-brand{ background: var(--brand); }
+.text-brand{ color: var(--brand); }
+.bg-ink{ background: var(--ink); }
+
+a{ color: inherit; }
+
+/* ===== Typography helpers ===== */
+.h-serif{
+  font-family: "Bebas Neue", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+  letter-spacing: 0.02em;
+}
+.nav-sans{
+  font-family: "Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+}
+
+/* ===== Accent lines / strips ===== */
+.top-accent-line{
+  height: 3px;
+  background: var(--brand);
+}
+
+/* Thick yellow band under header (the height should be controlled by your JSX padding/children) */
+.yellow-strip{
+  background: var(--brand-2);
+  position: relative;
+  border-top: 1px solid rgba(0,0,0,.08);
+  border-bottom: 1px solid rgba(0,0,0,.08);
+}
+.yellow-strip::after{
+  content:"";
+  position:absolute;
+  inset:0;
+  background-image: radial-gradient(rgba(0,0,0,0.10) 1px, transparent 1px);
+  background-size: 18px 18px;
+  opacity: 0.18;
+  pointer-events:none;
+}
+
+/* ===== Dark sections (highlights + footer) ===== */
+.dark-section{
+  background:
+    radial-gradient(900px 520px at 50% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(1200px 700px at 15% 55%, rgba(255,255,255,.04) 0%, rgba(255,255,255,0) 55%),
+    var(--footer);
+  color:#fff;
+}
+
+/* Footer-specific (optional, but clean) */
+.footer-surface{
+  background:
+    radial-gradient(900px 520px at 50% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(1200px 700px at 15% 55%, rgba(255,255,255,.04) 0%, rgba(255,255,255,0) 55%),
+    var(--footer);
+  color:#fff;
+}
+
+/* ===== Footer UI bits (used by your footer layout) ===== */
+.social-pill{
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  background: #fff;
+  color: var(--ink);
+  display: grid;
+  place-items: center;
+  transition: transform .12s ease, opacity .12s ease;
+}
+.social-pill:hover{
+  transform: translateY(-1px);
+  opacity: .95;
+}
+
+.footer-directions{
+  width: 100%;
+  max-width: 320px;
+  height: 90px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.12);
+  background: rgba(0,0,0,.35);
+  color: #fff;
+  font-weight: 700;
+  display: grid;
+  place-items: center;
+}
+.footer-directions:hover{
+  background: rgba(0,0,0,.45);
+}
+
+.newsletter-wrap{
+  display:flex;
+  align-items:center;
+  gap: 10px;
+  max-width: 420px;
+}
+.newsletter-input{
+  flex:1;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  padding: 0 14px;
+  color: rgba(255,255,255,.92);
+  outline: none;
+}
+.newsletter-input::placeholder{
+  color: rgba(255,255,255,.55);
+}
+.newsletter-input:focus{
+  border-color: rgba(255,255,255,.28);
+}
+.newsletter-send{
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid rgba(255,255,255,.14);
+  background: rgba(255,255,255,.06);
+  color: rgba(255,255,255,.92);
+  display: grid;
+  place-items: center;
+}
+.newsletter-send:hover{
+  background: rgba(255,255,255,.10);
+}
+
+/* ===== Article formatting (no typography plugin) ===== */
+.prose-invert p { margin: 0.9rem 0; line-height: 1.75; color: rgba(11,16,32,.86); }
+.prose-invert h2 { margin-top: 1.6rem; font-size: 1.4rem; font-weight: 900; color: #0b1020; }
+.prose-invert h3 { margin-top: 1.2rem; font-size: 1.15rem; font-weight: 900; color: #0b1020; }
+.prose-invert ul { margin: 0.9rem 0; padding-left: 1.2rem; list-style: disc; }
+.prose-invert a { text-decoration: underline; }
+
+/* Tailwind component helpers you already use */
+@layer components{
+  .container-ms{ @apply mx-auto max-w-[1180px] px-4; }
+  .title-underline{ @apply mt-2 h-[3px] w-12 rounded-full; background: var(--brand); }
+}

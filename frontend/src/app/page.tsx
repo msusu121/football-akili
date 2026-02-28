@@ -1,0 +1,272 @@
+import { SiteShell } from "@/components/SiteShell";
+import { apiGet } from "@/lib/api";
+import Link from "next/link";
+import { HomeShopSection } from "@/components/HomeShopSection";
+
+function fmtDate(d?: string | null) {
+  if (!d) return "";
+  const dt = new Date(d);
+  return dt.toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function relTime(d?: string | null) {
+  if (!d) return "";
+  const ms = Date.now() - new Date(d).getTime();
+  const min = Math.floor(ms / 60000);
+  if (min < 60) return `about ${min} minutes ago`;
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return `about ${hr} hours ago`;
+  const day = Math.floor(hr / 24);
+  return `${day} days ago`;
+}
+
+function dur(sec?: number | null) {
+  if (sec === null || sec === undefined) return "";
+  const m = Math.floor(sec / 60);
+  const s = sec % 60;
+  return `${m}:${String(s).padStart(2, "0")}`;
+}
+
+export default async function HomePage() {
+  const data = await apiGet<any>("/public/home");
+
+  const featured = data.featured;
+  const latest = (data.latestNews || []) as any[];
+  const side = latest.filter((n) => n.slug !== featured?.slug).slice(0, 4);
+
+  const highlights = (data.highlights || []) as any[];
+  const mainHl = highlights[0];
+  const recentHl = highlights.slice(1, 4);
+
+  return (
+    <SiteShell settings={data.settings} socials={data.socials} sponsors={data.sponsors}>
+      {/* Featured (acts as hero) + right latest list */}
+      <section className="mx-auto max-w-[1180px] px-4 pt-10 pb-10">
+        <div className="grid gap-6 md:grid-cols-12">
+          {/* Featured big card */}
+          <div className="md:col-span-8">
+            {featured ? (
+              <Link href={`/news/${featured.slug}`} className="block">
+                <div className="rounded-[18px] overflow-hidden shadow-[0_12px_40px_rgba(0,0,0,.18)] bg-white">
+                  <div className="relative aspect-[16/9] bg-black/10">
+                    {featured.heroMedia?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={featured.heroMedia.url}
+                        alt={featured.title}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : null}
+
+                    {/* bottom overlay like the screenshot */}
+                    <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
+
+                    <div className="absolute left-6 md:left-8 bottom-6 md:bottom-8 right-6 md:right-10">
+                      <span className="inline-flex items-center rounded-sm bg-brand text-white text-[11px] font-extrabold px-3 py-1">
+                        FEATURED
+                      </span>
+
+                      <div className="mt-3 h-serif text-white font-extrabold text-3xl md:text-5xl leading-[1.05]">
+                        {featured.title}
+                      </div>
+
+                      <div className="mt-3 text-white/80 text-sm">
+                        {fmtDate(featured.publishedAt)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ) : null}
+          </div>
+
+          {/* Right list cards with thumbnail-left */}
+          <div className="md:col-span-4 space-y-4">
+            {side.map((n) => (
+              <Link
+                key={n.slug}
+                href={`/news/${n.slug}`}
+                className="block bg-white rounded-xl border border-line shadow-sm hover:shadow-md transition overflow-hidden"
+              >
+                <div className="grid grid-cols-3">
+                  <div className="col-span-1 bg-black/5 min-h-[96px]">
+                    {n.heroMedia?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={n.heroMedia.url} alt={n.title} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full" />
+                    )}
+                  </div>
+                  <div className="col-span-2 p-4">
+                    <div className="text-[11px] font-extrabold tracking-wide text-muted">
+                      {fmtDate(n.publishedAt)}
+                    </div>
+                    <div className="mt-1 font-extrabold leading-snug line-clamp-2">
+                      {n.title}
+                    </div>
+                    <div className="mt-2 text-[11px] font-extrabold text-brand">
+                      READ MORE &nbsp;&gt;
+                    </div>
+                  </div>
+                </div>
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Highlights */}
+      <section className="dark-section">
+        <div className="mx-auto max-w-[1180px] px-4 py-14">
+          <div className="text-3xl font-extrabold">
+            Latest Highlights
+            <div className="mt-2 h-[3px] w-12 bg-brand rounded-full" />
+          </div>
+
+          <div className="mt-10 grid gap-6 md:grid-cols-12">
+            {/* Main highlight */}
+            <div className="md:col-span-8">
+              {mainHl ? (
+                <div className="rounded-[18px] overflow-hidden border border-white/15 bg-white/5">
+                  <div className="relative aspect-video bg-black/30">
+                    <video
+                      className="w-full h-full object-cover"
+                      controls
+                      playsInline
+                      preload="metadata"
+                      poster={mainHl.thumbnail?.url || undefined}
+                      src={mainHl.videoUrl}
+                    />
+
+                    {mainHl.durationSec ? (
+                      <div className="absolute bottom-3 left-3 rounded-md bg-black/80 px-2 py-1 text-xs text-white">
+                        {dur(mainHl.durationSec)}
+                      </div>
+                    ) : null}
+
+                    {/* “about 19 hours ago” badge right */}
+                    {mainHl.publishedAt ? (
+                      <div className="absolute bottom-3 right-3 rounded-full bg-black/50 px-3 py-1 text-xs text-white/90">
+                        {relTime(mainHl.publishedAt)}
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="p-6">
+                    <div className="h-serif text-white font-extrabold text-2xl md:text-3xl leading-tight">
+                      {mainHl.title}
+                    </div>
+                    {/* optional sub text like opponent */}
+                    {mainHl.subtitle ? (
+                      <div className="mt-2 text-sm text-white/70">{mainHl.subtitle}</div>
+                    ) : null}
+                  </div>
+                </div>
+              ) : null}
+            </div>
+
+            {/* Most recent */}
+            <div className="md:col-span-4">
+              <div className="text-xs font-extrabold tracking-[0.2em] text-white/70">
+                MOST RECENT
+              </div>
+              <div className="mt-4 h-px bg-white/10" />
+
+              <div className="mt-5 space-y-5">
+                {recentHl.map((h) => (
+                  <a
+                    key={h.id}
+                    href={h.videoUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="grid grid-cols-5 gap-4 rounded-[16px] border border-white/15 bg-white/5 hover:bg-white/10 transition overflow-hidden"
+                  >
+                    <div className="col-span-2 relative bg-black/30 min-h-[92px]">
+                      {h.thumbnail?.url ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={h.thumbnail.url} alt={h.title} className="w-full h-full object-cover" />
+                      ) : null}
+
+                      {/* play circle */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="h-9 w-9 rounded-full bg-brand/90 grid place-items-center shadow">
+                          <span className="text-white text-xs ml-0.5">▶</span>
+                        </div>
+                      </div>
+
+                      {h.durationSec ? (
+                        <div className="absolute bottom-2 right-2 rounded-md bg-black/80 px-2 py-1 text-[10px] text-white">
+                          {dur(h.durationSec)}
+                        </div>
+                      ) : null}
+                    </div>
+
+                    <div className="col-span-3 p-4">
+                      <div className="text-[11px] text-white/65">{relTime(h.publishedAt)}</div>
+                      <div className="mt-2 text-sm font-extrabold leading-snug line-clamp-2">
+                        {h.title}
+                      </div>
+                    </div>
+                  </a>
+                ))}
+              </div>
+
+              <div className="mt-8 flex justify-end">
+                <a
+                  href={mainHl?.videoUrl || "#"}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-xs font-extrabold tracking-[0.2em] text-white/70 hover:text-white transition inline-flex items-center gap-3"
+                >
+                  MORE VIDEOS <span className="h-10 w-10 rounded-full border border-white/20 grid place-items-center">→</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Shop kit */}
+      <HomeShopSection kits={data.kits || []} shopImageUrl={data.settings?.homeShopImage?.url} shopUrl={data.settings?.shopUrl || "/shop"} />
+
+      {/* Membership block (simple, matches banner style) */}
+      <section className="bg-white">
+        <div className="mx-auto max-w-[1180px] px-4 pb-16 pt-8">
+          <div className="overflow-hidden rounded-2xl border border-line">
+            <div className="relative h-[120px] md:h-[130px] bg-[#0b1020]">
+              {data.settings?.homeMembershipImage?.url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={data.settings.homeMembershipImage.url}
+                  alt="Membership"
+                  className="absolute inset-0 w-full h-full object-cover opacity-70"
+                />
+              ) : null}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-black/70" />
+
+              <div className="relative h-full flex items-center justify-between px-6 md:px-10">
+                <div className="text-white">
+                  <div className="text-xs font-extrabold tracking-[0.2em] text-brand">
+                    FOREVER {data.settings?.clubName || "CLUB"}
+                  </div>
+                  <div className="mt-2 text-2xl md:text-3xl font-extrabold italic">
+                    2025/26 <span className="text-brand not-italic">MEMBERSHIP</span>
+                  </div>
+                </div>
+
+                <Link
+                  href={data.settings?.membershipUrl || "/membership"}
+                  className="inline-flex items-center gap-2 bg-brand text-black font-extrabold px-8 py-4 hover:opacity-95 transition"
+                >
+                  BUY NOW <span>›</span>
+                </Link>
+              </div>
+
+              <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-brand" />
+            </div>
+          </div>
+        </div>
+      </section>
+    </SiteShell>
+  );
+}
