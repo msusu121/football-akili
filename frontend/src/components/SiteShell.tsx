@@ -45,7 +45,7 @@ function SocialIcon({ platform }: { platform: string }) {
   if (p.includes("instagram")) return <Instagram className="h-5 w-5" />;
   if (p.includes("youtube")) return <Youtube className="h-5 w-5" />;
   if (p === "x" || p.includes("twitter")) return <XIcon className="h-5 w-5" />;
-  if (p.includes("tiktok")) return <div className="h-5 w-5"><SiTiktok size={20} /></div>;
+  if (p.includes("tiktok")) return <SiTiktok className="h-5 w-5" />;
   return null;
 }
 
