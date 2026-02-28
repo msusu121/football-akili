@@ -19,6 +19,12 @@ import {
 import { SiTiktok } from "react-icons/si";
 
 /**
+ * ✅ FIX: Some react-icons typings in some setups complain about className on SiTiktok.
+ * We cast it to a component that accepts className so TypeScript stops failing.
+ */
+const TikTokIcon = SiTiktok as unknown as React.ComponentType<{ className?: string }>;
+
+/**
  * IMPORTANT:
  * If your backend returns relative URLs like "/uploads/logo.png",
  * set NEXT_PUBLIC_ASSET_BASE_URL="https://api.yourdomain.com"
@@ -45,7 +51,7 @@ function SocialIcon({ platform }: { platform: string }) {
   if (p.includes("instagram")) return <Instagram className="h-5 w-5" />;
   if (p.includes("youtube")) return <Youtube className="h-5 w-5" />;
   if (p === "x" || p.includes("twitter")) return <XIcon className="h-5 w-5" />;
-  if (p.includes("tiktok")) return <SiTiktok className="h-5 w-5" />;
+  if (p.includes("tiktok")) return <TikTokIcon className="h-5 w-5" />;
   return null;
 }
 
@@ -341,14 +347,17 @@ export function SiteShell({
                             <div className="rounded-xl overflow-hidden shadow-lg border border-black/10 bg-white">
                               <div className="relative">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                               <img
-  src={squadPromoImage || "http://localhost:4000/media/images/squad-promo.png"}
-  alt="Squad promo"
-  className="w-full h-[280px] object-cover"
-  onError={(e) => {
-    (e.currentTarget as HTMLImageElement).style.display = "none";
-  }}
-/>
+                                <img
+                                  src={
+                                    squadPromoImage ||
+                                    "http://localhost:4000/media/images/squad-promo.png"
+                                  }
+                                  alt="Squad promo"
+                                  className="w-full h-[280px] object-cover"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                                  }}
+                                />
                                 <div className="absolute inset-x-0 bottom-0 bg-black/70 text-white px-4 py-3">
                                   <div className="text-[11px] leading-4 whitespace-pre-line font-semibold tracking-wide">
                                     {squadPromoLine}
@@ -431,7 +440,8 @@ export function SiteShell({
                 className="absolute right-2 md:right-0 top-1/2 -translate-y-1/2 h-9 w-9 grid place-items-center rounded-full hover:bg-black/10 transition"
                 aria-label="Close announcement"
               >
-                <X size={18} className="text-black/70" />
+                {/* ✅ FIX: was <X .../> but X was not imported */}
+                <XIcon className="h-[18px] w-[18px] text-black/70" />
               </button>
             </div>
           ) : (
@@ -490,7 +500,6 @@ export function SiteShell({
             <div className="flex flex-col items-start">
               <img
                 src={clubLogo || "/logos/club.png"}
-
                 alt={settings?.clubName || "Club"}
                 className="h-16 object-contain block"
                 onError={(e) => {
