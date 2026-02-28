@@ -342,7 +342,7 @@ export function SiteShell({
                               <div className="relative">
                                 {/* eslint-disable-next-line @next/next/no-img-element */}
                                <img
-  src={squadPromoImage || "https://github.com/msusu121/football-akili/raw/refs/heads/main/backend/public/uploads/site/1772222324488-ChatGPT_Image_Feb_27__2026__10_57_59_PM.png"}
+  src={squadPromoImage || "http://localhost:4000/media/images/squad-promo.png"}
   alt="Squad promo"
   className="w-full h-[280px] object-cover"
   onError={(e) => {
@@ -431,7 +431,7 @@ export function SiteShell({
                 className="absolute right-2 md:right-0 top-1/2 -translate-y-1/2 h-9 w-9 grid place-items-center rounded-full hover:bg-black/10 transition"
                 aria-label="Close announcement"
               >
-                <XIcon size={18} className="text-black/70" />
+                <X size={18} className="text-black/70" />
               </button>
             </div>
           ) : (
@@ -489,13 +489,14 @@ export function SiteShell({
             {/* LEFT */}
             <div className="flex flex-col items-start">
               <img
-  src={clubLogo || "https://github.com/msusu121/football-akili/raw/refs/heads/main/backend/public/uploads/logos/club.png"}
-  alt="Club logo"
-  className="h-12 w-12 object-contain"
-  onError={(e) => {
-    (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
-  }}
-/>
+                src={clubLogo || "/logos/club.png"}
+
+                alt={settings?.clubName || "Club"}
+                className="h-16 object-contain block"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
+                }}
+              />
 
               <div className="mt-5 text-sm text-white/65 leading-relaxed max-w-sm">
                 {settings?.tagline || "The Pride. The Community. The Future."}
