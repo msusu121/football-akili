@@ -1,6 +1,10 @@
+
 # Dependencies
 node_modules/
 jspm_packages/
+dist/
+build/
+.next/
 
 # Logs
 logs
@@ -50,6 +54,7 @@ bower_components
 # Output of 'npm pack'
 *.tgz
 
+*.mp4
 # Yarn Integrity file
 .yarn-integrity
 
