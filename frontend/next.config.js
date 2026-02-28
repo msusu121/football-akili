@@ -24,6 +24,7 @@ const nextConfig = {
       "https://mombasaunited.com",
       "http://www.mombasaunited.com",
       "https://www.mombasaunited.com",
+      "https://apifootball.akilimatic.com",
     ],
   },
 };
