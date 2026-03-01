@@ -16,18 +16,19 @@
   color-scheme: light;
 
   /* ── Mombasa United FC Brand Palette ── */
-  --brand: #1a56db;          /* Royal Blue — primary brand */
-  --brand-2: #3b82f6;        /* Bright blue — strips, highlights */
-  --brand-dark: #1e40af;     /* Darker blue for hover states */
+  /* Jersey-matched deep blue */
+  --brand: #0d3fbf;          /* Deep jersey blue — primary brand */
+  --brand-2: #2563eb;        /* Brighter blue — strips, highlights */
+  --brand-dark: #0a2d8a;     /* Darker blue for hover states */
   --brand-accent: #d4a017;   /* Gold — secondary accent */
   --brand-red: #dc2626;      /* Red — tertiary accent */
-  --ink: #0a1628;            /* Deep navy/black — text, dark sections */
-  --ink-light: #1a2a44;      /* Lighter navy for gradients */
+  --ink: #060e24;            /* Deep black-blue — text, dark sections */
+  --ink-light: #0f1d3d;      /* Dark blue for gradients */
   --muted: #6b7280;          /* Grey — secondary text */
   --line: rgba(0,0,0,0.08);  /* Borders */
 
   --paper: #f8f9fc;          /* Light blue-tinted background */
-  --footer: #1e40af;         /* Darker blue footer */
+  --footer: #0a2d8a;         /* Dark blue footer */
 
   /* Accent colors */
   --success: #10b981;
