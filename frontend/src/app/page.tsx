@@ -2,14 +2,21 @@
 // FILE: frontend/src/app/page.tsx
 // DROP-IN REPLACEMENT — Mombasa United FC homepage
 //
-// USES EXISTING COMPONENTS ONLY:
-//   - SiteShell (Navbar + Celebration + Partnerships + Footer)
-//   - HighlightsSection (video gallery)
-//   - HomeShopSection (kit showcase)
+// STRUCTURE (matches Manchester United homepage flow):
+//   1. Full-width Hero Highlight (latest video/highlight — dark, immersive)
+//   2. "TODAY ON MOMBASAUNITED.COM" — news articles list
+//   3. "The Highlights" — horizontal video cards (full-width dark section)
+//   4. Latest Match Result card (if available)
+//   5. Upcoming Fixtures (conditional — hidden if none)
+//   6. Kit Showcase (HomeShopSection — preserved as-is)
+//   7. Membership CTA + Plans
+//
+// CONDITIONAL: If no upcoming fixtures, the Fixtures section is hidden
+//              and the Highlights section appears more prominently.
 //
 // BRAND: Blue (#0a1628), Yellow/Gold (#d4a017), Black
-// All classes use your globals.css tokens (bg-brand, text-brand,
-// text-muted, border-line, h-serif, dark-section, container-ms)
+// Uses globals.css tokens: bg-brand, text-brand, text-muted,
+// border-line, h-serif, dark-section, container-ms
 // ============================================================
 
 import { SiteShell } from "@/components/SiteShell";
@@ -20,12 +27,11 @@ import { HighlightsSection } from "@/components/HighlightsSection";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
+/* ── helpers ── */
 function fmtDate(d?: string | null) {
   if (!d) return "";
   return new Date(d).toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
+    day: "2-digit", month: "short", year: "numeric",
   });
 }
 
@@ -39,23 +45,28 @@ function fmtFixtureDate(d?: string | null) {
 function fmtTime(d?: string | null) {
   if (!d) return "";
   return new Date(d).toLocaleTimeString("en-GB", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
+    hour: "2-digit", minute: "2-digit", hour12: false,
   });
+}
+
+function timeAgo(d?: string | null) {
+  if (!d) return "";
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
 }
 
 async function getMembershipPlans() {
   try {
-    const res = await fetch(`${API}/membership/plans`, {
-      next: { revalidate: 3600 },
-    });
+    const res = await fetch(`${API}/membership/plans`, { next: { revalidate: 3600 } });
     if (!res.ok) return [];
     const json = await res.json();
     return json.plans || [];
-  } catch {
-    return [];
-  }
+  } catch { return []; }
 }
 
 const tierMeta: Record<string, { color: string; bg: string }> = {
@@ -73,8 +84,15 @@ export default async function HomePage() {
 
   const featured = data.featured;
   const latest = (data.latestNews || []) as any[];
-  const side = latest.filter((n: any) => n.slug !== featured?.slug).slice(0, 4);
+  const todayNews = latest.slice(0, 6);
+  const moreNews = latest.slice(6, 10);
   const fixtures = (data.fixtures || data.upcomingFixtures || []) as any[];
+  const highlights = (data.highlights || []) as any[];
+  const latestResult = data.latestResult || null;
+  const hasFixtures = fixtures.length > 0;
+
+  // Hero highlight = first highlight or featured news
+  const heroHighlight = highlights[0] || null;
 
   return (
     <SiteShell
@@ -83,126 +101,248 @@ export default async function HomePage() {
       sponsors={data.sponsors}
     >
       {/* ══════════════════════════════════════════════════════════
-          1. FEATURED NEWS + SIDE ARTICLES
+          1. HERO HIGHLIGHT — Full-width dark immersive block
+             (Like Man Utd's top hero video section)
           ══════════════════════════════════════════════════════════ */}
-      <section className="mx-auto max-w-[1180px] px-4 pt-10 pb-6">
-        <div className="grid gap-6 md:grid-cols-12">
-          {/* Big featured card */}
-          <div className="md:col-span-8">
-            {featured ? (
-              <Link href={`/news/${featured.slug}`} className="group block">
-                <div className="rounded-card overflow-hidden shadow-hero bg-white card-lift">
-                  <div className="relative aspect-[16/9] bg-ink/10">
-                    {featured.heroMedia?.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={featured.heroMedia.url}
-                        alt={featured.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-ink to-ink-light flex items-center justify-center">
-                        <span className="text-[100px] font-extrabold text-white/5 select-none">MU</span>
-                      </div>
-                    )}
+      <section className="relative w-full bg-ink overflow-hidden">
+        {/* Background image */}
+        <div className="absolute inset-0">
+          {heroHighlight?.thumbnail?.url || featured?.heroMedia?.url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={heroHighlight?.thumbnail?.url || featured?.heroMedia?.url}
+              alt=""
+              className="w-full h-full object-cover opacity-40"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-ink via-ink-light to-ink" />
+          )}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
+          <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
+        </div>
 
-                    <div className="absolute inset-x-0 bottom-0 h-52 bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
+        {/* Watermark */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <span className="text-[200px] md:text-[300px] font-extrabold text-white/[0.02] select-none h-serif">
+            MU
+          </span>
+        </div>
 
-                    <div className="absolute left-6 md:left-8 bottom-6 md:bottom-8 right-6 md:right-10">
-                      <span className="inline-flex items-center rounded bg-brand text-ink text-[10px] font-extrabold px-3 py-1 tracking-wider">
-                        FEATURED
-                      </span>
-                      <div className="mt-3 h-serif text-white font-extrabold text-3xl md:text-5xl leading-[1.05]">
-                        {featured.title}
-                      </div>
-                      <div className="mt-4 flex items-center gap-4 text-white/70 text-sm">
-                        <span>{fmtDate(featured.publishedAt)}</span>
-                        <span className="inline-flex items-center gap-1 text-brand font-bold group-hover:underline">
-                          Read Article →
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+        {/* Content */}
+        <div className="relative min-h-[480px] md:min-h-[580px] flex flex-col justify-end">
+          <div className="container-ms pb-10 md:pb-14">
+            {/* Play button if highlight */}
+            {heroHighlight?.videoUrl && (
+              <Link
+                href={heroHighlight.videoUrl || `/highlights/${heroHighlight.slug || heroHighlight.id}`}
+                className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-brand text-ink mb-6 hover:scale-110 transition-transform shadow-glow"
+              >
+                <svg className="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z" />
+                </svg>
               </Link>
-            ) : null}
+            )}
+
+            <h1 className="h-serif text-white font-extrabold text-3xl sm:text-4xl md:text-6xl leading-[1.05] max-w-3xl">
+              {heroHighlight?.title || featured?.title || "WELCOME TO MOMBASA UNITED"}
+            </h1>
+
+            {(heroHighlight?.description || featured?.excerpt) && (
+              <p className="mt-4 text-white/70 text-sm md:text-base max-w-xl leading-relaxed">
+                {heroHighlight?.description || featured?.excerpt}
+              </p>
+            )}
+
+            <div className="mt-5 flex items-center gap-4 text-white/50 text-xs font-bold tracking-wide">
+              <span>{timeAgo(heroHighlight?.publishedAt || featured?.publishedAt)}</span>
+              {heroHighlight?.category && (
+                <span className="px-2.5 py-0.5 rounded bg-white/10 text-white/70 uppercase tracking-[0.15em]">
+                  {heroHighlight.category}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════
+          2. "TODAY ON MOMBASAUNITED.COM" — News list
+             (Matches Man Utd's "TODAY ON MANUTD.COM")
+          ══════════════════════════════════════════════════════════ */}
+      <section className="bg-white border-t border-line">
+        <div className="container-ms py-12 md:py-16">
+          <div className="flex items-center justify-between mb-8">
+            <h2 className="h-serif text-2xl md:text-3xl font-extrabold text-ink tracking-tight uppercase">
+              Today on MombasaUnited.com
+            </h2>
+            <Link
+              href="/news"
+              className="hidden sm:inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.15em] uppercase text-ink/50 hover:text-brand transition"
+            >
+              MORE NEWS →
+            </Link>
           </div>
 
-          {/* Side news cards */}
-          <div className="md:col-span-4 flex flex-col gap-3">
-            {side.map((n: any) => (
+          <div className="space-y-0 divide-y divide-line">
+            {todayNews.map((article: any, i: number) => (
               <Link
-                key={n.slug}
-                href={`/news/${n.slug}`}
-                className="group block bg-white rounded-xl border border-line shadow-card hover:shadow-soft transition overflow-hidden card-lift"
+                key={article.slug || i}
+                href={`/news/${article.slug}`}
+                className="group flex gap-4 py-4 hover:bg-ink/[0.02] -mx-2 px-2 rounded transition-colors"
               >
-                <div className="grid grid-cols-3">
-                  <div className="col-span-1 bg-ink/5 min-h-[96px]">
-                    {n.heroMedia?.url ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={n.heroMedia.url}
-                        alt={n.title}
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-ink/10 flex items-center justify-center">
-                        <span className="text-lg font-bold text-ink/10">MU</span>
-                      </div>
+                {/* Thumbnail */}
+                <div className="w-28 h-20 sm:w-36 sm:h-24 rounded-lg overflow-hidden bg-ink/5 shrink-0">
+                  {article.heroMedia?.url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={article.heroMedia.url}
+                      alt={article.title}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-ink/10 flex items-center justify-center">
+                      <span className="text-lg font-bold text-ink/10">MU</span>
+                    </div>
+                  )}
+                </div>
+
+                {/* Text */}
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-extrabold text-ink text-sm md:text-[15px] leading-snug line-clamp-2 group-hover:text-ink-light transition-colors">
+                    {article.title}
+                  </h3>
+                  {article.excerpt && (
+                    <p className="mt-1 text-muted text-xs line-clamp-2 hidden sm:block">
+                      {article.excerpt}
+                    </p>
+                  )}
+                  <div className="mt-2 flex items-center gap-3 text-[11px] text-muted">
+                    <span>{timeAgo(article.publishedAt)}</span>
+                    {article.category && (
+                      <span className="text-brand font-bold uppercase tracking-wider">
+                        {article.category}
+                      </span>
                     )}
-                  </div>
-                  <div className="col-span-2 p-4">
-                    <div className="text-[11px] font-extrabold tracking-wide text-muted uppercase">
-                      {fmtDate(n.publishedAt)}
-                    </div>
-                    <div className="mt-1.5 font-extrabold leading-snug line-clamp-2 text-ink group-hover:text-ink-light transition-colors">
-                      {n.title}
-                    </div>
-                    <div className="mt-2.5 text-[11px] font-extrabold text-brand tracking-wider">
-                      READ MORE &nbsp;›
-                    </div>
                   </div>
                 </div>
               </Link>
             ))}
           </div>
-        </div>
 
-        {/* More News link */}
-        <div className="flex justify-end mt-8">
-          <Link
-            href="/news"
-            className="group inline-flex items-center gap-3 text-xs font-extrabold tracking-[0.2em] text-ink/50 hover:text-ink transition"
-          >
-            MORE NEWS
-            <span className="h-10 w-10 rounded-full border border-ink/10 grid place-items-center group-hover:border-brand group-hover:text-brand transition">
-              →
-            </span>
-          </Link>
+          {/* Mobile MORE NEWS link */}
+          <div className="sm:hidden mt-6 flex justify-center">
+            <Link
+              href="/news"
+              className="inline-flex items-center gap-2 text-xs font-extrabold tracking-[0.15em] uppercase text-brand hover:text-brand-dark transition"
+            >
+              MORE NEWS →
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* ══════════════════════════════════════════════════════════
-          2. LATEST HIGHLIGHTS (existing component — dark section)
+          3. "THE HIGHLIGHTS" — Full-width dark video section
+             (Like Man Utd's "Men's Videos" carousel)
           ══════════════════════════════════════════════════════════ */}
-      <HighlightsSection highlights={data.highlights || []} />
+      <HighlightsSection highlights={highlights} />
 
       {/* ══════════════════════════════════════════════════════════
-          3. UPCOMING FIXTURES
+          4. LATEST MATCH RESULT (if available)
+             (Like Man Utd's match result widget)
           ══════════════════════════════════════════════════════════ */}
-      {fixtures.length > 0 && (
+      {latestResult && (
+        <section className="bg-ink border-t border-white/10">
+          <div className="container-ms py-10 md:py-14">
+            <div className="bg-white/[0.05] rounded-2xl border border-white/10 overflow-hidden">
+              {/* Competition bar */}
+              <div className="flex items-center justify-between px-5 py-3 border-b border-white/10">
+                <span className="text-white/50 text-[10px] font-extrabold tracking-[0.2em] uppercase">
+                  {latestResult.competition?.name || latestResult.league || "League"}
+                </span>
+                <span className="text-brand text-[11px] font-extrabold tracking-wide">
+                  {fmtFixtureDate(latestResult.kickoff || latestResult.date)} · FT
+                </span>
+              </div>
+
+              {/* Score */}
+              <div className="px-5 py-8 flex items-center justify-center gap-6 sm:gap-10">
+                {/* Home team */}
+                <div className="flex flex-col items-center gap-2 text-center min-w-0">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center">
+                    {latestResult.homeTeam?.logo?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={latestResult.homeTeam.logo.url} alt="" className="w-10 h-10 object-contain" />
+                    ) : (
+                      <span className="text-xs font-extrabold text-white/40">
+                        {(latestResult.homeTeam?.name || latestResult.home || "HOM").substring(0, 3).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-white text-xs sm:text-sm font-bold truncate max-w-[100px]">
+                    {latestResult.homeTeam?.name || latestResult.home || "Home"}
+                  </span>
+                </div>
+
+                {/* Score display */}
+                <div className="flex items-center gap-3">
+                  <span className="h-serif text-4xl sm:text-5xl font-extrabold text-white">
+                    {latestResult.homeScore ?? "-"}
+                  </span>
+                  <span className="text-white/30 text-lg">-</span>
+                  <span className="h-serif text-4xl sm:text-5xl font-extrabold text-white">
+                    {latestResult.awayScore ?? "-"}
+                  </span>
+                </div>
+
+                {/* Away team */}
+                <div className="flex flex-col items-center gap-2 text-center min-w-0">
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-white/10 flex items-center justify-center">
+                    {latestResult.awayTeam?.logo?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={latestResult.awayTeam.logo.url} alt="" className="w-10 h-10 object-contain" />
+                    ) : (
+                      <span className="text-xs font-extrabold text-white/40">
+                        {(latestResult.awayTeam?.name || latestResult.away || "AWY").substring(0, 3).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <span className="text-white text-xs sm:text-sm font-bold truncate max-w-[100px]">
+                    {latestResult.awayTeam?.name || latestResult.away || "Away"}
+                  </span>
+                </div>
+              </div>
+
+              {/* Match review CTA */}
+              <div className="border-t border-white/10 px-5 py-3 flex justify-center">
+                <Link
+                  href={`/fixtures/${latestResult.id || ""}`}
+                  className="text-brand text-[11px] font-extrabold tracking-[0.15em] uppercase hover:text-brand-2 transition"
+                >
+                  MATCH REVIEW →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ══════════════════════════════════════════════════════════
+          5. UPCOMING FIXTURES (conditional — only if fixtures exist)
+          ══════════════════════════════════════════════════════════ */}
+      {hasFixtures && (
         <section className="bg-white border-t border-line">
-          <div className="mx-auto max-w-[1180px] px-4 py-16">
+          <div className="container-ms py-12 md:py-16">
             <div className="flex items-end justify-between mb-10">
               <div>
-                <h2 className="h-serif text-4xl md:text-5xl font-extrabold text-ink tracking-tight">
-                  UPCOMING FIXTURES
+                <h2 className="h-serif text-3xl md:text-4xl font-extrabold text-ink tracking-tight uppercase">
+                  Upcoming Fixtures
                 </h2>
-                <div className="mt-2 h-[3px] w-14 bg-brand rounded-full" />
+                <div className="title-underline" />
               </div>
               <Link
                 href="/fixtures"
-                className="hidden sm:inline-flex items-center gap-2 text-xs font-extrabold tracking-[0.15em] text-ink/50 hover:text-brand transition"
+                className="hidden sm:inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.15em] text-ink/50 hover:text-brand transition"
               >
                 VIEW ALL →
               </Link>
@@ -215,14 +355,12 @@ export default async function HomePage() {
                 const league = fix.competition?.name || fix.competitionName || fix.league || "League";
                 const venue = fix.venue?.name || fix.venueName || fix.venue || "";
                 const dateStr = fix.kickoff || fix.date || fix.scheduledAt;
-                const awayLogo = fix.awayTeam?.logo?.url || fix.awayTeamLogo || null;
 
                 return (
                   <div
                     key={fix.id || i}
                     className="bg-white rounded-xl border border-line overflow-hidden hover:shadow-soft transition-shadow card-lift"
                   >
-                    {/* Dark header bar */}
                     <div className="flex items-center justify-between px-5 py-2.5 bg-ink">
                       <span className="text-white/70 text-[11px] font-extrabold tracking-[0.15em] uppercase">
                         {league}
@@ -232,10 +370,8 @@ export default async function HomePage() {
                       </span>
                     </div>
 
-                    {/* Match row */}
                     <div className="px-5 py-5 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
                       <div className="flex items-center gap-4 flex-1 min-w-0">
-                        {/* Home team badge placeholder */}
                         <div className="h-11 w-11 rounded-full bg-ink/5 border border-line flex items-center justify-center shrink-0">
                           <span className="text-[10px] font-extrabold text-ink/40">
                             {homeTeam.substring(0, 2).toUpperCase()}
@@ -259,11 +395,6 @@ export default async function HomePage() {
                         </div>
                       )}
 
-                      {awayLogo && (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={awayLogo} alt={awayTeam} className="h-11 w-11 object-contain shrink-0" />
-                      )}
-
                       <Link
                         href={data.settings?.ticketsUrl || "/tickets"}
                         className="shrink-0 px-6 py-2.5 bg-brand text-ink text-[11px] font-extrabold tracking-[0.12em] uppercase rounded-lg hover:bg-brand-dark transition-colors"
@@ -280,20 +411,74 @@ export default async function HomePage() {
       )}
 
       {/* ══════════════════════════════════════════════════════════
-          4. KIT SHOWCASE (existing component)
+          6. "IN CASE YOU MISSED IT" — More news grid
+             (Like Man Utd's secondary news grid)
           ══════════════════════════════════════════════════════════ */}
-      <HomeShopSection
-        kits={data.kits || []}
-        shopImageUrl={data.settings?.homeShopImage?.url}
-        shopUrl={data.settings?.shopUrl || "/shop"}
-      />
+      {moreNews.length > 0 && (
+        <section className="bg-white border-t border-line">
+          <div className="container-ms py-12 md:py-16">
+            <div className="flex items-center justify-between mb-8">
+              <h2 className="h-serif text-2xl md:text-3xl font-extrabold text-ink tracking-tight uppercase">
+                In Case You Missed It
+              </h2>
+              <Link
+                href="/news"
+                className="hidden sm:inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.15em] uppercase text-ink/50 hover:text-brand transition"
+              >
+                MORE FROM THE CLUB →
+              </Link>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              {moreNews.map((article: any, i: number) => (
+                <Link
+                  key={article.slug || i}
+                  href={`/news/${article.slug}`}
+                  className="group block bg-white rounded-xl border border-line overflow-hidden card-lift"
+                >
+                  <div className="aspect-[16/10] bg-ink/5 overflow-hidden">
+                    {article.heroMedia?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={article.heroMedia.url}
+                        alt={article.title}
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-ink to-ink-light flex items-center justify-center">
+                        <span className="text-3xl font-extrabold text-white/5 select-none">MU</span>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <h3 className="font-extrabold text-ink text-sm leading-snug line-clamp-2 group-hover:text-ink-light transition-colors">
+                      {article.title}
+                    </h3>
+                    <div className="mt-2 flex items-center gap-2 text-[10px] text-muted">
+                      <span>{timeAgo(article.publishedAt)}</span>
+                      {article.category && (
+                        <span className="text-brand font-bold uppercase">{article.category}</span>
+                      )}
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ══════════════════════════════════════════════════════════
-          5. MEMBERSHIP CTA + PLANS GRID
+          7. KIT SHOWCASE (preserved — no changes)
+          ══════════════════════════════════════════════════════════ */}
+      <HomeShopSection />
+
+      {/* ══════════════════════════════════════════════════════════
+          8. MEMBERSHIP CTA + PLANS GRID
           ══════════════════════════════════════════════════════════ */}
       <section className="bg-white">
-        <div className="mx-auto max-w-[1180px] px-4 pb-20 pt-8">
-          {/* Banner — team photo background */}
+        <div className="container-ms pb-20 pt-8">
+          {/* Banner */}
           <div className="overflow-hidden rounded-2xl border border-line shadow-soft">
             <div className="relative h-[140px] md:h-[160px] bg-ink">
               {data.settings?.homeMembershipImage?.url ? (
@@ -389,10 +574,7 @@ export default async function HomePage() {
                     <Link
                       href={data.settings?.membershipUrl || "/membership"}
                       className="mt-6 block w-full text-center text-[11px] font-extrabold tracking-[0.12em] uppercase py-3 rounded-lg border-2 transition-all group-hover:shadow-card"
-                      style={{
-                        borderColor: meta.color,
-                        color: meta.color,
-                      }}
+                      style={{ borderColor: meta.color, color: meta.color }}
                     >
                       {plan.price === 0 ? "Register Free" : "Join Now"}
                     </Link>

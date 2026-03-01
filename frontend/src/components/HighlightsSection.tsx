@@ -1,294 +1,177 @@
+// ============================================================
+// FILE: frontend/src/components/HighlightsSection.tsx
+// DROP-IN REPLACEMENT — Full-width dark video cards section
+//
+// Man Utd-inspired horizontal video gallery.
+// Full-width dark background, horizontal scrollable cards,
+// play buttons, duration overlays, categories.
+//
+// BRAND: Navy (#0a1628), Gold (#d4a017)
+// ============================================================
+
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { Clock, Play } from "lucide-react";
+import Link from "next/link";
+import { useRef } from "react";
 
-type Highlight = {
-  id: string | number;
+interface Highlight {
+  id?: string;
+  slug?: string;
   title: string;
-  subtitle?: string | null;
-  videoUrl: string;
-  publishedAt?: string | null;
-  durationSec?: number | null;
-  thumbnail?: { url?: string | null } | null;
-};
+  description?: string;
+  thumbnail?: { url: string };
+  videoUrl?: string;
+  duration?: string;
+  category?: string;
+  publishedAt?: string;
+}
 
-function fmtDate(d?: string | null) {
+interface HighlightsSectionProps {
+  highlights?: Highlight[];
+}
+
+function timeAgo(d?: string | null) {
   if (!d) return "";
-  const dt = new Date(d);
-  return dt.toLocaleDateString("en-GB", {
-    day: "2-digit",
-    month: "short",
-    year: "numeric",
-  });
+  const diff = Date.now() - new Date(d).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  return `${days}d ago`;
 }
 
-function dur(sec?: number | null) {
-  if (sec === null || sec === undefined) return "";
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
+export function HighlightsSection({ highlights = [] }: HighlightsSectionProps) {
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-// Try to extract score like "2-3" from title
-function extractScore(title?: string | null) {
-  if (!title) return "";
-  const m = title.match(/(\d+)\s*-\s*(\d+)/);
-  return m ? `${m[1]}-${m[2]}` : "";
-}
+  if (highlights.length === 0) return null;
 
-export function HighlightsSection({ highlights }: { highlights: Highlight[] }) {
-  const list = Array.isArray(highlights) ? highlights : [];
-
-  const [selectedId, setSelectedId] = useState<string | number | null>(
-    list?.[0]?.id ?? null
-  );
-
-  const main = useMemo(() => {
-    if (!list.length) return null;
-    return list.find((h) => h.id === selectedId) ?? list[0];
-  }, [list, selectedId]);
-
-  const recent = useMemo(() => {
-    if (!list.length || !main) return [];
-    return list.filter((h) => h.id !== main.id).slice(0, 3);
-  }, [list, main]);
-
-  // Avoid hydration mismatch for "x minutes ago"
-  const [now, setNow] = useState<number | null>(null);
-  useEffect(() => setNow(Date.now()), []);
-
-  function relTime(d?: string | null) {
-    if (!d) return "";
-    if (!now) return fmtDate(d); // server render fallback
-    const ms = now - new Date(d).getTime();
-    const min = Math.floor(ms / 60000);
-    if (min < 60) return `about ${min} minutes ago`;
-    const hr = Math.floor(min / 60);
-    if (hr < 24) return `about ${hr} hours ago`;
-    const day = Math.floor(hr / 24);
-    return `${day} days ago`;
-  }
-
-  const [open, setOpen] = useState(false);
-
-  if (!main) return null;
-
-  const mainScore = extractScore(main.title);
+  const scroll = (dir: "left" | "right") => {
+    if (!scrollRef.current) return;
+    const amount = scrollRef.current.offsetWidth * 0.7;
+    scrollRef.current.scrollBy({
+      left: dir === "left" ? -amount : amount,
+      behavior: "smooth",
+    });
+  };
 
   return (
-    <section className="dark-section">
-      <div className="mx-auto max-w-[1180px] px-4 py-14">
-        {/* Title */}
-        <div className="text-3xl font-extrabold text-white">
-          Latest Highlights
-          <div className="mt-2 h-[3px] w-12 bg-brand rounded-full" />
-        </div>
+    <section className="bg-ink w-full overflow-hidden border-t border-white/5">
+      <div className="container-ms py-12 md:py-16">
+        {/* Header */}
+        <div className="flex items-end justify-between mb-8">
+          <div>
+            <p className="text-brand text-[10px] font-extrabold tracking-[0.3em] uppercase mb-2">
+              Videos
+            </p>
+            <h2 className="h-serif text-3xl md:text-4xl font-extrabold text-white tracking-tight uppercase">
+              The Highlights
+            </h2>
+            <div className="mt-2 h-[3px] w-12 bg-brand rounded-full" />
+          </div>
 
-        <div className="mt-10 grid gap-8 md:grid-cols-12">
-          {/* Main highlight (poster style) */}
-          <div className="md:col-span-8">
-            <div className="rounded-[22px] overflow-hidden border border-white/10 bg-white/5 shadow-[0_18px_60px_rgba(0,0,0,.35)]">
-              {/* Poster */}
-              <div className="relative aspect-video bg-black/30">
-                {main.thumbnail?.url ? (
+          <div className="flex items-center gap-3">
+            {/* Scroll arrows */}
+            <button
+              onClick={() => scroll("left")}
+              className="hidden sm:flex w-10 h-10 rounded-full border border-white/20 items-center justify-center text-white/50 hover:text-white hover:border-white/40 transition"
+              aria-label="Scroll left"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
+              </svg>
+            </button>
+            <button
+              onClick={() => scroll("right")}
+              className="hidden sm:flex w-10 h-10 rounded-full border border-white/20 items-center justify-center text-white/50 hover:text-white hover:border-white/40 transition"
+              aria-label="Scroll right"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+              </svg>
+            </button>
+
+            <Link
+              href="/highlights"
+              className="text-[11px] font-extrabold tracking-[0.15em] uppercase text-white/40 hover:text-brand transition"
+            >
+              VIEW ALL →
+            </Link>
+          </div>
+        </div>
+      </div>
+
+      {/* Scrollable cards — full width, edge-to-edge */}
+      <div
+        ref={scrollRef}
+        className="flex gap-4 md:gap-5 overflow-x-auto scroll-smooth pb-6 px-4 md:px-8 lg:px-[calc((100vw-1280px)/2+2rem)] snap-x snap-mandatory scrollbar-hide"
+        style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+      >
+        {highlights.map((hl, i) => {
+          const href = hl.videoUrl || `/highlights/${hl.slug || hl.id || i}`;
+          return (
+            <Link
+              key={hl.id || i}
+              href={href}
+              className="group flex-shrink-0 w-[280px] sm:w-[320px] md:w-[360px] snap-start"
+            >
+              {/* Thumbnail */}
+              <div className="relative aspect-video rounded-xl overflow-hidden bg-ink-light">
+                {hl.thumbnail?.url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={main.thumbnail.url}
-                    alt={main.title}
-                    className="absolute inset-0 w-full h-full object-cover"
+                    src={hl.thumbnail.url}
+                    alt={hl.title}
+                    className="w-full h-full object-cover group-hover:scale-[1.04] transition-transform duration-500"
+                    loading="lazy"
                   />
                 ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-white/0" />
+                  <div className="w-full h-full bg-gradient-to-br from-ink via-ink-light to-ink flex items-center justify-center">
+                    <span className="text-5xl font-extrabold text-white/[0.03] select-none">MU</span>
+                  </div>
                 )}
 
-                {/* overlay gradient */}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent" />
+                {/* Gradient overlay */}
+                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
 
-                {/* centered play */}
-                <button
-                  type="button"
-                  onClick={() => setOpen(true)}
-                  className="absolute inset-0 grid place-items-center focus:outline-none"
-                  aria-label="Play highlight"
-                >
-                  <div className="h-14 w-14 rounded-full bg-black/35 backdrop-blur-md border border-white/20 grid place-items-center shadow-lg hover:scale-[1.03] active:scale-[0.99] transition">
-                    <Play className="h-6 w-6 text-white ml-0.5" fill="currentColor" />
+                {/* Play button */}
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-brand/90 flex items-center justify-center opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all shadow-glow">
+                    <svg className="w-5 h-5 text-ink ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M8 5v14l11-7z" />
+                    </svg>
                   </div>
-                </button>
+                </div>
 
-                {/* duration bottom-left */}
-                {main.durationSec ? (
-                  <div className="absolute bottom-3 left-3 rounded-md bg-black/70 px-2 py-1 text-xs font-semibold text-white">
-                    {dur(main.durationSec)}
-                  </div>
-                ) : null}
-
-                {/* time badge bottom-right */}
-                {main.publishedAt ? (
-                  <div className="absolute bottom-3 right-3 rounded-full bg-emerald-500/15 border border-emerald-400/15 px-3 py-1 text-xs font-semibold text-emerald-50">
-                    {relTime(main.publishedAt)}
-                  </div>
-                ) : null}
+                {/* Duration badge */}
+                {hl.duration && (
+                  <span className="absolute bottom-2 right-2 bg-black/80 text-white text-[10px] font-bold px-2 py-0.5 rounded font-mono tracking-wide">
+                    {hl.duration}
+                  </span>
+                )}
               </div>
 
-              {/* Title row */}
-              <div className="px-6 py-6">
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0">
-                    <div className="h-serif text-white font-extrabold text-2xl md:text-3xl leading-tight">
-                      {main.title}
-                    </div>
-                    <div className="mt-3 text-xs font-bold tracking-[0.18em] text-brand uppercase">
-                      {main.subtitle || "HIGHLIGHTS"}
-                    </div>
-                  </div>
-
-                  {/* optional score pill (like screenshot) */}
-                  {mainScore ? (
-                    <div className="shrink-0 rounded-full bg-brand/15 border border-brand/25 px-3 py-1 text-xs font-extrabold text-brand">
-                      {mainScore}
-                    </div>
-                  ) : null}
+              {/* Text */}
+              <div className="mt-3 px-1">
+                <h3 className="font-extrabold text-white text-sm leading-snug line-clamp-2 group-hover:text-brand transition-colors">
+                  {hl.title}
+                </h3>
+                <div className="mt-2 flex items-center gap-3 text-[10px] text-white/40">
+                  <span>{timeAgo(hl.publishedAt)}</span>
+                  {hl.category && (
+                    <span className="text-brand font-bold uppercase tracking-wider">
+                      {hl.category}
+                    </span>
+                  )}
                 </div>
               </div>
-            </div>
-          </div>
-
-          {/* Most recent */}
-          <div className="md:col-span-4">
-            <div className="text-xs font-extrabold tracking-[0.2em] text-white/70">
-              MOST RECENT
-            </div>
-            <div className="mt-4 h-px bg-white/10" />
-
-            <div className="mt-5 space-y-4">
-              {recent.map((h) => {
-                const score = extractScore(h.title);
-                return (
-                  <button
-                    key={h.id}
-                    type="button"
-                    onClick={() => setSelectedId(h.id)}
-                    className={[
-                      "w-full text-left rounded-[18px] border border-white/10 bg-white/5",
-                      "hover:bg-white/10 transition shadow-sm overflow-hidden",
-                      selectedId === h.id ? "ring-1 ring-brand/40" : "",
-                    ].join(" ")}
-                  >
-                    <div className="grid grid-cols-[120px_1fr] gap-4 p-4">
-                      {/* thumb */}
-                      <div className="relative rounded-xl overflow-hidden bg-black/30 h-[72px]">
-                        {h.thumbnail?.url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={h.thumbnail.url}
-                            alt={h.title}
-                            className="absolute inset-0 w-full h-full object-cover"
-                          />
-                        ) : null}
-
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
-
-                        {/* play bubble */}
-                        <div className="absolute inset-0 grid place-items-center">
-                          <div className="h-8 w-8 rounded-full bg-brand/90 grid place-items-center shadow">
-                            <Play className="h-4 w-4 text-black ml-0.5" fill="currentColor" />
-                          </div>
-                        </div>
-
-                        {/* duration bottom-right */}
-                        {h.durationSec ? (
-                          <div className="absolute bottom-2 right-2 rounded-md bg-black/75 px-2 py-1 text-[10px] font-semibold text-white">
-                            {dur(h.durationSec)}
-                          </div>
-                        ) : null}
-                      </div>
-
-                      {/* text */}
-                      <div className="min-w-0">
-                        <div className="flex items-center justify-between gap-3">
-                          {score ? (
-                            <div className="text-[11px] font-extrabold text-brand">
-                              {score}
-                            </div>
-                          ) : (
-                            <div className="text-[11px] font-extrabold text-white/50">
-                              &nbsp;
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="mt-1 text-sm font-extrabold leading-snug text-white line-clamp-2">
-                          {h.title}
-                        </div>
-
-                        <div className="mt-2 flex items-center gap-2 text-[11px] font-semibold text-white/55">
-                          <Clock className="h-3.5 w-3.5" />
-                          <span className="uppercase">{relTime(h.publishedAt)}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
-            <div className="mt-8 flex justify-end">
-              <a
-                href={main?.videoUrl || "#"}
-                target="_blank"
-                rel="noreferrer"
-                className="text-xs font-extrabold tracking-[0.2em] text-white/70 hover:text-white transition inline-flex items-center gap-3"
-              >
-                MORE VIDEOS{" "}
-                <span className="h-10 w-10 rounded-full border border-white/20 grid place-items-center">
-                  →
-                </span>
-              </a>
-            </div>
-          </div>
-        </div>
-
-        {/* Modal player */}
-        {open ? (
-          <div
-            className="fixed inset-0 z-[999] bg-black/70 backdrop-blur-sm grid place-items-center p-4"
-            role="dialog"
-            aria-modal="true"
-            onClick={() => setOpen(false)}
-          >
-            <div
-              className="w-full max-w-4xl rounded-2xl overflow-hidden border border-white/15 bg-black"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-white/10">
-                <div className="text-white font-extrabold line-clamp-1">
-                  {main.title}
-                </div>
-                <button
-                  className="text-white/70 hover:text-white font-extrabold"
-                  onClick={() => setOpen(false)}
-                >
-                  ✕
-                </button>
-              </div>
-
-              <div className="relative aspect-video bg-black">
-                <video
-                  className="w-full h-full"
-                  controls
-                  playsInline
-                  autoPlay
-                  preload="metadata"
-                  poster={main.thumbnail?.url || undefined}
-                  src={main.videoUrl}
-                />
-              </div>
-            </div>
-          </div>
-        ) : null}
+            </Link>
+          );
+        })}
       </div>
+
+      {/* Bottom padding */}
+      <div className="h-6 md:h-10" />
     </section>
   );
 }

@@ -1,108 +1,122 @@
+/* ============================================================
+   FILE: frontend/src/app/globals.css
+   DROP-IN REPLACEMENT
+
+   REBRANDED: Mombasa United FC — Royal Blue, White & Gold accent
+   Primary: Royal Blue (#1a56db)  Secondary: White  Accent: Gold
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-/* Fonts closer to reference */
-@import url("https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700;800;900&family=Bebas+Neue&display=swap");
-
-:root{
+:root {
   color-scheme: light;
 
-  --brand:#f08a24;       /* orange */
-  --brand-2:#f3c739;     /* yellow */
-  --ink:#0b1020;
-  --muted:#6b7280;
-  --line:rgba(0,0,0,.10);
+  /* ── Mombasa United FC Brand Palette ── */
+  --brand: #1a56db;          /* Royal Blue — primary brand */
+  --brand-2: #3b82f6;        /* Bright blue — strips, highlights */
+  --brand-dark: #1e40af;     /* Darker blue for hover states */
+  --brand-accent: #d4a017;   /* Gold — secondary accent */
+  --brand-red: #dc2626;      /* Red — tertiary accent */
+  --ink: #0a1628;            /* Deep navy/black — text, dark sections */
+  --ink-light: #1a2a44;      /* Lighter navy for gradients */
+  --muted: #6b7280;          /* Grey — secondary text */
+  --line: rgba(0,0,0,0.08);  /* Borders */
 
-  --paper:#fbf9f4;
-  --footer:#070a10;
+  --paper: #f8f9fc;          /* Light blue-tinted background */
+  --footer: #1e40af;         /* Darker blue footer */
+
+  /* Accent colors */
+  --success: #10b981;
+  --danger: #ef4444;
 }
 
 html, body { height: 100%; }
 
-body{
-  margin:0;
+body {
+  margin: 0;
   font-family: "Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   color: var(--ink);
   background: var(--paper);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* ===== Background watermark (use on <main className="page-pattern">) ===== */
-.page-pattern{
+/* ===== Background pattern (soft dots + grid) ===== */
+.page-pattern {
   background-color: var(--paper);
   background-image:
-    /* soft dots */
-    radial-gradient(circle at 1px 1px, rgba(0,0,0,.028) 1px, transparent 1px),
-    /* big grid */
-    linear-gradient(rgba(0,0,0,.018) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(0,0,0,.018) 1px, transparent 1px);
+    radial-gradient(circle at 1px 1px, rgba(10,22,40,.025) 1px, transparent 1px),
+    linear-gradient(rgba(10,22,40,.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(10,22,40,.015) 1px, transparent 1px);
   background-size: 24px 24px, 140px 140px, 140px 140px;
-  background-position: 0 0, 0 0, 0 0;
 }
 
-/* ===== Shared helpers (keep these because your JSX uses them) ===== */
-.text-ink{ color: var(--ink); }
-.text-muted{ color: var(--muted); }
-.border-line{ border-color: var(--line); }
+/* ===== Shared token helpers (used in JSX classNames) ===== */
+.text-ink    { color: var(--ink); }
+.text-muted  { color: var(--muted); }
+.border-line { border-color: var(--line); }
+.bg-brand    { background: var(--brand); }
+.text-brand  { color: var(--brand); }
+.bg-ink      { background: var(--ink); }
 
-.bg-brand{ background: var(--brand); }
-.text-brand{ color: var(--brand); }
-.bg-ink{ background: var(--ink); }
+a { color: inherit; text-decoration: none; }
 
-a{ color: inherit; }
-
-/* ===== Typography helpers ===== */
-.h-serif{
+/* ===== Typography ===== */
+.h-serif {
   font-family: "Bebas Neue", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
   letter-spacing: 0.02em;
 }
-.nav-sans{
+.nav-sans {
   font-family: "Montserrat", system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
 }
 
 /* ===== Accent lines / strips ===== */
-.top-accent-line{
+.top-accent-line {
   height: 3px;
   background: var(--brand);
 }
 
-/* Thick yellow band under header (the height should be controlled by your JSX padding/children) */
-.yellow-strip{
-  background: var(--brand-2);
+/* Blue announcement band under header */
+.blue-strip {
+  background: var(--brand);
   position: relative;
-  border-top: 1px solid rgba(0,0,0,.08);
+  border-top: 1px solid rgba(255,255,255,.08);
   border-bottom: 1px solid rgba(0,0,0,.08);
+  color: #fff;
 }
-.yellow-strip::after{
-  content:"";
-  position:absolute;
-  inset:0;
-  background-image: radial-gradient(rgba(0,0,0,0.10) 1px, transparent 1px);
+.blue-strip::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.08) 1px, transparent 1px);
   background-size: 18px 18px;
   opacity: 0.18;
-  pointer-events:none;
+  pointer-events: none;
 }
 
-/* ===== Dark sections (highlights + footer) ===== */
-.dark-section{
+/* ===== Dark sections (highlights, fixtures, footer) ===== */
+.dark-section {
   background:
-    radial-gradient(900px 520px at 50% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
-    radial-gradient(1200px 700px at 15% 55%, rgba(255,255,255,.04) 0%, rgba(255,255,255,0) 55%),
-    var(--footer);
-  color:#fff;
+    radial-gradient(900px 520px at 50% 0%, rgba(26,86,219,.12) 0%, rgba(26,86,219,0) 60%),
+    radial-gradient(1200px 700px at 15% 55%, rgba(255,255,255,.03) 0%, rgba(255,255,255,0) 55%),
+    var(--ink);
+  color: #fff;
 }
 
-/* Footer-specific (optional, but clean) */
-.footer-surface{
+.footer-surface {
   background:
-    radial-gradient(900px 520px at 50% 0%, rgba(255,255,255,.06) 0%, rgba(255,255,255,0) 60%),
-    radial-gradient(1200px 700px at 15% 55%, rgba(255,255,255,.04) 0%, rgba(255,255,255,0) 55%),
-    var(--footer);
-  color:#fff;
+    radial-gradient(900px 520px at 50% 0%, rgba(255,255,255,.08) 0%, rgba(255,255,255,0) 60%),
+    radial-gradient(1200px 700px at 15% 55%, rgba(255,255,255,.03) 0%, rgba(255,255,255,0) 55%),
+    var(--brand-dark);
+  color: #fff;
 }
 
-/* ===== Footer UI bits (used by your footer layout) ===== */
-.social-pill{
+/* ===== Footer UI components ===== */
+.social-pill {
   width: 44px;
   height: 44px;
   border-radius: 999px;
@@ -110,74 +124,108 @@ a{ color: inherit; }
   color: var(--ink);
   display: grid;
   place-items: center;
-  transition: transform .12s ease, opacity .12s ease;
+  transition: transform .15s ease, box-shadow .15s ease;
 }
-.social-pill:hover{
-  transform: translateY(-1px);
-  opacity: .95;
+.social-pill:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(26,86,219,.25);
 }
 
-.footer-directions{
+.footer-directions {
   width: 100%;
   max-width: 320px;
   height: 90px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 12px;
+  border: 1px solid rgba(26,86,219,.15);
   background: rgba(0,0,0,.35);
   color: #fff;
   font-weight: 700;
   display: grid;
   place-items: center;
+  transition: border-color .15s ease, background .15s ease;
 }
-.footer-directions:hover{
+.footer-directions:hover {
   background: rgba(0,0,0,.45);
+  border-color: rgba(26,86,219,.3);
 }
 
-.newsletter-wrap{
-  display:flex;
-  align-items:center;
+.newsletter-wrap {
+  display: flex;
+  align-items: center;
   gap: 10px;
   max-width: 420px;
 }
-.newsletter-input{
-  flex:1;
-  height: 44px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.14);
+.newsletter-input {
+  flex: 1;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(255,255,255,.12);
   background: rgba(255,255,255,.06);
-  padding: 0 14px;
+  padding: 0 16px;
   color: rgba(255,255,255,.92);
+  font-size: 14px;
   outline: none;
+  transition: border-color .15s ease;
 }
-.newsletter-input::placeholder{
-  color: rgba(255,255,255,.55);
+.newsletter-input::placeholder {
+  color: rgba(255,255,255,.45);
 }
-.newsletter-input:focus{
-  border-color: rgba(255,255,255,.28);
+.newsletter-input:focus {
+  border-color: var(--brand);
 }
-.newsletter-send{
-  width: 44px;
-  height: 44px;
-  border-radius: 10px;
-  border: 1px solid rgba(255,255,255,.14);
-  background: rgba(255,255,255,.06);
-  color: rgba(255,255,255,.92);
+.newsletter-send {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  border: 1px solid rgba(26,86,219,.25);
+  background: var(--brand);
+  color: #fff;
   display: grid;
   place-items: center;
+  transition: opacity .15s ease;
 }
-.newsletter-send:hover{
-  background: rgba(255,255,255,.10);
+.newsletter-send:hover {
+  opacity: .9;
 }
 
-/* ===== Article formatting (no typography plugin) ===== */
-.prose-invert p { margin: 0.9rem 0; line-height: 1.75; color: rgba(11,16,32,.86); }
-.prose-invert h2 { margin-top: 1.6rem; font-size: 1.4rem; font-weight: 900; color: #0b1020; }
-.prose-invert h3 { margin-top: 1.2rem; font-size: 1.15rem; font-weight: 900; color: #0b1020; }
+/* ===== Article typography ===== */
+.prose-invert p  { margin: 0.9rem 0; line-height: 1.8; color: rgba(10,22,40,.86); }
+.prose-invert h2 { margin-top: 1.6rem; font-size: 1.4rem; font-weight: 900; color: var(--ink); }
+.prose-invert h3 { margin-top: 1.2rem; font-size: 1.15rem; font-weight: 900; color: var(--ink); }
 .prose-invert ul { margin: 0.9rem 0; padding-left: 1.2rem; list-style: disc; }
-.prose-invert a { text-decoration: underline; }
+.prose-invert a  { text-decoration: underline; color: var(--brand); }
 
-/* Tailwind component helpers you already use */
-@layer components{
-  .container-ms{ @apply mx-auto max-w-[1180px] px-4; }
-  .title-underline{ @apply mt-2 h-[3px] w-12 rounded-full; background: var(--brand); }
+/* ===== Tailwind component layer ===== */
+@layer components {
+  .container-ms { @apply mx-auto max-w-[1180px] px-4; }
+  .title-underline { @apply mt-2 h-[3px] w-12 rounded-full; background: var(--brand); }
+}
+
+/* ===== Card hover effects ===== */
+.card-lift {
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+.card-lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 12px 36px rgba(10,22,40,.12);
+}
+
+/* ===== Scrollbar hide for horizontal scroll ===== */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* ===== Smooth scrolling ===== */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ===== Selection color ===== */
+::selection {
+  background: var(--brand);
+  color: #fff;
 }
