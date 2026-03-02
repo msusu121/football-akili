@@ -273,9 +273,9 @@ export default function ShopClient() {
   if (!token) {
     return (
       <div className="rounded-2xl border border-line bg-white p-10 text-center max-w-lg mx-auto mt-10">
-        <div className="h-serif text-3xl font-extrabold text-ink">Members-Only Shop</div>
+        <div className="h-serif text-3xl font-extrabold text-ink">SignIn-Only Shop</div>
         <p className="mt-3 text-sm text-muted leading-relaxed">
-          Sign in and activate your membership to unlock official Mombasa United merchandise at exclusive prices.
+          Sign in  to unlock official Mombasa United merchandise at exclusive prices.
         </p>
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link
@@ -284,34 +284,13 @@ export default function ShopClient() {
           >
             Sign In
           </Link>
-          <Link
-            className="rounded-xl border-2 border-line bg-white px-8 py-3.5 text-sm font-extrabold text-ink hover:border-brand transition"
-            href="/membership"
-          >
-            Join Membership
-          </Link>
+          
         </div>
       </div>
     );
   }
 
-  // ── No membership ──
-  if (!membershipActive) {
-    return (
-      <div className="rounded-2xl border border-line bg-white p-10 text-center max-w-lg mx-auto mt-10">
-        <div className="h-serif text-3xl font-extrabold text-ink">Membership Required</div>
-        <p className="mt-3 text-sm text-muted leading-relaxed">
-          Activate your membership to access the shop and enjoy exclusive discounts on official kits.
-        </p>
-        <Link
-          className="mt-8 inline-block rounded-xl bg-brand px-8 py-3.5 text-sm font-extrabold text-ink hover:bg-brand-dark transition"
-          href="/membership"
-        >
-          Activate Membership →
-        </Link>
-      </div>
-    );
-  }
+  
 
   return (
     <div>
