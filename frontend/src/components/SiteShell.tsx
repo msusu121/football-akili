@@ -74,6 +74,7 @@ interface SiteShellProps {
   settings?: SiteSettings;
   socials?: Social[];
   sponsors?: Sponsor[];
+  className?: string;
 }
 
 /* ── nav links ── */
@@ -153,7 +154,7 @@ function SocialIcon({ platform }: { platform: string }) {
   return <span className="text-xs font-bold uppercase">{platform.substring(0, 2)}</span>;
 }
 
-export function SiteShell({ children, settings, socials = [], sponsors = [] }: SiteShellProps) {
+export function SiteShell({ children, settings, socials = [], sponsors = [], className = "" }: SiteShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -186,7 +187,7 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
   );
 
   return (
-    <div className="min-h-screen flex flex-col bg-bg text-ink">
+    <div className={`min-h-screen flex flex-col bg-bg text-ink ${className}`}>
       {/* ═══════════════════════════════════════════════════
           NAVBAR — Sticky, dark, Man Utd-inspired
           ═══════════════════════════════════════════════════ */}
@@ -226,7 +227,6 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
                 (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
               }}
             />
-            
             <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase">
               {clubName}
             </span>

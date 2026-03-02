@@ -1,23 +1,17 @@
 // ============================================================
 // FILE: frontend/src/app/squad/page.tsx
-// REPLACE your existing squad/page.tsx with this
-// Matches Murang'a Seal team layout:
-//   - TEAMS / STAFF tabs with orange underline
-//   - Team sub-tabs (Men's First Team, Women's, Youth)
-//   - Sections: GOALKEEPERS, DEFENDERS, MIDFIELDERS, FORWARDS
-//   - Player cards: portrait photo, jersey number badge,
-//     last name bold, first name muted, orange accent bar,
-//     position in small tracked uppercase
-//   - Clean, no filters, responsive grid
+// Man Utd-inspired squad layout:
+//   - Clean "Men" title hero
+//   - FIRST TEAM / STAFF tabs
+//   - Sections: Goalkeepers, Defenders, Midfielders, Forwards
+//   - Player cards: passport-style headshot, shirt number,
+//     first name muted, last name bold
+//   - 5-column responsive grid, minimal & premium
 // ============================================================
 
 import { SiteShell } from "@/components/SiteShell";
 import { apiGet } from "@/lib/api";
 import Link from "next/link";
-
-function toTitle(s: string) {
-  return (s || "").toUpperCase();
-}
 
 export default async function SquadPage({
   searchParams,
@@ -48,136 +42,121 @@ export default async function SquadPage({
       socials={home.socials}
       sponsors={home.sponsors}
     >
-      <section className="container-ms py-10 md:py-14">
-        {/* ── Tab bar: TEAMS / STAFF ── */}
-        <div className="flex items-center gap-0 border-b border-line">
-          <Link
-            href="/squad"
-            className={`px-6 py-4 font-extrabold text-sm tracking-wide border-b-[3px] transition-colors ${
-              !isStaff
-                ? "border-brand text-ink"
-                : "border-transparent text-muted hover:text-ink"
-            }`}
-          >
-            TEAMS
-          </Link>
-          <Link
-            href="/squad?tab=staff"
-            className={`px-6 py-4 font-extrabold text-sm tracking-wide border-b-[3px] transition-colors ${
-              isStaff
-                ? "border-brand text-ink"
-                : "border-transparent text-muted hover:text-ink"
-            }`}
-          >
-            STAFF
-          </Link>
+      {/* Hero — compact like Man Utd */}
+      <section className="bg-gradient-to-br from-brand to-ink-light py-12 md:py-16">
+        <div className="container-ms">
+          <h1 className="font-display text-4xl md:text-5xl font-bold text-white tracking-tight">
+            Men
+          </h1>
         </div>
+      </section>
 
-        {/* ── Team sub-tabs (only show when not staff) ── */}
-        {!isStaff && (
-          <div className="mt-6 flex flex-wrap items-center gap-2">
-            {[
-              { label: "Men's First Team", value: "mens" },
-              { label: "Women's First Team", value: "womens" },
-              { label: "Youth", value: "youth" },
-            ].map((t) => {
-              const isActive =
-                (!teamParam && t.value === "mens") || teamParam === t.value;
-              return (
-                <Link
-                  key={t.value}
-                  href={`/squad?team=${t.value}`}
-                  className={`rounded-full px-5 py-2 text-xs font-bold tracking-wide transition-colors ${
-                    isActive
-                      ? "bg-ink text-white"
-                      : "bg-[#f0ede6] text-muted hover:bg-ink/10 hover:text-ink"
-                  }`}
-                >
-                  {t.label}
-                </Link>
-              );
-            })}
+      {/* Tab bar */}
+      <div className="border-b border-line bg-card sticky top-16 z-40">
+        <div className="container-ms">
+          <div className="flex gap-0">
+            <Link
+              href="/squad"
+              className={`px-6 py-4 font-sans text-xs font-extrabold tracking-[0.15em] border-b-[3px] transition-colors ${
+                !isStaff
+                  ? "border-brand text-ink"
+                  : "border-transparent text-muted hover:text-ink"
+              }`}
+            >
+              FIRST TEAM
+            </Link>
+            <Link
+              href="/squad?tab=staff"
+              className={`px-6 py-4 font-sans text-xs font-extrabold tracking-[0.15em] border-b-[3px] transition-colors ${
+                isStaff
+                  ? "border-brand text-ink"
+                  : "border-transparent text-muted hover:text-ink"
+              }`}
+            >
+              STAFF
+            </Link>
           </div>
-        )}
-
-        {/* ── Current selection label ── */}
-        <div className="mt-4 text-sm text-muted">
-          {isStaff ? "Coaching & Management Staff" : team}
         </div>
+      </div>
 
-        {/* ── Sections: GOALKEEPERS, DEFENDERS, etc. ── */}
-        <div className="mt-10 space-y-16">
+      {/* Player/Staff sections */}
+      <section className="container-ms py-10 md:py-14">
+        <div className="space-y-14">
           {sections.length === 0 && (
             <div className="text-center py-20">
               <p className="text-muted text-sm">
-                No {isStaff ? "staff" : "players"} found for this selection.
+                No {isStaff ? "staff" : "players"} found.
               </p>
             </div>
           )}
 
           {sections.map(([label, members]: any) => (
             <div key={label}>
-              {/* Section title */}
-              <h2 className="h-serif text-4xl md:text-5xl font-extrabold text-ink leading-none">
-                {toTitle(label)}
+              {/* Section title — clean like Man Utd */}
+              <h2 className="font-display text-2xl md:text-3xl font-bold text-ink tracking-tight mb-8">
+                {label}
               </h2>
-              <div className="mt-3 h-[4px] w-16 bg-[#f4c11a] rounded-full" />
 
-              {/* Player/Staff grid */}
-              <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {members.map((m: any) => (
-                  <Link
-                    key={m.slug}
-                    href={`/team/${m.slug}`}
-                    className="group bg-white rounded-2xl border border-line overflow-hidden hover:shadow-lg transition-shadow"
-                  >
-                    {/* Portrait */}
-                    <div className="relative h-[340px] bg-gradient-to-b from-[#f5f3ee] to-[#e8e5dd] overflow-hidden">
-                      {m.portraitUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={m.portraitUrl}
-                          alt={m.fullName}
-                          className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <span className="h-serif text-7xl text-ink/5 font-bold">
-                            MU
-                          </span>
-                        </div>
-                      )}
+              {/* Grid — 5 columns on large screens */}
+              <div className="grid gap-4 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                {members.map((m: any) => {
+                  const lastName = m.fullName?.split(" ").slice(-1)[0] || m.fullName;
+                  const firstName = m.fullName?.split(" ").slice(0, -1).join(" ") || "";
 
-                      {/* Jersey number badge */}
-                      {m.jerseyNo && (
-                        <div className="absolute top-4 right-4 h-12 w-12 rounded-full bg-white shadow-md grid place-items-center">
-                          <span className="font-extrabold text-ink text-lg leading-none">
+                  return (
+                    <Link
+                      key={m.slug}
+                      href={`/team/${m.slug}`}
+                      className="group"
+                    >
+                      {/* Photo — passport style */}
+                      <div className="relative aspect-[3/4] rounded-xl overflow-hidden bg-gradient-to-b from-[#e8ecf4] to-[#d0d6e4]">
+                        {m.portraitUrl ? (
+                          <img
+                            src={m.portraitUrl}
+                            alt={m.fullName}
+                            className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="absolute inset-0 flex items-end justify-center">
+                            <div className="w-[65%] h-[75%] bg-gradient-to-b from-brand/6 to-brand/12 rounded-t-full" />
+                          </div>
+                        )}
+
+                        {/* Number watermark */}
+                        {m.jerseyNo && (
+                          <div className="absolute bottom-3 left-3 font-display text-5xl font-bold text-ink/10 leading-none select-none">
+                            {m.jerseyNo}
+                          </div>
+                        )}
+
+                        <div className="absolute inset-0 bg-brand/0 group-hover:bg-brand/5 transition-colors duration-300" />
+                      </div>
+
+                      {/* Info */}
+                      <div className="mt-3 px-1">
+                        {m.jerseyNo && (
+                          <span className="font-sans text-xs text-brand font-bold">
                             {m.jerseyNo}
                           </span>
+                        )}
+                        <div className="flex flex-col leading-tight mt-0.5">
+                          <span className="text-xs text-muted">
+                            {firstName}
+                          </span>
+                          <span className="font-sans text-sm md:text-base font-extrabold text-ink tracking-tight">
+                            {lastName}
+                          </span>
                         </div>
-                      )}
-                    </div>
-
-                    {/* Details */}
-                    <div className="p-5">
-                      {/* Last name large, first name(s) smaller */}
-                      <div className="text-xl font-extrabold text-ink leading-tight">
-                        {m.fullName?.split(" ").slice(-1)[0] || m.fullName}
+                        {isStaff && m.position && (
+                          <span className="text-[10px] font-sans tracking-[0.1em] uppercase text-brand font-bold mt-1 block">
+                            {m.position}
+                          </span>
+                        )}
                       </div>
-                      <div className="mt-0.5 text-sm text-muted">
-                        {m.fullName?.split(" ").slice(0, -1).join(" ") || ""}
-                      </div>
-
-                      {/* Orange accent bar */}
-                      <div className="mt-4 h-[3px] w-8 bg-brand rounded-full" />
-
-                      {/* Position */}
-                      <div className="mt-3 text-[10px] font-extrabold tracking-[0.25em] uppercase text-muted">
-                        {m.position || (isStaff ? "STAFF" : "")}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           ))}
