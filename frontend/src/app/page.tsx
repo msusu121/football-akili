@@ -99,6 +99,7 @@ export default async function HomePage() {
       settings={data.settings}
       socials={data.socials}
       sponsors={data.sponsors}
+      className="homepage-bg"
     >
       {/* ══════════════════════════════════════════════════════════
           1. HERO HIGHLIGHT — Full-width dark immersive block
@@ -471,7 +472,7 @@ export default async function HomePage() {
       {/* ══════════════════════════════════════════════════════════
           7. KIT SHOWCASE (preserved — no changes)
           ══════════════════════════════════════════════════════════ */}
-      <HomeShopSection />
+      <HomeShopSection kits={data.kits || []} shopImageUrl={data.settings?.homeShopImage?.url} shopUrl={data.settings?.shopUrl || "/shop"} />
 
       {/* ══════════════════════════════════════════════════════════
           8. MEMBERSHIP CTA + PLANS GRID
