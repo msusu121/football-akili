@@ -471,7 +471,7 @@ export default async function HomePage() {
       {/* ══════════════════════════════════════════════════════════
           7. KIT SHOWCASE (preserved — no changes)
           ══════════════════════════════════════════════════════════ */}
-      <HomeShopSection kits={data.kits || []} shopImageUrl={data.settings?.homeShopImage?.url} shopUrl={data.settings?.shopUrl || "/shop"} />
+      <HomeShopSection />
 
       {/* ══════════════════════════════════════════════════════════
           8. MEMBERSHIP CTA + PLANS GRID
