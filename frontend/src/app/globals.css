@@ -247,3 +247,9 @@ html {
   .homepage-bg .bg-card {
     background-color: hsl(var(--card) / 0.84) !important;
   }
+
+
+/* Make homepage white sections slightly transparent so the background shows */
+.homepage-bg .bg-white{
+  background-color: rgba(255,255,255,0.86) !important;
+}  

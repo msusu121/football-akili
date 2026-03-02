@@ -103,7 +103,7 @@ export default async function HomePage() {
       <div className="homepage-bg relative min-h-screen">
         {/* Semi-transparent white overlay to keep text readable */}
         {/* Change /75 to /60 (more image visible) or /85 (more readable) */}
-        <div className="absolute inset-0 bg-white/75 pointer-events-none z-0" />
+        
 
         {/* All content above the overlay */}
         <div className="relative z-10">
