@@ -187,7 +187,17 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
   );
 
   return (
-    <div className={`min-h-screen flex flex-col bg-bg text-ink ${className}`}>
+    <div 
+      className={`min-h-screen flex flex-col text-ink ${className}`}
+      style={{
+        backgroundImage: `ur[](https://mombasaunited.com/club-media/images/back3.jpeg)`,
+        backgroundRepeat: 'repeat',
+        backgroundSize: '600px',
+        backgroundPosition: 'top center',
+        // Optional: subtle overlay for better readability on all pages
+        // background: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.78)), ur[](https://mombasaunited.com/club-media/images/back3.jpeg) repeat top center / 600px`,
+      }}
+    >
       {/* ═══════════════════════════════════════════════════
           NAVBAR — Sticky, dark, Man Utd-inspired
           ═══════════════════════════════════════════════════ */}
