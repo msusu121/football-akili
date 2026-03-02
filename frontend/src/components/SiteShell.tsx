@@ -2,14 +2,9 @@
 // FILE: frontend/src/components/SiteShell.tsx
 // DROP-IN REPLACEMENT — Global layout: Navbar + Footer
 //
-// Man Utd-inspired navigation with Mombasa United branding.
-// Mobile hamburger menu, sticky nav, animated transitions.
-// Footer: blue/gold/black, socials, club links.
-//
-// IMPORTANT: Uses actual logo images from settings.logoUrl
-// and settings.partnerLogoUrl — NO "MU" text fallbacks.
-//
-// BRAND: Royal Blue (#1a56db), Gold (#d4a017), Navy (#0a1628)
+// Mobile requirement (FIXED):
+// ✅ On mobile (md:hidden): Logo LEFT, then Hamburger, then Search (all on the LEFT)
+// ✅ NO centered logo on mobile
 // ============================================================
 
 "use client";
@@ -206,19 +201,17 @@ export function SiteShell({
         backgroundRepeat: "repeat",
         backgroundSize: "600px",
         backgroundPosition: "top center",
-        // Optional overlay:
-        // background: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.78)), url(https://mombasaunited.com/club-media/images/back3.jpeg) repeat top center / 600px`,
       }}
     >
       {/* ═══════════════════════════════════════════════════
-          NAVBAR — Sticky, dark, Man Utd-inspired
+          NAVBAR
           ═══════════════════════════════════════════════════ */}
       <header
         className={`sticky top-0 z-50 transition-all duration-300 ${
           scrolled ? "bg-brand/95 backdrop-blur-md shadow-soft" : "bg-brand"
         }`}
       >
-        {/* Top bar — club name + sign in / register (desktop) */}
+        {/* Top bar — desktop only */}
         <div className="hidden md:block border-b border-white/10">
           <div className="container-ms flex items-center justify-between py-2">
             <span className="text-[10px] text-white/40 tracking-[0.2em] uppercase font-bold">
@@ -237,9 +230,24 @@ export function SiteShell({
         </div>
 
         {/* Main nav bar */}
-        <div className="container-ms flex items-center h-16 md:h-[72px]">
-          {/* LEFT: MOBILE controls (Hamburger + Search) — MUST be on LEFT */}
-          <div className="flex items-center gap-1 shrink-0">
+        <div className="container-ms flex items-center justify-between h-16 md:h-[72px]">
+          {/* LEFT: Logo + (mobile) Hamburger + Search — EXACT ORDER YOU ASKED */}
+          <div className="flex items-center gap-2 shrink-0">
+            <Link href="/" className="flex items-center gap-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={clubLogo}
+                alt={clubName}
+                className="h-10 md:h-12 w-auto object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
+                }}
+              />
+              <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase">
+                {clubName}
+              </span>
+            </Link>
+
             {/* Hamburger (mobile only) */}
             <button
               className="md:hidden p-2 text-white/80 hover:text-white transition"
@@ -274,7 +282,7 @@ export function SiteShell({
               )}
             </button>
 
-            {/* Search (mobile only) — on LEFT */}
+            {/* Search (mobile only) */}
             <button
               className="md:hidden p-2 text-white/60 hover:text-white transition"
               aria-label="Search"
@@ -293,39 +301,10 @@ export function SiteShell({
                 />
               </svg>
             </button>
-
-            {/* Desktop: Club Logo (left) */}
-            <Link href="/" className="hidden md:flex items-center gap-3 shrink-0">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={clubLogo}
-                alt={clubName}
-                className="h-10 md:h-12 w-auto object-contain"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
-                }}
-              />
-              <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase">
-                {clubName}
-              </span>
-            </Link>
           </div>
 
-          {/* CENTER: Mobile centered logo */}
-          <Link href="/" className="md:hidden flex-1 flex items-center justify-center">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={clubLogo}
-              alt={clubName}
-              className="h-10 w-auto object-contain"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
-              }}
-            />
-          </Link>
-
           {/* Desktop nav links (center) */}
-          <nav className="hidden md:flex flex-1 items-center justify-center gap-1">
+          <nav className="hidden md:flex items-center gap-1">
             {NAV_LINKS.map((link) => {
               const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
               return (
@@ -347,7 +326,6 @@ export function SiteShell({
 
           {/* RIGHT: Desktop Partner + Search */}
           <div className="hidden md:flex items-center gap-4 shrink-0">
-            {/* ── Partner / Sponsor Logo (REAL image) ── */}
             <div className="hidden lg:flex items-center gap-2">
               <span className="text-[9px] text-white/30 tracking-wider uppercase">
                 In partnership with
@@ -363,7 +341,7 @@ export function SiteShell({
               />
             </div>
 
-            {/* Search button (desktop) */}
+            {/* Search (desktop) */}
             <button className="p-2 text-white/60 hover:text-white transition" aria-label="Search">
               <svg
                 className="w-5 h-5"
@@ -457,14 +435,10 @@ export function SiteShell({
         </div>
       </header>
 
-      {/* ═══════════════════════════════════════════════════
-          MAIN CONTENT
-          ═══════════════════════════════════════════════════ */}
+      {/* MAIN */}
       <main className="flex-1">{children}</main>
 
-      {/* ═══════════════════════════════════════════════════
-          SPONSORS BAR
-          ═══════════════════════════════════════════════════ */}
+      {/* SPONSORS BAR */}
       {sponsors.length > 0 && (
         <section className="bg-white border-t border-line py-10">
           <div className="container-ms">
@@ -503,14 +477,10 @@ export function SiteShell({
         </section>
       )}
 
-      {/* ═══════════════════════════════════════════════════
-          FOOTER — Mombasa United branding (blue/navy/black)
-          ═══════════════════════════════════════════════════ */}
+      {/* FOOTER */}
       <footer className="footer-surface">
-        {/* Main footer */}
         <div className="container-ms py-14 md:py-16">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-10 md:gap-8">
-            {/* Brand column */}
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -536,7 +506,6 @@ export function SiteShell({
                 latest news, fixtures, and more.
               </p>
 
-              {/* Social icons */}
               {socials.length > 0 && (
                 <div className="mt-6 flex items-center gap-3">
                   {socials.map((s) => (
@@ -555,7 +524,6 @@ export function SiteShell({
               )}
             </div>
 
-            {/* Link columns */}
             {FOOTER_LINKS.map((group) => (
               <div key={group.title}>
                 <h4 className="text-[11px] font-extrabold tracking-[0.2em] uppercase text-brand mb-5">
@@ -578,7 +546,6 @@ export function SiteShell({
           </div>
         </div>
 
-        {/* Newsletter section */}
         <div className="border-t border-white/10">
           <div className="container-ms py-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
@@ -608,7 +575,6 @@ export function SiteShell({
           </div>
         </div>
 
-        {/* Bottom bar */}
         <div className="border-t border-white/10">
           <div className="container-ms py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
             <p className="text-[11px] text-white/30">
@@ -625,7 +591,6 @@ export function SiteShell({
           </div>
         </div>
 
-        {/* Blue bottom accent */}
         <div className="h-1 bg-brand-2" />
       </footer>
     </div>
