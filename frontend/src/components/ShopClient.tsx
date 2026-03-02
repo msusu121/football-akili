@@ -20,9 +20,9 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
 
-const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpg";
-const jerseyAway = "https://mombasaunited.com/club-media/shop/jersey-away.jpg";
-const jerseyThird = "https://mombasaunited.com/club-media/shop/jersey-third.jpg";
+const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpeg";
+const jerseyAway = "https://mombasaunited.com/club-media/shop/jersey-away.jpeg";
+const jerseyThird = "https://mombasaunited.com/club-media/shop/jersey-third.jpeg";
 /* ── Types ── */
 type Product = {
   id: string;
