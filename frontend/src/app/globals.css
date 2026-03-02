@@ -231,10 +231,19 @@ html {
   color: #fff;
 }
 
-/* ===== Homepage background pattern ===== */
+
+
 .homepage-bg {
-  background-image: url('https://mombasaunited.com/club-media/images/back3.jpeg');
-  background-repeat: repeat;
-  background-size: 600px;
-  background-position: top center;
-}
+    background-image: url('https://mombasaunited.com/club-media/images/back3.jpeg');
+    background-image: url('/images/back3.jpeg');
+    background-repeat: repeat;
+    background-size: 600px;
+    background-position: top center;
+  }
+  /* Let homepage texture show through section wrappers */
+  .homepage-bg .bg-background {
+    background-color: hsl(var(--background) / 0.86) !important;
+  }
+  .homepage-bg .bg-card {
+    background-color: hsl(var(--card) / 0.84) !important;
+  }
