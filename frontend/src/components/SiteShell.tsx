@@ -18,12 +18,39 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect, ReactNode } from "react";
 
+/**
+ * IMPORTANT:
+ * If your backend returns relative URLs like "/uploads/logo.png",
+ * set NEXT_PUBLIC_ASSET_BASE_URL="https://api.yourdomain.com"
+ */
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  if (ASSET_BASE) return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  return url;
+}
+
 /* ── types ── */
 interface SiteSettings {
   clubName?: string;
   logoUrl?: string;
+  headerLogo?: { url: string };
+  headerLogoUrl?: string;
+  clubLogo?: { url: string };
+  clubLogoUrl?: string;
+  logo?: { url: string };
   partnerName?: string;
   partnerLogoUrl?: string;
+  partnerLogo?: { url: string };
+  partner?: { logo?: { url: string } };
   ticketsUrl?: string;
   membershipUrl?: string;
   shopUrl?: string;
@@ -144,9 +171,18 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
   }, [mobileOpen]);
 
   const clubName = settings?.clubName || "Mombasa United FC";
-  const clubLogo = settings?.logoUrl || "/images/club-logo.png";
+  const clubLogo = resolveAssetUrl(
+    settings?.headerLogo?.url ||
+      settings?.headerLogoUrl ||
+      settings?.clubLogo?.url ||
+      settings?.clubLogoUrl ||
+      settings?.logo?.url ||
+      settings?.logoUrl
+  );
   const partnerName = settings?.partnerName || "SportPesa";
-  const partnerLogo = settings?.partnerLogoUrl || "/images/partner-logo.png";
+  const partnerLogo = resolveAssetUrl(
+    settings?.partnerLogo?.url || settings?.partnerLogoUrl || settings?.partner?.logo?.url
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-bg text-ink">
@@ -185,7 +221,11 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
               src={clubLogo}
               alt={clubName}
               className="h-10 md:h-12 w-auto object-contain"
+              onError={(e) => {
+                (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
+              }}
             />
+            
             <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase">
               {clubName}
             </span>
@@ -224,7 +264,11 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
                 src={partnerLogo}
                 alt={partnerName}
                 className="h-6 w-auto object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
               />
+              
             </div>
 
             {/* Search button */}
@@ -295,6 +339,9 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
                 src={partnerLogo}
                 alt={partnerName}
                 className="h-5 w-auto object-contain brightness-0 invert opacity-60"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).style.display = "none";
+                }}
               />
             </div>
 
@@ -366,7 +413,14 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
             <div className="md:col-span-2">
               <div className="flex items-center gap-3 mb-5">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={clubLogo} alt={clubName} className="h-14 w-auto" />
+                <img
+                  src={clubLogo}
+                  alt={clubName}
+                  className="h-14 w-auto"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
+                  }}
+                />
                 <div>
                   <p className="font-extrabold text-white text-base tracking-wide uppercase">
                     {clubName}
