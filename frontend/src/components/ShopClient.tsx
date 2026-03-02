@@ -394,13 +394,7 @@ export default function ShopClient() {
                     <span className="h-serif text-6xl text-ink/10 font-extrabold">MU</span>
                   )}
 
-                  {!kit.isActive && (
-                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-                      <span className="rounded-full bg-ink text-white px-5 py-2 text-xs font-extrabold tracking-wider">
-                        Coming Soon
-                      </span>
-                    </div>
-                  )}
+                 
                 </div>
 
                 {/* Details */}
