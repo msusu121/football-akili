@@ -9,7 +9,7 @@
 //   - Cart sidebar with checkout
 //   - Membership-gated access
 //
-// IMPORTANT: Keep jersey images in frontend/src/assets/ and import them
+// Jersey images served from MinIO S3 bucket
 // ============================================================
 
 "use client";
@@ -19,11 +19,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
-// Jersey images — place these in frontend/public/images/
-const jerseyHome = "/images/jersey-home.jpeg";
-const jerseyAway = "/images/jersey-away.jpeg";
-const jerseyThird = "/images/jersey-third.jpeg";
 
+const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpg";
+const jerseyAway = "https://mombasaunited.com/club-media/shop/jersey-away.jpg";
+const jerseyThird = "https://mombasaunited.com/club-media/shop/jersey-third.jpg";
 /* ── Types ── */
 type Product = {
   id: string;

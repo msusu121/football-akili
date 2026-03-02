@@ -6,12 +6,7 @@
 // with horizontal HOME / AWAY / THIRD buttons.
 // Clicking any kit navigates to /shop?kit=home (or away/third)
 //
-// IMPORTANT: Copy the 3 jersey images to your Next.js public folder:
-//   public/assets/jersey-home.jpeg   (Blue kit — Tembea Mombasa)
-//   public/assets/jersey-away.jpeg   (White kit)
-//   public/assets/jersey-third.jpeg  (Black & Gold kit)
-//
-// Or if you prefer /src/assets with next/image, update paths below.
+// Jersey images served from MinIO S3 bucket
 // ============================================================
 
 "use client";
@@ -19,27 +14,32 @@
 import Link from "next/link";
 import { useState } from "react";
 
+const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpg";
+const jerseyAway = "https://mombasaunited.com/club-media/shop/away-jersey.jpg";
+const jerseyThird = "https://mombasaunited.com/club-media/shop/third-jersey.jpg";
+
+
 const kits = [
   {
     key: "home",
     label: "HOME",
-    image: "/assets/jersey-home.jpeg",
+    image: jerseyHome,
     desc: "2025/26 Home Kit",
-    color: "#1a3a8a", // Blue
+    color: "#1a3a8a",
   },
   {
     key: "away",
     label: "AWAY",
-    image: "/assets/jersey-away.jpeg",
+    image: jerseyAway,
     desc: "2025/26 Away Kit",
-    color: "#ffffff", // White
+    color: "#ffffff",
   },
   {
     key: "third",
     label: "THIRD KIT",
-    image: "/assets/jersey-third.jpeg",
+    image: jerseyThird,
     desc: "2025/26 Third Kit",
-    color: "#0a0a0a", // Black
+    color: "#0a0a0a",
   },
 ];
 
