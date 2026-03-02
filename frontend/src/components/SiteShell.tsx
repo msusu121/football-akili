@@ -64,6 +64,7 @@ interface Social {
 interface Sponsor {
   name: string;
   logoUrl?: string;
+  logo?: { url: string } | null;
   url?: string;
   tier?: string;
 }
@@ -263,12 +264,11 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
               <img
                 src={partnerLogo}
                 alt={partnerName}
-                className="h-6 w-auto object-contain brightness-0 invert opacity-70 hover:opacity-100 transition-opacity"
+                className="h-8 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
                 onError={(e) => {
                   (e.currentTarget as HTMLImageElement).style.display = "none";
                 }}
               />
-              
             </div>
 
             {/* Search button */}
@@ -381,22 +381,32 @@ export function SiteShell({ children, settings, socials = [], sponsors = [] }: S
               Official Partners
             </p>
             <div className="flex flex-wrap items-center justify-center gap-8 md:gap-14">
-              {sponsors.map((s) => (
-                <a
-                  key={s.name}
-                  href={s.url || "#"}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all"
-                >
-                  {s.logoUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={s.logoUrl} alt={s.name} className="h-10 md:h-12 w-auto object-contain" />
-                  ) : (
-                    <span className="text-sm font-bold text-muted">{s.name}</span>
-                  )}
-                </a>
-              ))}
+              {sponsors.map((s) => {
+                const sLogo = resolveAssetUrl(s.logo?.url || s.logoUrl);
+                return (
+                  <a
+                    key={s.name}
+                    href={s.url || "#"}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="grayscale hover:grayscale-0 opacity-60 hover:opacity-100 transition-all"
+                  >
+                    {sLogo ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={sLogo}
+                        alt={s.name}
+                        className="h-10 md:h-14 w-auto object-contain"
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                    ) : (
+                      <span className="text-sm font-bold text-muted">{s.name}</span>
+                    )}
+                  </a>
+                );
+              })}
             </div>
           </div>
         </section>

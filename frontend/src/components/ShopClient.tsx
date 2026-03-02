@@ -9,7 +9,7 @@
 //   - Cart sidebar with checkout
 //   - Membership-gated access
 //
-// IMPORTANT: Copy jersey images to public/assets/ in your Next.js project
+// IMPORTANT: Keep jersey images in frontend/src/assets/ and import them
 // ============================================================
 
 "use client";
@@ -19,6 +19,10 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
+// Jersey images — place these in frontend/public/images/
+const jerseyHome = "/images/jersey-home.jpeg";
+const jerseyAway = "/images/jersey-away.jpeg";
+const jerseyThird = "/images/jersey-third.jpeg";
 
 /* ── Types ── */
 type Product = {
@@ -68,7 +72,7 @@ const STATIC_KITS = [
     kitType: "home",
     category: "Jersey",
     isActive: true,
-    heroUrl: "/assets/jersey-home.jpeg",
+    heroUrl: jerseyHome,
     currency: "KES",
     price: 0, // set by age group
   },
@@ -79,7 +83,7 @@ const STATIC_KITS = [
     kitType: "away",
     category: "Jersey",
     isActive: true,
-    heroUrl: "/assets/jersey-away.jpeg",
+    heroUrl: jerseyAway,
     currency: "KES",
     price: 0,
   },
@@ -90,7 +94,7 @@ const STATIC_KITS = [
     kitType: "third",
     category: "Jersey",
     isActive: true,
-    heroUrl: "/assets/jersey-third.jpeg",
+    heroUrl: jerseyThird,
     currency: "KES",
     price: 0,
   },
