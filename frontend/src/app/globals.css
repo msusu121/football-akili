@@ -235,7 +235,7 @@ html {
 
 .homepage-bg {
     background-image: url('https://mombasaunited.com/club-media/images/back3.jpeg');
-    background-image: url('/images/back3.jpeg');
+    
     background-repeat: repeat;
     background-size: 600px;
     background-position: top center;
