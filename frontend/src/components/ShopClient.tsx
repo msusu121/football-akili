@@ -9,6 +9,9 @@
 //   - Cart sidebar with checkout
 //   - Membership-gated access
 //
+// When no ?kit= param: shows all 3 kits (normal shop page)
+// When ?kit=home: filters to just that kit with sizes/pricing
+//
 // Jersey images served from MinIO S3 bucket
 // ============================================================
 
@@ -20,9 +23,10 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
 
-const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpeg";
-const jerseyAway = "https://mombasaunited.com/club-media/shop/jersey-away.jpeg";
-const jerseyThird = "https://mombasaunited.com/club-media/shop/jersey-third.jpeg";
+const jerseyHome = "https://pi:9000/club-media/shop/home-jersey.jpg";
+const jerseyAway = "https://pi:9000/club-media/shop/away-jersey.jpg";
+const jerseyThird = "https://pi:9000/club-media/shop/third-jersey.jpg";
+
 /* ── Types ── */
 type Product = {
   id: string;
@@ -63,7 +67,7 @@ function saveCart(items: CartItem[]) {
 }
 
 /* ── Static kit data (fallback when API has no products) ── */
-const STATIC_KITS = [
+const STATIC_KITS: Product[] = [
   {
     id: "kit-home",
     slug: "home-kit-2025",
@@ -73,7 +77,7 @@ const STATIC_KITS = [
     isActive: true,
     heroUrl: jerseyHome,
     currency: "KES",
-    price: 0, // set by age group
+    price: 0,
   },
   {
     id: "kit-away",
@@ -157,10 +161,10 @@ export default function ShopClient() {
   // Merge API items with static kits (static as fallback)
   const allKits = useMemo(() => {
     if (apiItems.length > 0) return apiItems;
-    return STATIC_KITS as Product[];
+    return STATIC_KITS;
   }, [apiItems]);
 
-  // Filter by kit type from URL
+  // Filter by kit type from URL param ?kit=home
   const displayKits = useMemo(() => {
     if (!kitFilter) return allKits;
     return allKits.filter(
@@ -175,7 +179,6 @@ export default function ShopClient() {
 
   const addToCart = (kit: Product, ageGroup: "kids" | "adults", size: string) => {
     const price = ageGroup === "kids" ? KIDS_PRICE : ADULT_PRICE;
-    const itemKey = `${kit.id}-${ageGroup}-${size}`;
 
     setCart((prev) => {
       const found = prev.find(
@@ -370,11 +373,11 @@ export default function ShopClient() {
       {loading && <div className="text-sm text-muted py-8 text-center">Loading products…</div>}
       {error && <div className="text-sm text-red-500 mb-4 text-center">{error}</div>}
 
-      <div className="grid gap-8 lg:grid-cols-[1fr_360px]">
+      <div className={`grid gap-8 ${showCart ? "lg:grid-cols-[1fr_360px]" : ""}`}>
         {/* ── Product Cards ── */}
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {displayKits.map((kit) => {
-            const sel = selectedSizes[kit.id] || { age: "adults", size: "L" };
+            const sel = selectedSizes[kit.id] || { age: "adults" as const, size: "L" };
 
             return (
               <div
@@ -394,7 +397,13 @@ export default function ShopClient() {
                     <span className="h-serif text-6xl text-ink/10 font-extrabold">MU</span>
                   )}
 
-                 
+                  {kit.isActive === false && (
+                    <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
+                      <span className="rounded-full bg-ink text-white px-5 py-2 text-xs font-extrabold tracking-wider">
+                        Coming Soon
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Details */}
@@ -489,60 +498,50 @@ export default function ShopClient() {
         {/* ── Cart Sidebar ── */}
         {showCart && (
           <aside className="rounded-2xl border border-line bg-white p-5 h-fit sticky top-28">
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between mb-4">
               <h3 className="font-extrabold text-ink text-lg">Your Cart</h3>
               <button
                 onClick={() => setCart([])}
-                className="text-xs text-muted hover:text-ink transition font-bold"
+                className="text-xs font-bold text-muted hover:text-ink transition"
               >
                 Clear All
               </button>
             </div>
 
             {!cart.length ? (
-              <p className="text-sm text-muted py-6 text-center">Your cart is empty.</p>
+              <p className="text-sm text-muted py-4 text-center">Cart is empty.</p>
             ) : (
-              <div className="space-y-3">
+              <div className="grid gap-3">
                 {cart.map((c) => (
                   <div
                     key={`${c.productId}-${c.ageGroup}-${c.size}`}
-                    className="flex items-center gap-3 rounded-xl border border-line p-3"
+                    className="flex items-center justify-between gap-3 border border-line rounded-xl p-3"
                   >
-                    {/* Thumbnail */}
-                    <div className="w-14 h-14 rounded-lg bg-[#f0f2f8] shrink-0 overflow-hidden flex items-center justify-center">
-                      {c.heroUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={c.heroUrl}
-                          alt={c.title}
-                          className="w-full h-full object-contain p-1"
-                        />
-                      ) : (
-                        <span className="text-ink/20 font-extrabold text-xs">MU</span>
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
+                    <div className="min-w-0">
                       <div className="text-sm font-bold text-ink line-clamp-1">{c.title}</div>
-                      <div className="text-[10px] text-muted">
-                        {c.ageGroup === "kids" ? "Kids" : "Adults"} · Size {c.size}
-                      </div>
-                      <div className="text-xs font-bold text-ink mt-0.5">
-                        KES {c.price.toLocaleString()}
+                      <div className="text-xs text-muted">
+                        KES {c.price.toLocaleString()} × {c.qty}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <button
                         onClick={() => updateQty(c.productId, c.ageGroup, c.size, -1)}
-                        className="h-7 w-7 rounded-full border border-line text-ink hover:border-brand text-xs font-extrabold"
+                        className="h-7 w-7 rounded-lg border border-line text-xs font-bold hover:border-brand transition"
                       >
                         −
                       </button>
-                      <span className="text-sm font-extrabold w-5 text-center">{c.qty}</span>
+                      <span className="text-sm font-bold w-6 text-center">{c.qty}</span>
                       <button
                         onClick={() => updateQty(c.productId, c.ageGroup, c.size, 1)}
-                        className="h-7 w-7 rounded-full border border-line text-ink hover:border-brand text-xs font-extrabold"
+                        className="h-7 w-7 rounded-lg border border-line text-xs font-bold hover:border-brand transition"
                       >
                         +
+                      </button>
+                      <button
+                        onClick={() => removeFromCart(c.productId, c.ageGroup, c.size)}
+                        className="ml-1 text-xs text-muted hover:text-red-500 transition"
+                      >
+                        ✕
                       </button>
                     </div>
                   </div>
@@ -550,35 +549,34 @@ export default function ShopClient() {
               </div>
             )}
 
-            {/* Totals */}
-            <div className="mt-5 pt-4 border-t border-line flex items-center justify-between">
-              <span className="text-sm text-muted">Total</span>
+            <div className="mt-5 flex items-center justify-between border-t border-line pt-4">
+              <span className="text-sm font-bold text-muted">Total</span>
               <span className="text-xl font-extrabold text-ink">
                 KES {cartTotal.toLocaleString()}
               </span>
             </div>
 
             {cart.length > 0 && (
-              <div className="mt-4 space-y-2">
+              <div className="mt-4 grid gap-2">
                 {!tx ? (
                   <button
                     disabled={busy}
                     onClick={checkout}
-                    className="w-full rounded-xl bg-ink text-white py-3.5 font-extrabold text-sm hover:opacity-90 transition disabled:opacity-60"
+                    className="w-full rounded-xl bg-brand py-3.5 text-sm font-extrabold text-ink hover:bg-brand-dark transition disabled:opacity-60"
                   >
-                    {busy ? "Processing…" : "Checkout"}
+                    {busy ? "Starting…" : "Checkout"}
                   </button>
                 ) : (
                   <button
                     disabled={busy}
                     onClick={confirm}
-                    className="w-full rounded-xl bg-brand text-ink py-3.5 font-extrabold text-sm hover:bg-brand-dark transition disabled:opacity-60"
+                    className="w-full rounded-xl bg-brand py-3.5 text-sm font-extrabold text-ink hover:bg-brand-dark transition disabled:opacity-60"
                   >
-                    {busy ? "Confirming…" : `Confirm Payment (KES ${tx.amount.toLocaleString()})`}
+                    {busy ? "Confirming…" : `Confirm Payment (${tx.amount} ${tx.currency})`}
                   </button>
                 )}
                 <p className="text-[10px] text-muted text-center">
-                  M-Pesa integration ready — replace mock confirm in production.
+                  Payment via M-Pesa coming soon.
                 </p>
               </div>
             )}
