@@ -118,15 +118,8 @@ export default async function SquadPage({
                             className="w-full h-full object-cover object-top group-hover:scale-[1.03] transition-transform duration-300"
                           />
                         ) : (
-                          <div className="absolute inset-0 flex items-end justify-center">
-                            <div className="w-[65%] h-[75%] bg-gradient-to-b from-brand/6 to-brand/12 rounded-t-full" />
-                          </div>
-                        )}
-
-                        {/* Number watermark */}
-                        {m.jerseyNo && (
-                          <div className="absolute bottom-3 left-3 font-display text-5xl font-bold text-ink/10 leading-none select-none">
-                            {m.jerseyNo}
+                          <div className="w-full h-full flex items-center justify-center text-sm text-muted">
+                            No photo
                           </div>
                         )}
 
