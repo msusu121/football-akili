@@ -154,12 +154,20 @@ function SocialIcon({ platform }: { platform: string }) {
   return <span className="text-xs font-bold uppercase">{platform.substring(0, 2)}</span>;
 }
 
-export function SiteShell({ children, settings, socials = [], sponsors = [], className = "" }: SiteShellProps) {
+export function SiteShell({
+  children,
+  settings,
+  socials = [],
+  sponsors = [],
+  className = "",
+}: SiteShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -169,7 +177,9 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
 
   useEffect(() => {
     document.body.style.overflow = mobileOpen ? "hidden" : "";
-    return () => { document.body.style.overflow = ""; };
+    return () => {
+      document.body.style.overflow = "";
+    };
   }, [mobileOpen]);
 
   const clubName = settings?.clubName || "Mombasa United FC";
@@ -183,19 +193,21 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
   );
   const partnerName = settings?.partnerName || "SportPesa";
   const partnerLogo = resolveAssetUrl(
-    settings?.partnerLogo?.url || settings?.partnerLogoUrl || settings?.partner?.logo?.url
+    settings?.partnerLogo?.url ||
+      settings?.partnerLogoUrl ||
+      settings?.partner?.logo?.url
   );
 
   return (
-    <div 
+    <div
       className={`min-h-screen flex flex-col text-ink ${className}`}
       style={{
-        backgroundImage: `ur[](https://mombasaunited.com/club-media/images/back3.jpeg)`,
-        backgroundRepeat: 'repeat',
-        backgroundSize: '600px',
-        backgroundPosition: 'top center',
-        // Optional: subtle overlay for better readability on all pages
-        // background: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.78)), ur[](https://mombasaunited.com/club-media/images/back3.jpeg) repeat top center / 600px`,
+        backgroundImage: `url(https://mombasaunited.com/club-media/images/back3.jpeg)`,
+        backgroundRepeat: "repeat",
+        backgroundSize: "600px",
+        backgroundPosition: "top center",
+        // Optional overlay:
+        // background: `linear-gradient(rgba(255,255,255,0.78), rgba(255,255,255,0.78)), url(https://mombasaunited.com/club-media/images/back3.jpeg) repeat top center / 600px`,
       }}
     >
       {/* ═══════════════════════════════════════════════════
@@ -225,25 +237,95 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
         </div>
 
         {/* Main nav bar */}
-        <div className="container-ms flex items-center justify-between h-16 md:h-[72px]">
-          {/* ── Club Logo (REAL image, not text) ── */}
-          <Link href="/" className="flex items-center gap-3 shrink-0">
+        <div className="container-ms flex items-center h-16 md:h-[72px]">
+          {/* LEFT: MOBILE controls (Hamburger + Search) — MUST be on LEFT */}
+          <div className="flex items-center gap-1 shrink-0">
+            {/* Hamburger (mobile only) */}
+            <button
+              className="md:hidden p-2 text-white/80 hover:text-white transition"
+              onClick={() => setMobileOpen(!mobileOpen)}
+              aria-label={mobileOpen ? "Close menu" : "Open menu"}
+              aria-expanded={mobileOpen}
+            >
+              {mobileOpen ? (
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg
+                  className="w-6 h-6"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                  />
+                </svg>
+              )}
+            </button>
+
+            {/* Search (mobile only) — on LEFT */}
+            <button
+              className="md:hidden p-2 text-white/60 hover:text-white transition"
+              aria-label="Search"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                />
+              </svg>
+            </button>
+
+            {/* Desktop: Club Logo (left) */}
+            <Link href="/" className="hidden md:flex items-center gap-3 shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={clubLogo}
+                alt={clubName}
+                className="h-10 md:h-12 w-auto object-contain"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
+                }}
+              />
+              <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase">
+                {clubName}
+              </span>
+            </Link>
+          </div>
+
+          {/* CENTER: Mobile centered logo */}
+          <Link href="/" className="md:hidden flex-1 flex items-center justify-center">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={clubLogo}
               alt={clubName}
-              className="h-10 md:h-12 w-auto object-contain"
+              className="h-10 w-auto object-contain"
               onError={(e) => {
                 (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
               }}
             />
-            <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase">
-              {clubName}
-            </span>
           </Link>
 
-          {/* Desktop nav links */}
-          <nav className="hidden md:flex items-center gap-1">
+          {/* Desktop nav links (center) */}
+          <nav className="hidden md:flex flex-1 items-center justify-center gap-1">
             {NAV_LINKS.map((link) => {
               const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
               return (
@@ -263,8 +345,8 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
             })}
           </nav>
 
-          {/* Right side: Partner logo + Search + Hamburger */}
-          <div className="flex items-center gap-4">
+          {/* RIGHT: Desktop Partner + Search */}
+          <div className="hidden md:flex items-center gap-4 shrink-0">
             {/* ── Partner / Sponsor Logo (REAL image) ── */}
             <div className="hidden lg:flex items-center gap-2">
               <span className="text-[9px] text-white/30 tracking-wider uppercase">
@@ -281,32 +363,21 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
               />
             </div>
 
-            {/* Search button */}
-            <button
-              className="p-2 text-white/60 hover:text-white transition"
-              aria-label="Search"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
+            {/* Search button (desktop) */}
+            <button className="p-2 text-white/60 hover:text-white transition" aria-label="Search">
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth={2}
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                />
               </svg>
-            </button>
-
-            {/* Hamburger (mobile only) */}
-            <button
-              className="md:hidden p-2 text-white/80 hover:text-white transition"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              aria-expanded={mobileOpen}
-            >
-              {mobileOpen ? (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
-                </svg>
-              )}
             </button>
           </div>
         </div>
@@ -332,8 +403,18 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
                   }`}
                 >
                   <span>{link.label}</span>
-                  <svg className="w-4 h-4 text-white/30" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                  <svg
+                    className="w-4 h-4 text-white/30"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                    />
                   </svg>
                 </Link>
               );
@@ -451,8 +532,8 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
                 </div>
               </div>
               <p className="text-sm text-white/50 leading-relaxed max-w-sm">
-                The pride of the Kenyan coast. Official website of {clubName}.
-                Follow us for the latest news, fixtures, and more.
+                The pride of the Kenyan coast. Official website of {clubName}. Follow us for the
+                latest news, fixtures, and more.
               </p>
 
               {/* Social icons */}
@@ -502,17 +583,25 @@ export function SiteShell({ children, settings, socials = [], sponsors = [], cla
           <div className="container-ms py-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
               <p className="text-sm font-bold text-white">Stay in the loop</p>
-              <p className="text-xs text-white/40 mt-1">Get the latest news and fixture updates delivered to your inbox.</p>
+              <p className="text-xs text-white/40 mt-1">
+                Get the latest news and fixture updates delivered to your inbox.
+              </p>
             </div>
             <div className="newsletter-wrap">
-              <input
-                type="email"
-                placeholder="Your email address"
-                className="newsletter-input"
-              />
+              <input type="email" placeholder="Your email address" className="newsletter-input" />
               <button className="newsletter-send" aria-label="Subscribe">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                <svg
+                  className="w-5 h-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
+                  />
                 </svg>
               </button>
             </div>
