@@ -23,9 +23,9 @@ import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
 
-const jerseyHome = "https://pi:9000/club-media/shop/home-jersey.jpg";
-const jerseyAway = "https://pi:9000/club-media/shop/away-jersey.jpg";
-const jerseyThird = "https://pi:9000/club-media/shop/third-jersey.jpg";
+const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpeg";
+const jerseyAway = "https://mombasaunited.com/club-media/shop/jersey-away.jpeg";
+const jerseyThird = "https://mombasaunited.com/club-media/shop/jersey-third.jpeg";
 
 /* ── Types ── */
 type Product = {
