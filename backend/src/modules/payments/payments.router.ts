@@ -6,7 +6,7 @@ import { prisma } from "../../lib/prisma";
 import { requireAuth } from "../middleware/requireAuth";
 import { stkPush , normalizePhone } from "../../lib/mpesa";
 import { logger } from "../../utils/mailService";
-import { sendMail, buildShopPaidReceiptEmail, getShopMailDefaults} from "../../utils/mailService";
+import { sendMail, buildShopPaidReceiptEmail, getShopMailDefaults, getSmtpFromenv} from "../../utils/mailService";
 
 
 export const paymentsRouter = Router();
@@ -516,7 +516,7 @@ paymentsRouter.post("/mpesa/callback/stk", async (req, res) => {
                   fromName: defaults.fromName,
                   replyTo: defaults.replyTo,
                   bcc: defaults.bcc,
-                  smtp: getSmtpFromEnv(),
+                  smtp: getSmtpFromenv(),
                 },
                 { throwOnError: false }
               );

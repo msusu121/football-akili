@@ -2,7 +2,7 @@
 // strict relay client (smtp required per request) + Mombasa United Shop templates
 
 const DEFAULT_TIMEOUT_MS = 50_000;
-
+import { cfg } from "../config/env";
 export const logger = {
   info: (...args: unknown[]) => console.info("[mail] [info]", ...args),
   warn: (...args: unknown[]) => console.warn("[mail] [warn]", ...args),
@@ -400,5 +400,16 @@ export function getShopMailDefaults() {
     fromName: SHOP_EMAIL_FROM_NAME,
     replyTo: SHOP_EMAIL_REPLY_TO,
     bcc: SHOP_EMAIL_BCC ? [SHOP_EMAIL_BCC] : [],
+  };
+}
+
+export function getSmtpFromenv(): SmtpBlock {
+  return {
+    host: String(cfg.SMTP_HOST || process.env.SMTP_HOST || ""),
+    port: Number(cfg.SMTP_PORT || process.env.SMTP_PORT || 587),
+    username: String(cfg.SMTP_USER || process.env.SMTP_USER || ""),
+    password: String(cfg.SMTP_PASS || process.env.SMTP_PASS || ""),
+    ssl: !!(cfg.SMTP_SSL || process.env.SMTP_SSL === "true"),
+    starttls: cfg.SMTP_STARTTLS ?? (process.env.SMTP_STARTTLS === "true"),
   };
 }
