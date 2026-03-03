@@ -70,6 +70,8 @@ interface SiteShellProps {
   socials?: Social[];
   sponsors?: Sponsor[];
   className?: string;
+  BG_IMG?: string;
+  BG_WASH?: string;
 }
 
 /* ── nav links ── */
@@ -155,6 +157,9 @@ export function SiteShell({
   socials = [],
   sponsors = [],
   className = "",
+  BG_IMG = "https://mombasaunited.com/club-media/images/back3.jpeg",
+  BG_WASH = "rgba(255, 255, 255, 0.75)"     
+
 }: SiteShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -196,12 +201,15 @@ export function SiteShell({
   return (
     <div
       className={`min-h-screen flex flex-col text-ink ${className}`}
-      style={{
-        backgroundImage: `url(https://mombasaunited.com/club-media/images/back3.jpeg)`,
-        backgroundRepeat: "repeat",
-        backgroundSize: "600px",
-        backgroundPosition: "top center",
-      }}
+// tweak this alpha: 0.70 (lighter) → 0.90 (more white)
+
+
+style={{
+  backgroundImage: `linear-gradient(${BG_WASH}, ${BG_WASH}), url(${BG_IMG})`,
+  backgroundRepeat: "repeat",
+  backgroundSize: "600px",
+  backgroundPosition: "top center",
+}}
     >
       {/* ═══════════════════════════════════════════════════
           NAVBAR

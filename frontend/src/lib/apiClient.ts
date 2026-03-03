@@ -2,21 +2,41 @@
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
-export async function apiJson<T>(path: string, opts: { method?: string; body?: any; token?: string | null } = {}): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
-    method: opts.method || (opts.body ? "POST" : "GET"),
-    headers: {
-      ...(opts.body ? { "Content-Type": "application/json" } : {}),
-      ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),
-    },
-    body: opts.body ? JSON.stringify(opts.body) : undefined,
-    cache: "no-store",
+
+export async function apiJson<T>(
+  path: string,
+  opts?: {
+    token?: string;
+    method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+    body?: any;
+    headers?: Record<string, string>;
+  }
+) {
+  const base = process.env.NEXT_PUBLIC_API_URL || "";
+  const url = `${base}${path}`;
+
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(opts?.headers || {}),
+  };
+
+  if (opts?.token) headers.Authorization = `Bearer ${opts.token}`;
+
+  const res = await fetch(url, {
+    method: opts?.method || "GET",
+    headers,
+    body: opts?.body ? JSON.stringify(opts.body) : undefined,
   });
 
   if (!res.ok) {
-    const data = await res.json().catch(() => ({}));
-    throw new Error(data?.error || `Request failed (${res.status})`);
+    let msg = "Request failed";
+    try {
+      const t = await res.text();
+      msg = t || msg;
+    } catch {}
+    throw new Error(msg);
   }
+
   return (await res.json()) as T;
 }
 

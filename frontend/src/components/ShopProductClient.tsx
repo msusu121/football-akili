@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
 
@@ -40,36 +40,33 @@ function saveCart(items: CartItem[]) {
 }
 
 export default function ShopProductClient({ slug }: { slug: string }) {
-  const { token } = useAuth();
-
+  const { token } = useAuth(); // optional
   const [product, setProduct] = useState<Product | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [toast, setToast] = useState<string | null>(null);
 
   useEffect(() => {
-    // ✅ Login-only: if no token, don't fetch
-    if (!token) {
-      setLoading(false);
-      return;
-    }
-
     setLoading(true);
     setError(null);
 
-    apiJson<Product>(`/shop/products/${slug}`, { token })
+    apiJson<Product>(`/shop/products/${slug}`, token ? { token } : undefined)
       .then((d) => setProduct(d))
       .catch((e: any) => setError(e?.message || "Failed"))
       .finally(() => setLoading(false));
   }, [token, slug]);
+
+  const priceLabel = useMemo(() => {
+    if (!product) return "";
+    return `${product.price} ${product.currency}`;
+  }, [product]);
 
   const add = () => {
     if (!product) return;
     const cart = loadCart();
     const found = cart.find((c) => c.productId === product.id);
     const next = found
-      ? cart.map((c) =>
-          c.productId === product.id ? { ...c, qty: Math.min(20, c.qty + 1) } : c
-        )
+      ? cart.map((c) => (c.productId === product.id ? { ...c, qty: Math.min(20, c.qty + 1) } : c))
       : [
           ...cart,
           {
@@ -83,17 +80,22 @@ export default function ShopProductClient({ slug }: { slug: string }) {
           },
         ];
     saveCart(next);
-    alert("Added to cart");
+    setToast("Added to cart ✓");
+    window.setTimeout(() => setToast(null), 1600);
   };
-
-  
 
   if (loading) return <div className="text-sm text-muted">Loading…</div>;
   if (error) return <div className="text-sm text-red-300">{error}</div>;
   if (!product) return <div className="text-sm text-muted">Not found.</div>;
 
   return (
-    <div>
+    <div className="pb-24 md:pb-0">
+      {toast && (
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 rounded-full bg-black/70 text-white text-sm px-4 py-2">
+          {toast}
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <Link href="/shop" className="text-sm text-muted hover:text-white">
           ← Back to shop
@@ -110,20 +112,14 @@ export default function ShopProductClient({ slug }: { slug: string }) {
         <div className="rounded-3xl border border-line bg-black/30 overflow-hidden">
           {product.heroUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={product.heroUrl}
-              alt={product.title}
-              className="w-full h-full object-cover"
-            />
+            <img src={product.heroUrl} alt={product.title} className="w-full h-full object-cover" />
           ) : null}
         </div>
 
         <div className="rounded-3xl border border-line bg-card p-6">
           <div className="text-xs tracking-widest text-muted">OFFICIAL MERCH</div>
           <h1 className="mt-2 text-3xl font-bold">{product.title}</h1>
-          <div className="mt-3 text-lg font-semibold">
-            {product.price} {product.currency}
-          </div>
+          <div className="mt-3 text-lg font-semibold">{priceLabel}</div>
 
           {product.description ? (
             <div
@@ -132,16 +128,29 @@ export default function ShopProductClient({ slug }: { slug: string }) {
             />
           ) : null}
 
+          {/* Desktop button */}
           <button
             onClick={add}
-            className="mt-6 w-full rounded-full bg-brand text-black font-semibold py-3"
+            className="hidden md:block mt-6 w-full rounded-full bg-brand text-black font-semibold py-3"
           >
             Add to cart
           </button>
+        </div>
+      </div>
 
-          <div className="mt-3 text-xs text-muted">
-            Checkout is available in /shop (DEV confirm included).
+      {/* ✅ Mobile sticky bar */}
+      <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-brand/95 backdrop-blur">
+        <div className="mx-auto max-w-6xl px-4 py-3 flex items-center gap-3">
+          <div className="flex-1">
+            <div className="text-xs text-white/60">Price</div>
+            <div className="text-white font-extrabold">{priceLabel}</div>
           </div>
+          <button
+            onClick={add}
+            className="shrink-0 rounded-full bg-white text-ink font-extrabold px-5 py-3"
+          >
+            Add to cart
+          </button>
         </div>
       </div>
     </div>
