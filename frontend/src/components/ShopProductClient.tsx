@@ -86,31 +86,7 @@ export default function ShopProductClient({ slug }: { slug: string }) {
     alert("Added to cart");
   };
 
-  // ✅ ONLY restriction left: login
-  if (!token) {
-    return (
-      <div className="rounded-3xl border border-line bg-card p-6">
-        <div className="text-sm font-semibold">Sign in required</div>
-        <div className="mt-2 text-sm text-muted">
-          Please sign in to view product details and add items to cart.
-        </div>
-        <div className="mt-4 flex gap-3">
-          <Link
-            className="px-5 py-3 rounded-full bg-brand text-black font-semibold"
-            href={`/login?next=${encodeURIComponent(`/shop/${slug}`)}`}
-          >
-            Sign in
-          </Link>
-          <Link
-            className="px-5 py-3 rounded-full border border-line bg-white/5 hover:bg-white/10"
-            href="/register"
-          >
-            Create account
-          </Link>
-        </div>
-      </div>
-    );
-  }
+  
 
   if (loading) return <div className="text-sm text-muted">Loading…</div>;
   if (error) return <div className="text-sm text-red-300">{error}</div>;
