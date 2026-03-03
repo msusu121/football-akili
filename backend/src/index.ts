@@ -53,6 +53,7 @@ app.use("/matches", matchesRouter);
 app.use("/shop", shopRouter);
 app.use("/uploads", uploadsRouter);
 app.use("/tickets", ticketsRouter);
+app.use(express.json({ limit: "2mb" }));
 app.use("/payments", paymentsRouter);
 app.use("/admin", adminRouter);
 
