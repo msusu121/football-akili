@@ -2,9 +2,14 @@
 // FILE: frontend/src/components/SiteShell.tsx
 // DROP-IN REPLACEMENT — Global layout: Navbar + Footer
 //
-// Mobile requirement (FIXED):
-// ✅ On mobile (md:hidden): Logo LEFT, then Hamburger, then Search (all on the LEFT)
-// ✅ NO centered logo on mobile
+// FIXES INCLUDED:
+// ✅ Top bar shows on MOBILE + DESKTOP (not md-only)
+// ✅ Top bar is WHITE with BLACK text
+// ✅ Left top-bar label is "SIGN IN" (goes to /login)
+// ✅ Right top-bar label is "TEMBEA MOMBASA"
+// ✅ iPhone 12 header elongation fixed (no wrapping + fixed height)
+// ✅ Mobile order preserved: Logo LEFT → Hamburger → Search (all LEFT)
+// ✅ Mobile menu overlay offset corrected for new header height
 // ============================================================
 
 "use client";
@@ -18,10 +23,7 @@ import { useState, useEffect, ReactNode } from "react";
  * If your backend returns relative URLs like "/uploads/logo.png",
  * set NEXT_PUBLIC_ASSET_BASE_URL="https://api.yourdomain.com"
  */
-const ASSET_BASE =
-  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "";
+const ASSET_BASE = process.env.NEXT_PUBLIC_ASSET_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "";
 
 function resolveAssetUrl(u?: string | null) {
   if (!u) return "";
@@ -158,16 +160,13 @@ export function SiteShell({
   sponsors = [],
   className = "",
   BG_IMG = "https://mombasaunited.com/club-media/images/back3.jpeg",
-  BG_WASH = "rgba(255, 255, 255, 0.75)"     
-
+  BG_WASH = "rgba(255, 255, 255, 0.75)",
 }: SiteShellProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
 
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  useEffect(() => setMobileOpen(false), [pathname]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
@@ -192,254 +191,193 @@ export function SiteShell({
       settings?.logoUrl
   );
   const partnerName = settings?.partnerName || "SportPesa";
-  const partnerLogo = resolveAssetUrl(
-    settings?.partnerLogo?.url ||
-      settings?.partnerLogoUrl ||
-      settings?.partner?.logo?.url
-  );
+  const partnerLogo = resolveAssetUrl(settings?.partnerLogo?.url || settings?.partnerLogoUrl || settings?.partner?.logo?.url);
 
   return (
     <div
       className={`min-h-screen flex flex-col text-ink ${className}`}
-// tweak this alpha: 0.70 (lighter) → 0.90 (more white)
-
-
-style={{
-  backgroundImage: `linear-gradient(${BG_WASH}, ${BG_WASH}), url(${BG_IMG})`,
-  backgroundRepeat: "repeat",
-  backgroundSize: "600px",
-  backgroundPosition: "top center",
-}}
+      style={{
+        backgroundImage: `linear-gradient(${BG_WASH}, ${BG_WASH}), url(${BG_IMG})`,
+        backgroundRepeat: "repeat",
+        backgroundSize: "600px",
+        backgroundPosition: "top center",
+      }}
     >
       {/* ═══════════════════════════════════════════════════
           NAVBAR
           ═══════════════════════════════════════════════════ */}
-      <header
-        className={`sticky top-0 z-50 transition-all duration-300 ${
-          scrolled ? "bg-brand/95 backdrop-blur-md shadow-soft" : "bg-brand"
-        }`}
-      >
-        {/* Top bar — desktop only */}
-        <div className="hidden md:block border-b border-white/10">
-          <div className="container-ms flex items-center justify-between py-2">
-            <span className="text-[10px] text-white/40 tracking-[0.2em] uppercase font-bold">
-              {clubName}
-            </span>
-            <div className="flex items-center gap-4 text-[11px] text-white/50">
-              <Link href="/account" className="hover:text-brand transition">
-                Sign In
-              </Link>
-              <span className="text-white/20">|</span>
-              <Link href="/register" className="hover:text-brand transition">
-                Register
-              </Link>
+      <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "shadow-soft" : ""}`}>
+        {/* ✅ TOP BAR — NOW MOBILE + DESKTOP, WHITE + BLACK */}
+        <div className="bg-white/95 backdrop-blur border-b border-line">
+          <div className="container-ms h-10 flex items-center justify-between">
+            {/* Left: SIGN IN (replaces club name) */}
+            <Link
+              href="/login"
+              className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-ink hover:text-brand transition whitespace-nowrap"
+            >
+              Sign In
+            </Link>
+
+            {/* Right: TEMBEA MOMBASA (replaces Sign In/Register block) */}
+            <div className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-ink whitespace-nowrap">
+              Tembea Mombasa
             </div>
           </div>
         </div>
 
-        {/* Main nav bar */}
-        <div className="container-ms flex items-center justify-between h-16 md:h-[72px]">
-          {/* LEFT: Logo + (mobile) Hamburger + Search — EXACT ORDER YOU ASKED */}
-          <div className="flex items-center gap-2 shrink-0">
-            <Link href="/" className="flex items-center gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={clubLogo}
-                alt={clubName}
-                className="h-10 md:h-12 w-auto object-contain"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
-                }}
-              />
-              <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase">
-                {clubName}
-              </span>
-            </Link>
+        {/* Main nav bar (BLUE) */}
+        <div className={`transition-all duration-300 ${scrolled ? "bg-brand/95 backdrop-blur-md" : "bg-brand"}`}>
+          <div className="container-ms flex items-center justify-between h-16 md:h-[72px]">
+            {/* LEFT: Logo + (mobile) Hamburger + Search — exact order */}
+            <div className="flex items-center gap-2 shrink-0 min-w-0">
+              <Link href="/" className="flex items-center gap-3 min-w-0">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={clubLogo}
+                  alt={clubName}
+                  className="h-9 md:h-12 w-auto object-contain bg-transparent shrink-0 max-w-[110px] md:max-w-none"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
+                  }}
+                />
+                <span className="hidden lg:block text-white font-extrabold text-sm tracking-wide uppercase truncate">
+                  {clubName}
+                </span>
+              </Link>
 
-            {/* Hamburger (mobile only) */}
-            <button
-              className="md:hidden p-2 text-white/80 hover:text-white transition"
-              onClick={() => setMobileOpen(!mobileOpen)}
-              aria-label={mobileOpen ? "Close menu" : "Open menu"}
-              aria-expanded={mobileOpen}
-            >
-              {mobileOpen ? (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              ) : (
-                <svg
-                  className="w-6 h-6"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
+              {/* Hamburger (mobile only) */}
+              <button
+                className="md:hidden p-2 text-white/80 hover:text-white transition"
+                onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileOpen}
+              >
+                {mobileOpen ? (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" />
+                  </svg>
+                )}
+              </button>
+
+              {/* Search (mobile only) */}
+              <button className="md:hidden p-2 text-white/60 hover:text-white transition" aria-label="Search">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
                   />
                 </svg>
-              )}
-            </button>
-
-            {/* Search (mobile only) */}
-            <button
-              className="md:hidden p-2 text-white/60 hover:text-white transition"
-              aria-label="Search"
-            >
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                />
-              </svg>
-            </button>
-          </div>
-
-          {/* Desktop nav links (center) */}
-          <nav className="hidden md:flex items-center gap-1">
-            {NAV_LINKS.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className={`relative px-4 py-2 text-[12px] font-extrabold tracking-[0.15em] uppercase transition-colors ${
-                    isActive ? "text-brand" : "text-white/80 hover:text-white"
-                  }`}
-                >
-                  {link.label}
-                  {isActive && (
-                    <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-brand rounded-full" />
-                  )}
-                </Link>
-              );
-            })}
-          </nav>
-
-          {/* RIGHT: Desktop Partner + Search */}
-          <div className="hidden md:flex items-center gap-4 shrink-0">
-            <div className="hidden lg:flex items-center gap-2">
-              <span className="text-[9px] text-white/30 tracking-wider uppercase">
-                In partnership with
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={partnerLogo}
-                alt={partnerName}
-                className="h-8 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
+              </button>
             </div>
 
-            {/* Search (desktop) */}
-            <button className="p-2 text-white/60 hover:text-white transition" aria-label="Search">
-              <svg
-                className="w-5 h-5"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth={2}
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                />
-              </svg>
-            </button>
-          </div>
-        </div>
-
-        {/* ═══ MOBILE MENU — Full-screen overlay ═══ */}
-        <div
-          className={`md:hidden fixed inset-0 top-16 z-40 bg-brand transition-all duration-300 ${
-            mobileOpen
-              ? "opacity-100 translate-y-0 pointer-events-auto"
-              : "opacity-0 -translate-y-4 pointer-events-none"
-          }`}
-        >
-          <nav className="flex flex-col p-6 space-y-1">
-            {NAV_LINKS.map((link) => {
-              const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
-              return (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  onClick={() => setMobileOpen(false)}
-                  className={`flex items-center justify-between py-4 border-b border-white/10 text-base font-extrabold tracking-[0.12em] uppercase transition-colors ${
-                    isActive ? "text-brand" : "text-white/80"
-                  }`}
-                >
-                  <span>{link.label}</span>
-                  <svg
-                    className="w-4 h-4 text-white/30"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
+            {/* Desktop nav links (center) */}
+            <nav className="hidden md:flex items-center gap-1">
+              {NAV_LINKS.map((link) => {
+                const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    className={`relative px-4 py-2 text-[12px] font-extrabold tracking-[0.15em] uppercase transition-colors ${
+                      isActive ? "text-white" : "text-white/80 hover:text-white"
+                    }`}
                   >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M8.25 4.5l7.5 7.5-7.5 7.5"
-                    />
-                  </svg>
+                    {link.label}
+                    {isActive && <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-[color:var(--brand-accent)] rounded-full" />}
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* RIGHT: Desktop Partner + Search */}
+            <div className="hidden md:flex items-center gap-4 shrink-0">
+              <div className="hidden lg:flex items-center gap-2">
+                <span className="text-[9px] text-white/30 tracking-wider uppercase">In partnership with</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={partnerLogo}
+                  alt={partnerName}
+                  className="h-8 w-auto object-contain opacity-80 hover:opacity-100 transition-opacity"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+
+              <button className="p-2 text-white/60 hover:text-white transition" aria-label="Search">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                  />
+                </svg>
+              </button>
+            </div>
+          </div>
+
+          {/* ═══ MOBILE MENU — Full-screen overlay (top offset updated) ═══ */}
+          <div
+            className={`md:hidden fixed inset-0 top-[104px] z-40 bg-brand transition-all duration-300 ${
+              mobileOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 -translate-y-4 pointer-events-none"
+            }`}
+          >
+            <nav className="flex flex-col p-6 space-y-1">
+              {NAV_LINKS.map((link) => {
+                const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
+                return (
+                  <Link
+                    key={link.href}
+                    href={link.href}
+                    onClick={() => setMobileOpen(false)}
+                    className={`flex items-center justify-between py-4 border-b border-white/10 text-base font-extrabold tracking-[0.12em] uppercase transition-colors ${
+                      isActive ? "text-white" : "text-white/80"
+                    }`}
+                  >
+                    <span>{link.label}</span>
+                    <svg className="w-4 h-4 text-white/30" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" />
+                    </svg>
+                  </Link>
+                );
+              })}
+
+              <div className="pt-4 pb-2 flex items-center gap-2 border-b border-white/10">
+                <span className="text-[9px] text-white/30 tracking-wider uppercase">In partnership with</span>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={partnerLogo}
+                  alt={partnerName}
+                  className="h-5 w-auto object-contain brightness-0 invert opacity-60"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).style.display = "none";
+                  }}
+                />
+              </div>
+
+              <div className="pt-6 flex items-center gap-4">
+                <Link
+                  href="/login"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex-1 text-center py-3 bg-white text-ink font-extrabold text-sm tracking-wider uppercase rounded-lg"
+                >
+                  Sign In
                 </Link>
-              );
-            })}
-
-            {/* Mobile partner logo */}
-            <div className="pt-4 pb-2 flex items-center gap-2 border-b border-white/10">
-              <span className="text-[9px] text-white/30 tracking-wider uppercase">
-                In partnership with
-              </span>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={partnerLogo}
-                alt={partnerName}
-                className="h-5 w-auto object-contain brightness-0 invert opacity-60"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).style.display = "none";
-                }}
-              />
-            </div>
-
-            {/* Mobile sign-in */}
-            <div className="pt-6 flex items-center gap-4">
-              <Link
-                href="/account"
-                onClick={() => setMobileOpen(false)}
-                className="flex-1 text-center py-3 bg-brand text-white font-extrabold text-sm tracking-wider uppercase rounded-lg"
-              >
-                Sign In
-              </Link>
-              <Link
-                href="/register"
-                onClick={() => setMobileOpen(false)}
-                className="flex-1 text-center py-3 border-2 border-white/20 text-white font-extrabold text-sm tracking-wider uppercase rounded-lg"
-              >
-                Register
-              </Link>
-            </div>
-          </nav>
+                <Link
+                  href="/register"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex-1 text-center py-3 border-2 border-white/30 text-white font-extrabold text-sm tracking-wider uppercase rounded-lg"
+                >
+                  Register
+                </Link>
+              </div>
+            </nav>
+          </div>
         </div>
       </header>
 
@@ -450,9 +388,7 @@ style={{
       {sponsors.length > 0 && (
         <section className="bg-white border-t border-line py-10">
           <div className="container-ms">
-            <p className="text-center text-[10px] font-extrabold tracking-[0.3em] uppercase text-muted mb-8">
-              Official Partners
-            </p>
+            <p className="text-center text-[10px] font-extrabold tracking-[0.3em] uppercase text-muted mb-8">Official Partners</p>
             <div className="flex flex-wrap items-center justify-center gap-8 md:gap-14">
               {sponsors.map((s) => {
                 const sLogo = resolveAssetUrl(s.logo?.url || s.logoUrl);
@@ -495,23 +431,19 @@ style={{
                 <img
                   src={clubLogo}
                   alt={clubName}
-                  className="h-14 w-auto"
+                  className="h-14 w-auto bg-transparent"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
                   }}
                 />
                 <div>
-                  <p className="font-extrabold text-white text-base tracking-wide uppercase">
-                    {clubName}
-                  </p>
-                  <p className="text-[10px] text-white/40 tracking-[0.2em] uppercase mt-0.5">
-                    Est. 2024 · Mombasa, Kenya
-                  </p>
+                  <p className="font-extrabold text-white text-base tracking-wide uppercase">{clubName}</p>
+                  <p className="text-[10px] text-white/40 tracking-[0.2em] uppercase mt-0.5">Est. 2024 · Mombasa, Kenya</p>
                 </div>
               </div>
+
               <p className="text-sm text-white/50 leading-relaxed max-w-sm">
-                The pride of the Kenyan coast. Official website of {clubName}. Follow us for the
-                latest news, fixtures, and more.
+                The pride of the Kenyan coast. Official website of {clubName}. Follow us for the latest news, fixtures, and more.
               </p>
 
               {socials.length > 0 && (
@@ -534,16 +466,11 @@ style={{
 
             {FOOTER_LINKS.map((group) => (
               <div key={group.title}>
-                <h4 className="text-[11px] font-extrabold tracking-[0.2em] uppercase text-brand mb-5">
-                  {group.title}
-                </h4>
+                <h4 className="text-[11px] font-extrabold tracking-[0.2em] uppercase text-brand mb-5">{group.title}</h4>
                 <ul className="space-y-3">
                   {group.links.map((link) => (
                     <li key={link.href}>
-                      <Link
-                        href={link.href}
-                        className="text-sm text-white/50 hover:text-white transition-colors"
-                      >
+                      <Link href={link.href} className="text-sm text-white/50 hover:text-white transition-colors">
                         {link.label}
                       </Link>
                     </li>
@@ -558,25 +485,13 @@ style={{
           <div className="container-ms py-8 flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
               <p className="text-sm font-bold text-white">Stay in the loop</p>
-              <p className="text-xs text-white/40 mt-1">
-                Get the latest news and fixture updates delivered to your inbox.
-              </p>
+              <p className="text-xs text-white/40 mt-1">Get the latest news and fixture updates delivered to your inbox.</p>
             </div>
             <div className="newsletter-wrap">
               <input type="email" placeholder="Your email address" className="newsletter-input" />
               <button className="newsletter-send" aria-label="Subscribe">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5"
-                  />
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
                 </svg>
               </button>
             </div>
@@ -585,16 +500,10 @@ style={{
 
         <div className="border-t border-white/10">
           <div className="container-ms py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-[11px] text-white/30">
-              © {new Date().getFullYear()} {clubName}. All rights reserved.
-            </p>
+            <p className="text-[11px] text-white/30">© {new Date().getFullYear()} {clubName}. All rights reserved.</p>
             <div className="flex items-center gap-6 text-[11px] text-white/30">
-              <Link href="/privacy" className="hover:text-white/60 transition">
-                Privacy Policy
-              </Link>
-              <Link href="/terms" className="hover:text-white/60 transition">
-                Terms of Use
-              </Link>
+              <Link href="/privacy" className="hover:text-white/60 transition">Privacy Policy</Link>
+              <Link href="/terms" className="hover:text-white/60 transition">Terms of Use</Link>
             </div>
           </div>
         </div>
