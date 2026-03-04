@@ -3,11 +3,10 @@
 // DROP-IN REPLACEMENT — Squad
 //
 // ✅ 2 cards mobile, 4 cards desktop
-// ✅ Full image ALWAYS visible (no crop, no blur fill)
-// ✅ Cards ALL same size (aspect locked to 2:3)
-// ✅ No info section under posters (your posters already contain info)
+// ✅ Cards ALWAYS same height (fixed poster frame heights)
+// ✅ Crops bottom/right to force uniform look (keeps top-left visible)
+// ✅ No info section under posters
 // ✅ Groups: Goalkeepers / Defenders / Midfielders / Forwards
-// ✅ "MEN" heading less thick
 // ============================================================
 
 import { SiteShell } from "@/components/SiteShell";
@@ -41,13 +40,11 @@ function roleGroupFromPosition(
   const up = p.toUpperCase();
   const low = p.toLowerCase();
 
-  // codes
   if (up === "GK") return "Goalkeepers";
   if (["CB", "LB", "RB", "LWB", "RWB", "DF"].includes(up)) return "Defenders";
   if (["DM", "CM", "AM", "MF"].includes(up)) return "Midfielders";
   if (["ST", "CF", "FW", "LW", "RW", "WG"].includes(up)) return "Forwards";
 
-  // words
   if (low.includes("goal") || low.includes("keeper")) return "Goalkeepers";
   if (low.includes("defend") || low.includes("back")) return "Defenders";
   if (low.includes("mid")) return "Midfielders";
@@ -161,7 +158,6 @@ export default async function SquadPage({
 
             return (
               <div key={label} className="mb-10 md:mb-14">
-                {/* Section title */}
                 <div className="border-l-[3px] border-[color:var(--brand)] pl-4 mb-6">
                   <h2 className="text-lg md:text-xl font-extrabold uppercase tracking-[0.15em] text-ink">
                     {label}
@@ -175,30 +171,32 @@ export default async function SquadPage({
                       key={m.id}
                       className="bg-white rounded-2xl overflow-hidden border border-line shadow-sm hover:shadow-md transition-shadow"
                     >
-                      {/* ✅ Same card ratio for ALL */}
-                      <div className="relative aspect-[2/3] w-full bg-white overflow-hidden">
-                        {m.portraitUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={m.portraitUrl}
-                            alt={m.fullName}
-                            className="w-full h-full object-contain object-center"
-                            loading="lazy"
-                            draggable={false}
-                          />
-                        ) : (
-                          <div className="w-full h-full grid place-items-center bg-[color:var(--paper)]">
-                            <div className="h-14 w-14 rounded-full bg-[color:var(--brand)] text-white grid place-items-center font-extrabold">
-                              {initials(m.fullName)}
+                      {/* ✅ Fixed heights => ALL cards same height no matter image */}
+                      <div className="relative bg-[color:var(--ink)] overflow-hidden">
+                        <div className="h-[250px] sm:h-[290px] md:h-[310px] lg:h-[330px] w-full">
+                          {m.portraitUrl ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={m.portraitUrl}
+                              alt={m.fullName}
+                              className="block w-full h-full object-cover object-left-top"
+                              loading="lazy"
+                              draggable={false}
+                            />
+                          ) : (
+                            <div className="w-full h-full grid place-items-center bg-[color:var(--paper)]">
+                              <div className="h-14 w-14 rounded-full bg-[color:var(--brand)] text-white grid place-items-center font-extrabold">
+                                {initials(m.fullName)}
+                              </div>
                             </div>
-                          </div>
-                        )}
+                          )}
+                        </div>
 
                         {/* Bottom gold accent */}
                         <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />
                       </div>
 
-                      {/* ✅ No info section below (intentionally removed) */}
+                      {/* ✅ No info section below */}
                     </div>
                   ))}
                 </div>
