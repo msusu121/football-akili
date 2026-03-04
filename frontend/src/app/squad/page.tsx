@@ -18,7 +18,7 @@ export default async function SquadPage({
 }: {
   searchParams?: { tab?: string; team?: string };
 }) {
-  const home = await apiGet("/public/home");
+  const home: any = await apiGet("/public/home");
 
   const isStaff = searchParams?.tab === "staff";
   const teamParam = searchParams?.team;
@@ -34,7 +34,7 @@ export default async function SquadPage({
     ? await apiGet("/team?isStaff=true")
     : await apiGet(`/team?team=${encodeURIComponent(team)}`);
 
-  const sections = Object.entries(data.grouped || {});
+  const sections = Object.entries((data as any).grouped || {});
 
   return (
     <SiteShell settings={home?.settings} socials={home?.socials} sponsors={home?.sponsors}>
