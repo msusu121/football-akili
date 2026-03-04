@@ -1,12 +1,13 @@
 // ============================================================
 // FILE: frontend/src/app/squad/page.tsx
-// DROP-IN REPLACEMENT — Mombasa United squad layout
+// DROP-IN REPLACEMENT — Squad
 //
 // ✅ 2 cards mobile, 4 cards desktop
-// ✅ Images never look "too big" (fixed height, object-contain, padded)
-// ✅ Brand Blue + Gold (uses CSS tokens from globals.css)
-// ✅ Groups players into: Goalkeepers / Defenders / Midfielders / Forwards
-// ✅ NO position initials shown on cards (as requested)
+// ✅ Full image ALWAYS visible (no crop, no blur fill)
+// ✅ Cards ALL same size (aspect locked to 2:3)
+// ✅ No info section under posters (your posters already contain info)
+// ✅ Groups: Goalkeepers / Defenders / Midfielders / Forwards
+// ✅ "MEN" heading less thick
 // ============================================================
 
 import { SiteShell } from "@/components/SiteShell";
@@ -24,26 +25,6 @@ type Member = {
   portraitUrl?: string | null;
 };
 
-function splitName(fullName: string) {
-  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length <= 1) return { first: "", last: parts[0] || fullName };
-  const last = parts[parts.length - 1] || "";
-  const first = parts.slice(0, -1).join(" ");
-  return { first, last };
-}
-
-// If someone accidentally saved "JACK WATTE JACK WATTE", this cleans it.
-function dedupeName(fullName: string) {
-  const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
-  if (parts.length >= 2) {
-    const mid = Math.floor(parts.length / 2);
-    const a = parts.slice(0, mid).join(" ").toLowerCase();
-    const b = parts.slice(mid).join(" ").toLowerCase();
-    if (a && a === b) return parts.slice(0, mid).join(" ");
-  }
-  return fullName;
-}
-
 function initials(fullName: string) {
   const parts = String(fullName || "").trim().split(/\s+/).filter(Boolean);
   const a = parts[0]?.[0] || "";
@@ -51,42 +32,31 @@ function initials(fullName: string) {
   return (a + b).toUpperCase();
 }
 
-/**
- * ✅ Upload-friendly grouping:
- * Accepts either codes (GK/CB/ST/AM...) OR full words (Goalkeeper/Defender/Striker...)
- */
-function roleGroupFromPosition(pos?: string | null): "Goalkeepers" | "Defenders" | "Midfielders" | "Forwards" | "Others" {
+function roleGroupFromPosition(
+  pos?: string | null
+): "Goalkeepers" | "Defenders" | "Midfielders" | "Forwards" | "Others" {
   const p = String(pos || "").trim();
   if (!p) return "Others";
 
   const up = p.toUpperCase();
   const low = p.toLowerCase();
 
-  // direct code matches
+  // codes
   if (up === "GK") return "Goalkeepers";
   if (["CB", "LB", "RB", "LWB", "RWB", "DF"].includes(up)) return "Defenders";
   if (["DM", "CM", "AM", "MF"].includes(up)) return "Midfielders";
   if (["ST", "CF", "FW", "LW", "RW", "WG"].includes(up)) return "Forwards";
 
-  // word matches
-  if (low.includes("goal")) return "Goalkeepers";
-  if (low.includes("keeper")) return "Goalkeepers";
-
+  // words
+  if (low.includes("goal") || low.includes("keeper")) return "Goalkeepers";
   if (low.includes("defend") || low.includes("back")) return "Defenders";
   if (low.includes("mid")) return "Midfielders";
-
   if (low.includes("striker") || low.includes("forward") || low.includes("wing")) return "Forwards";
 
   return "Others";
 }
 
-const ROLE_ORDER: Array<Member["isStaff"] extends true ? "Staff" : any> = [
-  "Goalkeepers",
-  "Defenders",
-  "Midfielders",
-  "Forwards",
-  "Others",
-];
+const ROLE_ORDER = ["Goalkeepers", "Defenders", "Midfielders", "Forwards", "Others"] as const;
 
 export default async function SquadPage({
   searchParams,
@@ -109,7 +79,6 @@ export default async function SquadPage({
     ? await apiGet("/team?isStaff=true")
     : await apiGet(`/team?team=${encodeURIComponent(team)}`);
 
-  // Backend returns grouped by position. We flatten and regroup cleanly for UI.
   const flat: Member[] = Object.values(data?.grouped || {}).flatMap((arr: any) => arr || []);
 
   const grouped = flat.reduce<Record<string, Member[]>>((acc, m) => {
@@ -139,7 +108,7 @@ export default async function SquadPage({
       <section className="bg-white border-b border-line">
         <div className="container-ms py-8 md:py-10">
           <div className="border-l-[3px] border-[color:var(--brand)] pl-4">
-            <h1 className="text-3xl md:text-5xl font-extrabold uppercase tracking-wider text-ink">
+            <h1 className="text-3xl md:text-5xl font-bold uppercase tracking-[0.12em] text-ink">
               {heroTitle}
             </h1>
             <div className="mt-2 h-[3px] w-12 rounded-full bg-[color:var(--brand-accent)]" />
@@ -158,7 +127,9 @@ export default async function SquadPage({
               }`}
             >
               FIRST TEAM
-              {!isStaff && <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />}
+              {!isStaff && (
+                <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />
+              )}
             </Link>
 
             <Link
@@ -168,7 +139,9 @@ export default async function SquadPage({
               }`}
             >
               STAFF
-              {isStaff && <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />}
+              {isStaff && (
+                <span className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />
+              )}
             </Link>
           </div>
         </div>
@@ -196,45 +169,38 @@ export default async function SquadPage({
                 </div>
 
                 {/* Grid: 2 mobile, 4 desktop */}
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                  {members.map((m) => {
-                    const cleanName = dedupeName(m.fullName);
-                    const { first, last } = splitName(cleanName);
-
-                    return (
-                      <div
-                        key={m.id}
-                        className="group bg-white rounded-2xl overflow-hidden border border-line shadow-sm hover:shadow-md transition-shadow"
-                      >
-                        {/* Photo box: fixed height + contain */}
-                        <div className="relative bg-[color:var(--paper)]">
-                          <div className="h-[210px] sm:h-[230px] md:h-[245px] lg:h-[255px] w-full overflow-hidden">
-                            {m.portraitUrl ? (
-                              // eslint-disable-next-line @next/next/no-img-element
-                              <img
-                                src={m.portraitUrl}
-                                alt={cleanName}
-                                className="w-full h-full object-contain p-3 group-hover:scale-[1.02] transition-transform duration-500"
-                                loading="lazy"
-                              />
-                            ) : (
-                              <div className="w-full h-full grid place-items-center">
-                                <div className="h-14 w-14 rounded-full bg-[color:var(--brand)] text-white grid place-items-center font-extrabold">
-                                  {initials(cleanName)}
-                                </div>
-                              </div>
-                            )}
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
+                  {members.map((m) => (
+                    <div
+                      key={m.id}
+                      className="bg-white rounded-2xl overflow-hidden border border-line shadow-sm hover:shadow-md transition-shadow"
+                    >
+                      {/* ✅ Same card ratio for ALL */}
+                      <div className="relative aspect-[2/3] w-full bg-white overflow-hidden">
+                        {m.portraitUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={m.portraitUrl}
+                            alt={m.fullName}
+                            className="w-full h-full object-contain object-center"
+                            loading="lazy"
+                            draggable={false}
+                          />
+                        ) : (
+                          <div className="w-full h-full grid place-items-center bg-[color:var(--paper)]">
+                            <div className="h-14 w-14 rounded-full bg-[color:var(--brand)] text-white grid place-items-center font-extrabold">
+                              {initials(m.fullName)}
+                            </div>
                           </div>
+                        )}
 
-                          {/* Bottom gold accent */}
-                          <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />
-                        </div>
-
-                        {/* Info */}
-                       
+                        {/* Bottom gold accent */}
+                        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />
                       </div>
-                    );
-                  })}
+
+                      {/* ✅ No info section below (intentionally removed) */}
+                    </div>
+                  ))}
                 </div>
               </div>
             );
