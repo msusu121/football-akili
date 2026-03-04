@@ -120,3 +120,174 @@ publicRouter.get("/faqs", async (_req, res, next) => {
     next(e);
   }
 });
+
+
+
+
+function mediaUrl(path?: string | null) {
+  if (!path) return null;
+  const base = process.env.ASSETS_PUBLIC_URL || process.env.S3_PUBLIC_BASE_URL || "";
+  return base ? `${base}/${path}` : path;
+}
+
+function mapSponsors(items: any[]) {
+  return (items || []).map((s) => ({
+    name: s.name,
+    url: s.website || s.url || null,
+    tier: s.tier,
+    logoUrl: mediaUrl(s.logo?.path),
+  }));
+}
+
+function mapSocials(items: any[]) {
+  return (items || []).map((x) => ({
+    platform: x.platform,
+    url: x.url,
+  }));
+}
+
+function mapSettings(s: any) {
+  if (!s) return null;
+  return {
+    clubName: s.clubName,
+    ticketsUrl: s.ticketsUrl,
+    membershipUrl: s.membershipUrl,
+    shopUrl: s.shopUrl,
+
+    // preserve your existing logo fields shape
+    headerLogo: s.headerLogo ? { url: mediaUrl(s.headerLogo.path) } : null,
+    partnerLogo: s.partnerLogo ? { url: mediaUrl(s.partnerLogo.path) } : null,
+    partnerName: s.partnerName || null,
+  };
+}
+
+function mapMatch(m: any, clubName: string, clubLogoUrl?: string | null) {
+  const isHome = !!m.isHome;
+
+  const homeTeamName = isHome ? clubName : m.opponent;
+  const awayTeamName = isHome ? m.opponent : clubName;
+
+  const homeTeamLogo = isHome ? clubLogoUrl : null;
+  const awayTeamLogo = isHome ? null : clubLogoUrl;
+
+  return {
+    id: m.id,
+    kickoff: m.kickoffAt?.toISOString?.() ?? m.kickoffAt,
+    competitionName: m.competition,
+    season: m.season,
+    venue: m.venue || null,
+
+    status: m.status, // SCHEDULED | FT | etc
+    homeScore: m.homeScore,
+    awayScore: m.awayScore,
+
+    homeTeamName,
+    awayTeamName,
+    homeTeamLogo,
+    awayTeamLogo,
+
+    // your UI uses ticketsUrl from settings, but we still return linkage
+    ticketEventId: m.ticketEvent?.id || null,
+  };
+}
+
+publicRouter.get("/fixtures", async (req, res, next) => {
+  try {
+    const season = typeof req.query.season === "string" ? req.query.season.trim() : "";
+    const seasonWhere = season ? { season } : {};
+
+    const [settingsRaw, socialsRaw, sponsorsRaw] = await Promise.all([
+      prisma.siteSetting.findUnique({
+        where: { id: "global" },
+        include: { headerLogo: true, partnerLogo: true },
+      }),
+      prisma.socialLink.findMany({
+        where: { isActive: true },
+        orderBy: { sort: "asc" },
+      }),
+      prisma.sponsor.findMany({
+        where: { isActive: true },
+        orderBy: { sort: "asc" },
+        include: { logo: true },
+      }),
+    ]);
+
+    const settings = mapSettings(settingsRaw);
+    const clubName = settings?.clubName || "Mombasa United";
+    const clubLogoUrl = settings?.headerLogo?.url || null;
+
+    const now = new Date();
+
+    const [upcoming, results] = await Promise.all([
+      prisma.match.findMany({
+        where: {
+          ...seasonWhere,
+          kickoffAt: { gte: now },
+          status: { not: "FT" },
+        },
+        orderBy: { kickoffAt: "asc" },
+        take: 120,
+        include: { ticketEvent: true },
+      }),
+      prisma.match.findMany({
+        where: {
+          ...seasonWhere,
+          status: "FT",
+        },
+        orderBy: { kickoffAt: "desc" },
+        take: 120,
+        include: { ticketEvent: true },
+      }),
+    ]);
+
+    // ✅ League table (DB if you add models below). If not added yet, return [].
+    let leagueTable: any[] = [];
+    try {
+      const snap = await prisma.leagueTableSnapshot.findFirst({
+        where: { ...(season ? { season } : {}) },
+        orderBy: { asOfDate: "desc" },
+        include: { rows: { orderBy: { position: "asc" } } },
+      });
+
+      if (snap?.rows?.length) {
+        leagueTable = snap.rows.map((r: any) => ({
+          position: r.position,
+          teamName: r.teamName,
+          played: r.played,
+          won: r.won,
+          drawn: r.drawn,
+          lost: r.lost,
+          goalsFor: r.goalsFor,
+          goalsAgainst: r.goalsAgainst,
+          goalDifference: r.goalDifference,
+          points: r.points,
+          logoUrl: r.logoUrl || null,
+        }));
+      }
+    } catch {
+      // table models not installed yet → keep empty
+    }
+
+    const upcomingFixtures = upcoming.map((m) => mapMatch(m, clubName, clubLogoUrl));
+    const pastResults = results.map((m) => mapMatch(m, clubName, clubLogoUrl));
+
+    const next = upcomingFixtures[0] || null;
+    const countdownSeconds =
+      next?.kickoff ? Math.max(0, Math.floor((new Date(next.kickoff).getTime() - now.getTime()) / 1000)) : null;
+
+    res.json({
+      settings,
+      socials: mapSocials(socialsRaw),
+      sponsors: mapSponsors(sponsorsRaw),
+
+      upcomingFixtures,
+      results: pastResults,
+      leagueTable,
+
+      nextFixture: next,
+      countdownSeconds,
+    });
+  } catch (e) {
+    next(e);
+  }
+});

@@ -154,6 +154,41 @@ model Match {
   @@index([season])
 }
 
+model LeagueTableSnapshot {
+  id          String   @id @default(cuid())
+  season      String
+  competition String
+  asOfDate    DateTime
+  createdAt   DateTime @default(now())
+
+  rows        LeagueTableRow[]
+
+  @@index([season, competition, asOfDate])
+  @@unique([season, competition, asOfDate])
+
+}
+
+model LeagueTableRow {
+  id             String   @id @default(cuid())
+  snapshotId     String
+  snapshot       LeagueTableSnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+
+  position       Int
+  teamName       String
+  played         Int
+  won            Int
+  drawn          Int
+  lost           Int
+  goalsFor       Int
+  goalsAgainst   Int
+  goalDifference Int
+  points         Int
+  logoUrl        String?
+
+  @@index([snapshotId])
+  @@unique([snapshotId, position])
+}
+
 model TicketEvent {
   id          String   @id @default(cuid())
   matchId     String   @unique
