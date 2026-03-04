@@ -231,32 +231,7 @@ export default async function SquadPage({
                         </div>
 
                         {/* Info */}
-                        <div className="px-3 py-3">
-                          {/* Jersey number pill */}
-                          {m.jerseyNo ? (
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-extrabold tracking-wider bg-[color:var(--brand)] text-white">
-                              {m.jerseyNo}
-                            </span>
-                          ) : null}
-
-                          <div className="mt-2">
-                            {first ? (
-                              <span className="block text-[11px] text-muted uppercase tracking-wider leading-tight">
-                                {first}
-                              </span>
-                            ) : null}
-                            <span className="block text-[13px] md:text-[14px] font-extrabold uppercase tracking-wider leading-tight text-ink">
-                              {last}
-                            </span>
-                          </div>
-
-                          {/* Staff role only (keep clean for players) */}
-                          {isStaff && m.position ? (
-                            <span className="block mt-1 text-[11px] text-muted uppercase tracking-wider">
-                              {m.position}
-                            </span>
-                          ) : null}
-                        </div>
+                       
                       </div>
                     );
                   })}
