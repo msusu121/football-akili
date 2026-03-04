@@ -176,27 +176,26 @@ export default async function SquadPage({
                       className="bg-white rounded-2xl overflow-hidden border border-line shadow-sm hover:shadow-md transition-shadow"
                     >
                       {/* ✅ Same card ratio for ALL */}
-                      <div className="relative aspect-[2/3] w-full bg-white overflow-hidden">
-                        {m.portraitUrl ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={m.portraitUrl}
-                            alt={m.fullName}
-                            className="w-full h-full object-contain object-center"
-                            loading="lazy"
-                            draggable={false}
-                          />
-                        ) : (
-                          <div className="w-full h-full grid place-items-center bg-[color:var(--paper)]">
-                            <div className="h-14 w-14 rounded-full bg-[color:var(--brand)] text-white grid place-items-center font-extrabold">
-                              {initials(m.fullName)}
-                            </div>
-                          </div>
-                        )}
+                      <div className="relative aspect-[2/3] w-full bg-[color:var(--ink)] overflow-hidden">
+  {m.portraitUrl ? (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={m.portraitUrl}
+      alt={m.fullName}
+      className="block w-full h-full object-contain object-top"
+      loading="lazy"
+      draggable={false}
+    />
+  ) : (
+    <div className="w-full h-full grid place-items-center bg-[color:var(--paper)]">
+      <div className="h-14 w-14 rounded-full bg-[color:var(--brand)] text-white grid place-items-center font-extrabold">
+        {initials(m.fullName)}
+      </div>
+    </div>
+  )}
 
-                        {/* Bottom gold accent */}
-                        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />
-                      </div>
+  <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[color:var(--brand-accent)]" />
+</div>
 
                       {/* ✅ No info section below (intentionally removed) */}
                     </div>
