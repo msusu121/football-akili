@@ -210,7 +210,7 @@ export function SiteShell({
        {/* ✅ TOP BAR — MOBILE + DESKTOP (BLACK BG, WHITE TEXT) */}
 <div className="bg-ink text-white border-b border-white/10">
   <div className="container-ms h-10 flex items-center justify-between">
-    {/* Left: SIGN IN with person icon */}
+    {/* Left: SIGN IN with person icon */}  
     <Link
       href="/login"
       className="inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.22em] uppercase text-white/90 hover:text-white transition whitespace-nowrap"
