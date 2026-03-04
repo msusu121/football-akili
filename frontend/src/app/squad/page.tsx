@@ -104,7 +104,7 @@ export default async function SquadPage({
               </div>
 
               {/* Grid — 2 cols mobile, 3 tablet, 5 desktop */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 md:gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2.5 md:gap-3">
                 {members.map((m: any) => {
                   const lastName =
                     m.fullName?.split(" ").slice(-1)[0] || m.fullName;
@@ -112,12 +112,13 @@ export default async function SquadPage({
                     m.fullName?.split(" ").slice(0, -1).join(" ") || "";
 
                   return (
-                    <div
-                      key={m._id || m.fullName}
-                      className="group bg-white rounded overflow-hidden shadow-sm hover:shadow-md transition-shadow"
+                    <Link
+                      href={`/squad/${m.slug || m.id}`}
+                      key={m.id || m.fullName}
+                      className="group bg-white overflow-hidden shadow-sm hover:shadow-md transition-shadow"
                     >
-                      {/* Photo — passport style */}
-                      <div className="relative aspect-[3/4] bg-gradient-to-b from-gray-100 to-gray-200 overflow-hidden">
+                      {/* Photo — compact passport style */}
+                      <div className="relative aspect-[4/5] bg-gradient-to-b from-gray-50 to-gray-100 overflow-hidden">
                         {m.portraitUrl ? (
                           // eslint-disable-next-line @next/next/no-img-element
                           <img
@@ -131,21 +132,21 @@ export default async function SquadPage({
                           </div>
                         )}
                         {/* Red bottom accent */}
-                        <div className="absolute bottom-0 left-0 right-0 h-1 bg-[#e02b20]" />
+                        <div className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#e02b20]" />
                       </div>
 
                       {/* Info */}
-                      <div className="px-3 py-3">
+                      <div className="px-2.5 py-2.5">
                         {m.jerseyNo && (
                           <span className="text-[11px] font-bold text-[#e02b20] tracking-wider">
                             {m.jerseyNo}
                           </span>
                         )}
                         <div className="mt-0.5">
-                          <span className="block text-[11px] text-gray-400 uppercase tracking-wider leading-tight">
+                          <span className="block text-[10px] text-gray-400 uppercase tracking-wider leading-tight">
                             {firstName}
                           </span>
-                          <span className="block text-[13px] md:text-[14px] font-extrabold uppercase tracking-wider leading-tight text-[#1a1a1a]">
+                          <span className="block text-[12px] md:text-[13px] font-extrabold uppercase tracking-wider leading-tight text-[#1a1a1a]">
                             {lastName}
                           </span>
                         </div>
@@ -155,7 +156,7 @@ export default async function SquadPage({
                           </span>
                         )}
                       </div>
-                    </div>
+                    </Link>
                   );
                 })}
               </div>
