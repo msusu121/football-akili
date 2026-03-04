@@ -207,23 +207,41 @@ export function SiteShell({
           NAVBAR
           ═══════════════════════════════════════════════════ */}
       <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "shadow-soft" : ""}`}>
-        {/* ✅ TOP BAR — NOW MOBILE + DESKTOP, WHITE + BLACK */}
-        <div className="bg-white/95 backdrop-blur border-b border-line">
-          <div className="container-ms h-10 flex items-center justify-between">
-            {/* Left: SIGN IN (replaces club name) */}
-            <Link
-              href="/login"
-              className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-ink hover:text-brand transition whitespace-nowrap"
-            >
-              Sign In
-            </Link>
+       {/* ✅ TOP BAR — MOBILE + DESKTOP (BLACK BG, WHITE TEXT) */}
+<div className="bg-ink text-white border-b border-white/10">
+  <div className="container-ms h-10 flex items-center justify-between">
+    {/* Left: SIGN IN with person icon */}
+    <Link
+      href="/login"
+      className="inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.22em] uppercase text-white/90 hover:text-white transition whitespace-nowrap"
+      aria-label="Sign in"
+    >
+      {/* person icon */}
+      <svg
+        className="w-4 h-4 text-white/80"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth={2}
+        viewBox="0 0 24 24"
+        aria-hidden="true"
+      >
+        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          d="M4.5 20.25a7.5 7.5 0 0115 0"
+        />
+      </svg>
 
-            {/* Right: TEMBEA MOMBASA (replaces Sign In/Register block) */}
-            <div className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-ink whitespace-nowrap">
-              Tembea Mombasa
-            </div>
-          </div>
-        </div>
+      <span>Sign In</span>
+    </Link>
+
+    {/* Right: TEMBEA MOMBASA */}
+    <div className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-white whitespace-nowrap">
+      Tembea Mombasa
+    </div>
+  </div>
+</div>
 
         {/* Main nav bar (BLUE) */}
         <div className={`transition-all duration-300 ${scrolled ? "bg-brand/95 backdrop-blur-md" : "bg-brand"}`}>
