@@ -3,7 +3,7 @@ import { z } from "zod";
 import crypto from "crypto";
 import QRCode from "qrcode";
 import { prisma } from "../../lib/prisma.js";
-import { requireAuth } from "../middleware/requireAuth";
+import { requireAuth } from "../middleware/requireAuth.js";
 import { stkPush , normalizePhone } from "../../lib/mpesa";
 import { logger } from "../../utils/mailService";
 import { sendMail, buildShopPaidReceiptEmail, getShopMailDefaults, getSmtpFromenv} from "../../utils/mailService";
