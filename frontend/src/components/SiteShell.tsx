@@ -253,7 +253,7 @@ export function SiteShell({
                 <img
                   src={clubLogo}
                   alt={clubName}
-                  className="h-9 md:h-12 w-auto object-contain bg-transparent shrink-0 max-w-[110px] md:max-w-none"
+                  className="h-12 md:h-14 w-auto object-contain bg-transparent shrink-0 max-w-[180px] md:max-w-[240px]"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
                   }}
