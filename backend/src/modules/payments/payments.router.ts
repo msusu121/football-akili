@@ -4,7 +4,7 @@ import crypto from "crypto";
 import QRCode from "qrcode";
 import { prisma } from "../../lib/prisma.js";
 import { requireAuth } from "../middleware/requireAuth.js";
-import { stkPush , normalizePhone } from "../../lib/mpesa";
+import { stkPush , normalizePhone } from "../../lib/mpesa.js";
 import { logger } from "../../utils/mailService";
 import { sendMail, buildShopPaidReceiptEmail, getShopMailDefaults, getSmtpFromenv} from "../../utils/mailService";
 
