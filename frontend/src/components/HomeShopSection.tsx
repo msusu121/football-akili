@@ -52,7 +52,7 @@ export function HomeShopSection() {
         {/* Section header */}
         <div className="text-center mb-12">
           <h2 className="h-serif text-4xl md:text-5xl font-extrabold text-ink tracking-tight">
-            OFFICIAL KITS
+            UNITED STORE
           </h2>
           <div className="mx-auto mt-2 h-[3px] w-14 bg-brand rounded-full" />
           <p className="mt-4 text-sm text-muted max-w-md mx-auto">

@@ -111,66 +111,63 @@ export default async function HomePage() {
           {/* ══════════════════════════════════════════════════════════
               1. HERO HIGHLIGHT — Full-width dark immersive block
           ══════════════════════════════════════════════════════════ */}
-          <section className="relative w-full bg-ink overflow-hidden">
-            {/* Background image */}
-            <div className="absolute inset-0">
-              {heroHighlight?.thumbnail?.url || featured?.heroMedia?.url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={heroHighlight?.thumbnail?.url || featured?.heroMedia?.url}
-                  alt=""
-                  className="w-full h-full object-cover opacity-40"
-                />
-              ) : (
-                <div className="w-full h-full bg-gradient-to-br from-ink via-ink-light to-ink" />
-              )}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30" />
-              <div className="absolute inset-0 bg-gradient-to-r from-black/60 to-transparent" />
-            </div>
+          <section className="relative w-full overflow-hidden">
+  {/* Background image */}
+  <div className="absolute inset-0">
+    {heroHighlight?.thumbnail?.url || featured?.heroMedia?.url ? (
+      <img
+        src={heroHighlight?.thumbnail?.url || featured?.heroMedia?.url}
+        alt=""
+        className="w-full h-full object-cover"
+      />
+    ) : (
+      <div className="w-full h-full bg-gradient-to-br from-ink via-ink-light to-ink" />
+    )}
+    {/* REMOVED the dark overlay */}
+  </div>
 
-            {/* Watermark */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <span className="text-[200px] md:text-[300px] font-extrabold text-white/[0.02] select-none h-serif">
-                MU
-              </span>
-            </div>
+  {/* Watermark (optional: keep or remove) */}
+  <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+    <span className="text-[200px] md:text-[300px] font-extrabold text-white/[0.02] select-none h-serif">
+      MU
+    </span>
+  </div>
 
-            {/* Content */}
-            <div className="relative min-h-[480px] md:min-h-[580px] flex flex-col justify-end">
-              <div className="container-ms pb-10 md:pb-14">
-                {/* Play button if highlight */}
-                {heroHighlight?.videoUrl && (
-                  <Link
-                    href={heroHighlight.videoUrl || `/highlights/${heroHighlight.slug || heroHighlight.id}`}
-                    className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-brand text-ink mb-6 hover:scale-110 transition-transform shadow-glow"
-                  >
-                    <svg className="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M8 5v14l11-7z" />
-                    </svg>
-                  </Link>
-                )}
+  {/* Content */}
+  <div className="relative min-h-[480px] md:min-h-[580px] flex flex-col justify-end">
+    <div className="container-ms pb-10 md:pb-14">
+      {heroHighlight?.videoUrl && (
+        <Link
+          href={heroHighlight.videoUrl || `/highlights/${heroHighlight.slug || heroHighlight.id}`}
+          className="inline-flex items-center justify-center w-14 h-14 md:w-16 md:h-16 rounded-full bg-brand text-ink mb-6 hover:scale-110 transition-transform shadow-glow"
+        >
+          <svg className="w-6 h-6 ml-0.5" fill="currentColor" viewBox="0 0 24 24">
+            <path d="M8 5v14l11-7z" />
+          </svg>
+        </Link>
+      )}
 
-                <h1 className="h-serif text-white font-extrabold text-3xl sm:text-4xl md:text-6xl leading-[1.05] max-w-3xl">
-                  {heroHighlight?.title || featured?.title || "WELCOME TO MOMBASA UNITED"}
-                </h1>
+      <h1 className="h-serif text-white font-extrabold text-3xl sm:text-4xl md:text-6xl leading-[1.05] max-w-3xl drop-shadow-[0_6px_18px_rgba(0,0,0,0.55)]">
+        {heroHighlight?.title || featured?.title || "WELCOME TO MOMBASA UNITED"}
+      </h1>
 
-                {(heroHighlight?.description || featured?.excerpt) && (
-                  <p className="mt-4 text-white/70 text-sm md:text-base max-w-xl leading-relaxed">
-                    {heroHighlight?.description || featured?.excerpt}
-                  </p>
-                )}
+      {(heroHighlight?.description || featured?.excerpt) && (
+        <p className="mt-4 text-white/90 text-sm md:text-base max-w-xl leading-relaxed drop-shadow-[0_4px_14px_rgba(0,0,0,0.45)]">
+          {heroHighlight?.description || featured?.excerpt}
+        </p>
+      )}
 
-                <div className="mt-5 flex items-center gap-4 text-white/50 text-xs font-bold tracking-wide">
-                  <span>{timeAgo(heroHighlight?.publishedAt || featured?.publishedAt)}</span>
-                  {heroHighlight?.category && (
-                    <span className="px-2.5 py-0.5 rounded bg-white/10 text-white/70 uppercase tracking-[0.15em]">
-                      {heroHighlight.category}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          </section>
+      <div className="mt-5 flex items-center gap-4 text-white/80 text-xs font-bold tracking-wide drop-shadow-[0_3px_10px_rgba(0,0,0,0.45)]">
+        <span>{timeAgo(heroHighlight?.publishedAt || featured?.publishedAt)}</span>
+        {heroHighlight?.category && (
+          <span className="px-2.5 py-0.5 rounded bg-white/20 text-white uppercase tracking-[0.15em]">
+            {heroHighlight.category}
+          </span>
+        )}
+      </div>
+    </div>
+  </div>
+</section>
 
           {/* ══════════════════════════════════════════════════════════
               2. "TODAY ON MOMBASAUNITED.COM" — News list
