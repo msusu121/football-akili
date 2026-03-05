@@ -2,7 +2,7 @@
 // strict relay client (smtp required per request) + Mombasa United Shop templates
 
 const DEFAULT_TIMEOUT_MS = 50_000;
-import { cfg } from "../config/env";
+import { cfg } from "../config/env.js";
 export const logger = {
   info: (...args: unknown[]) => console.info("[mail] [info]", ...args),
   warn: (...args: unknown[]) => console.warn("[mail] [warn]", ...args),
