@@ -240,7 +240,7 @@ publicRouter.get("/fixtures", async (req, res, next) => {
       }),
     ]);
 
-    // ✅ League table (DB if you add models below). If not added yet, return [].
+    // ✅ League table (DB if you add models below)
     let leagueTable: any[] = [];
     try {
       const snap = await prisma.leagueTableSnapshot.findFirst({
