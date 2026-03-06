@@ -160,10 +160,10 @@ const matchdayBg =
             latestResult={latestResult}
             fixturesPageHref="/fixtures"
             bgImages={[
-              "/home/match-bg-1.jpg",
-              "/home/match-bg-2.jpg",
-              "/home/match-bg-3.jpg",
-              "/home/match-bg-4.jpg",
+              "/home/match-bg-1.jpeg",
+              "/home/match-bg-2.jpeg",
+              "/home/match-bg-3.jpeg",
+              "/home/match-bg-4.jpeg",
             ]}
           />
 
