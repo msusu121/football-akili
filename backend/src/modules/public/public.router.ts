@@ -268,12 +268,60 @@ publicRouter.get("/fixtures", async (req, res, next) => {
       // table models not installed yet → keep empty
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // ✅ MATCHDAY FIXTURE (persistent): LIVE → inferred-live → next
+    // ─────────────────────────────────────────────────────────────
+    const LIVE_STATUSES = ["LIVE", "IN_PROGRESS"];
+    const FINISHED_STATUSES = ["FT", "FULL_TIME", "COMPLETED"];
+    const INACTIVE_STATUSES = ["POSTPONED", "CANCELLED", "CANCELED", "ABANDONED", "SUSPENDED"];
+
+    // 1) Prefer explicit LIVE status (avoid showing old match forever: cap to last 24h)
+    const liveSince = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+
+    const liveMatch = await prisma.match.findFirst({
+      where: {
+        ...seasonWhere,
+        kickoffAt: { gte: liveSince, lte: now },
+        status: { in: LIVE_STATUSES },
+      },
+      orderBy: { kickoffAt: "desc" },
+      include: { ticketEvent: true },
+    });
+
+    // 2) If no LIVE status provided, infer in-progress by time window
+    //    (kickoff happened recently, and not finished/postponed/cancelled)
+    const INFER_LIVE_MINUTES = 210; // 3h30m (safe for stoppage/halftime delays)
+    const inferSince = new Date(now.getTime() - INFER_LIVE_MINUTES * 60 * 1000);
+
+    const inferredLiveMatch =
+      liveMatch ||
+      (await prisma.match.findFirst({
+        where: {
+          ...seasonWhere,
+          kickoffAt: { gte: inferSince, lte: now },
+          status: {
+            notIn: [...FINISHED_STATUSES, ...INACTIVE_STATUSES],
+          },
+        },
+        orderBy: { kickoffAt: "desc" },
+        include: { ticketEvent: true },
+      }));
+
+    // 3) Else fallback to next upcoming
+    const matchdayRaw = inferredLiveMatch || upcoming[0] || null;
+
     const upcomingFixtures = upcoming.map((m) => mapMatch(m, clubName, clubLogoUrl));
     const pastResults = results.map((m) => mapMatch(m, clubName, clubLogoUrl));
 
     const next = upcomingFixtures[0] || null;
+
     const countdownSeconds =
-      next?.kickoff ? Math.max(0, Math.floor((new Date(next.kickoff).getTime() - now.getTime()) / 1000)) : null;
+      next?.kickoff
+        ? Math.max(0, Math.floor((new Date(next.kickoff).getTime() - now.getTime()) / 1000))
+        : null;
+
+    // Map the matchday fixture into the exact frontend shape (kickoff/homeTeamName/etc)
+    const matchdayFixture = matchdayRaw ? mapMatch(matchdayRaw, clubName, clubLogoUrl) : null;
 
     res.json({
       settings,
@@ -285,6 +333,7 @@ publicRouter.get("/fixtures", async (req, res, next) => {
       leagueTable,
 
       nextFixture: next,
+      matchdayFixture, // ✅ NEW: always present during LIVE or near kickoff
       countdownSeconds,
     });
   } catch (e) {

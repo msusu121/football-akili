@@ -89,28 +89,49 @@ export default async function HomePage() {
   // ✅ Latest result = first past result (backend already orders desc)
   const latestResult = pastResults[0] || null;
 
-  // ── HERO SLOT selection ──
-const now = Date.now();
+ const nowMs = Date.now();
 
-// 1) matchday candidate (next fixture)
-const nextFixture = fixtures[0] || null;
-const kickoffMs = nextFixture?.kickoff ? new Date(nextFixture.kickoff).getTime() : null;
+// 1) candidate fixture: prefer backend nextFixture if present, otherwise first upcoming
+//const nextFixture = fixData.nextFixture || fixtures[0] || null;
+const nextFixture = fixData.matchdayFixture || fixData.nextFixture || fixtures[0] || null;
+const kickoffISO = nextFixture?.kickoff ? String(nextFixture.kickoff) : null;
+const kickoffMs = kickoffISO ? new Date(kickoffISO).getTime() : null;
 
-// Matchday window (tunable): show match hero if kickoff within next 18h
-const MATCHDAY_PRE_HOURS = 18;
-const isMatchday =
+const statusNorm = String(nextFixture?.status || "").toUpperCase();
+
+// Windows (MU-ish defaults)
+const MATCHDAY_PRE_HOURS = 18;      // show before kickoff
+const MATCHDAY_LIVE_MINUTES = 135;  // keep showing during match if no live feed
+
+const preWindowOk =
   kickoffMs !== null &&
-  kickoffMs > now &&
-  kickoffMs - now <= MATCHDAY_PRE_HOURS * 60 * 60 * 1000;
+  kickoffMs > nowMs &&
+  kickoffMs - nowMs <= MATCHDAY_PRE_HOURS * 60 * 60 * 1000;
+
+const liveWindowOk =
+  kickoffMs !== null &&
+  nowMs >= kickoffMs &&
+  nowMs <= kickoffMs + MATCHDAY_LIVE_MINUTES * 60 * 1000;
+
+// status-aware override (if you have it)
+const statusSaysLive = statusNorm === "LIVE" || statusNorm === "IN_PROGRESS";
+const statusSaysFT = statusNorm === "FT" || statusNorm === "FULL_TIME";
+
+// ✅ FINAL matchday condition: PRE or LIVE (or status says live), but not FT
+const isMatchday =
+  !!nextFixture && !statusSaysFT && (statusSaysLive || preWindowOk || liveWindowOk);
 
 // 2) breaking story candidate (fresh within 30 min, must have image)
+// (Only used when NOT matchday)
 const BREAKING_MINUTES = 30;
 const breakingStory =
-  latestNews.find((n: any) => {
-    const t = n?.publishedAt ? new Date(n.publishedAt).getTime() : null;
-    if (!t) return false;
-    return now - t <= BREAKING_MINUTES * 60 * 1000 && !!n?.heroMedia?.url;
-  }) || null;
+  !isMatchday
+    ? latestNews.find((n: any) => {
+        const t = n?.publishedAt ? new Date(n.publishedAt).getTime() : null;
+        if (!t) return false;
+        return nowMs - t <= BREAKING_MINUTES * 60 * 1000 && !!n?.heroMedia?.url;
+      }) || null
+    : null;
 
 // Background for matchday hero (one image)
 const matchdayBg =
