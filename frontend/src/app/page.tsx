@@ -100,7 +100,7 @@ const kickoffMs = kickoffISO ? new Date(kickoffISO).getTime() : null;
 const statusNorm = String(nextFixture?.status || "").toUpperCase();
 
 // Windows (MU-ish defaults)
-const MATCHDAY_PRE_HOURS = 18;      // show before kickoff
+const MATCHDAY_PRE_HOURS = 24;      // show before kickoff
 const MATCHDAY_LIVE_MINUTES = 135;  // keep showing during match if no live feed
 
 const preWindowOk =
