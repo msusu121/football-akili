@@ -19,16 +19,26 @@ function formatCountdown(ms: number) {
   return `${pad(hrs)}:${pad(mins)}:${pad(secs)}`;
 }
 
+function parseKickoffMs(raw?: string | null) {
+  if (!raw) return NaN;
+
+  const s = String(raw).trim();
+  if (!s) return NaN;
+
+  const t = new Date(s).getTime();
+  return Number.isFinite(t) ? t : NaN;
+}
+
 export function MatchClock({
   kickoffISO,
   status,
-  liveWindowMinutes = 135, // fallback if no live feed
+  liveWindowMinutes = 135,
 }: {
   kickoffISO: string;
   status?: string | null;
   liveWindowMinutes?: number;
 }) {
-  const kickoffMs = useMemo(() => new Date(kickoffISO).getTime(), [kickoffISO]);
+  const kickoffMs = useMemo(() => parseKickoffMs(kickoffISO), [kickoffISO]);
   const [now, setNow] = useState(() => Date.now());
 
   useEffect(() => {
@@ -42,9 +52,13 @@ export function MatchClock({
     if (statusNorm === "FT" || statusNorm === "FULL_TIME") return "FT";
     if (statusNorm === "LIVE" || statusNorm === "IN_PROGRESS") return "LIVE";
 
+    if (!Number.isFinite(kickoffMs)) return "FT";
+
     if (now < kickoffMs) return "COUNTDOWN";
+
     const liveEnd = kickoffMs + liveWindowMinutes * 60 * 1000;
     if (now >= kickoffMs && now <= liveEnd) return "LIVE";
+
     return "FT";
   }, [statusNorm, now, kickoffMs, liveWindowMinutes]);
 
@@ -52,8 +66,19 @@ export function MatchClock({
     "inline-flex items-center gap-2 bg-black/35 border border-white/25 rounded-sm " +
     "px-3 py-1.5 sm:px-4 sm:py-2";
 
+  if (!Number.isFinite(kickoffMs)) {
+    return (
+      <div className={pillBase}>
+        <span className="text-white font-extrabold text-[11px] sm:text-[12px] tracking-[0.18em] uppercase">
+          TBC
+        </span>
+      </div>
+    );
+  }
+
   if (mode === "COUNTDOWN") {
     const ms = kickoffMs - now;
+
     return (
       <div className={pillBase}>
         <span className="text-white/85 text-[10px] sm:text-[11px] font-extrabold tracking-[0.18em] uppercase">

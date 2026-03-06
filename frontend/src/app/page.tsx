@@ -1,26 +1,17 @@
-// ============================================================
 // FILE: frontend/src/app/page.tsx
 // DROP-IN REPLACEMENT — Mombasa United FC homepage
 //
-// STRUCTURE (matches Manchester United homepage flow):
-//   1. Full-width Hero Highlight (ROTATING randomly from highlights thumbnails)
-//   2. "TODAY ON MOMBASAUNITED.COM" — news articles list
-//   3. "The Highlights" — horizontal video cards (full-width dark section)
-//   4. Latest Match Result hero (separate component)
-//   5. "IN CASE YOU MISSED IT" — more news grid
-//   6. Kit Showcase (HomeShopSection — preserved)
-//   7. Matches strip (Fixtures/Results tabs — full width rail)
-//   8. Membership CTA + Plans
+// HERO SLOT:
+// - MatchdayHero shows if match is within 24h OR live window OR status says LIVE
+// - BreakingStoryHero if a story was published within 30min with heroMedia
+// - Else HeroHighlightRotator
 //
-// DATA SOURCES:
-//   - /public/home     -> featured, latestNews, highlights, settings, socials, sponsors
-//   - /public/fixtures -> upcomingFixtures, results (pastResults)
-//
-// BRAND: Blue (#0a1628), Yellow/Gold (#d4a017), Black
-// Uses globals.css tokens: bg-brand, text-brand, text-muted,
-// border-line, h-serif, dark-section, container-ms
-// ============================================================
+// IMPORTANT: noStore() + force-dynamic prevents stale hero decisions.
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
+import { unstable_noStore as noStore } from "next/cache";
 import { SiteShell } from "@/components/SiteShell";
 import { apiGet } from "@/lib/api";
 import Link from "next/link";
@@ -66,117 +57,131 @@ const tierMeta: Record<string, { color: string; bg: string }> = {
 };
 
 export default async function HomePage() {
+  // ✅ prevents cached "now" + cached fixtures from keeping old hero
+  noStore();
+
   const [home, plans, fixData] = await Promise.all([
     apiGet<any>("/public/home"),
     getMembershipPlans(),
     apiGet<any>("/public/fixtures"),
   ]);
 
+ 
   const featured = home.featured;
   const latestNews = (home.latestNews || []) as any[];
 
-  // Your backend /public/home returns 5; this is safe even if fewer
+  // Safe even if fewer than requested
   const todayNews = latestNews.slice(0, 6);
   const moreNews = latestNews.slice(6, 10);
 
-  // ✅ Highlights exist on /public/home (used by hero rotator + highlights section)
   const highlights = (home.highlights || []) as any[];
 
-  // ✅ Fixtures + results exist on /public/fixtures
   const fixtures = (fixData.upcomingFixtures || []) as any[];
   const pastResults = (fixData.results || []) as any[];
 
-  // ✅ Latest result = first past result (backend already orders desc)
   const latestResult = pastResults[0] || null;
 
- const nowMs = Date.now();
+  // ── HERO SLOT selection ──
+  const nowMs = Date.now();
 
-// 1) candidate fixture: prefer backend nextFixture if present, otherwise first upcoming
-//const nextFixture = fixData.nextFixture || fixtures[0] || null;
-const nextFixture = fixData.matchdayFixture || fixData.nextFixture || fixtures[0] || null;
-const kickoffISO = nextFixture?.kickoff ? String(nextFixture.kickoff) : null;
-const kickoffMs = kickoffISO ? new Date(kickoffISO).getTime() : null;
+  // Prefer matchdayFixture from backend (live/inferred/next), else nextFixture, else first upcoming
+  const nextFixture = fixData.matchdayFixture || fixData.nextFixture || fixtures[0] || null;
 
-const statusNorm = String(nextFixture?.status || "").toUpperCase();
+  const kickoffISO = nextFixture?.kickoff ? String(nextFixture.kickoff) : null;
+  const kickoffMs = kickoffISO ? new Date(kickoffISO).getTime() : null;
 
-// Windows (MU-ish defaults)
-const MATCHDAY_PRE_HOURS = 24;      // show before kickoff
-const MATCHDAY_LIVE_MINUTES = 135;  // keep showing during match if no live feed
+  const statusNorm = String(nextFixture?.status || "").toUpperCase();
 
-const preWindowOk =
-  kickoffMs !== null &&
-  kickoffMs > nowMs &&
-  kickoffMs - nowMs <= MATCHDAY_PRE_HOURS * 60 * 60 * 1000;
+  // Windows
+  const MATCHDAY_PRE_HOURS = 24;
+  const MATCHDAY_LIVE_MINUTES = 135;
 
-const liveWindowOk =
-  kickoffMs !== null &&
-  nowMs >= kickoffMs &&
-  nowMs <= kickoffMs + MATCHDAY_LIVE_MINUTES * 60 * 1000;
+  const preWindowOk =
+    kickoffMs !== null &&
+    kickoffMs > nowMs &&
+    kickoffMs - nowMs <= MATCHDAY_PRE_HOURS * 60 * 60 * 1000;
 
-// status-aware override (if you have it)
-const statusSaysLive = statusNorm === "LIVE" || statusNorm === "IN_PROGRESS";
-const statusSaysFT = statusNorm === "FT" || statusNorm === "FULL_TIME";
+  const liveWindowOk =
+    kickoffMs !== null &&
+    nowMs >= kickoffMs &&
+    nowMs <= kickoffMs + MATCHDAY_LIVE_MINUTES * 60 * 1000;
 
-// ✅ FINAL matchday condition: PRE or LIVE (or status says live), but not FT
-const isMatchday =
-  !!nextFixture && !statusSaysFT && (statusSaysLive || preWindowOk || liveWindowOk);
+  const statusSaysLive = statusNorm === "LIVE" || statusNorm === "IN_PROGRESS";
+  const statusSaysFT = statusNorm === "FT" || statusNorm === "FULL_TIME";
 
-// 2) breaking story candidate (fresh within 30 min, must have image)
-// (Only used when NOT matchday)
-const BREAKING_MINUTES = 30;
-const breakingStory =
-  !isMatchday
-    ? latestNews.find((n: any) => {
-        const t = n?.publishedAt ? new Date(n.publishedAt).getTime() : null;
-        if (!t) return false;
-        return nowMs - t <= BREAKING_MINUTES * 60 * 1000 && !!n?.heroMedia?.url;
-      }) || null
-    : null;
+  const isMatchday =
+    !!nextFixture && !statusSaysFT && (statusSaysLive || preWindowOk || liveWindowOk);
 
-// Background for matchday hero (one image)
-const matchdayBg =
-  featured?.heroMedia?.url ||
-  home.settings?.heroMedia?.url ||
-  "/home/matchday-default.jpg";
+  // Breaking story (only if not matchday)
+  const BREAKING_MINUTES = 30;
+  const breakingStory =
+    !isMatchday
+      ? latestNews.find((n: any) => {
+          const t = n?.publishedAt ? new Date(n.publishedAt).getTime() : null;
+          if (!t) return false;
+          return nowMs - t <= BREAKING_MINUTES * 60 * 1000 && !!n?.heroMedia?.url;
+        }) || null
+      : null;
+
+  const matchdayBg =
+    featured?.heroMedia?.url ||
+    home.settings?.heroMedia?.url ||
+    "/home/matchday-default.jpg";
+
+    console.log("nowMs:", nowMs, new Date(nowMs).toISOString());
+console.log("pickedFixture:", nextFixture?.id);
+console.log("pickedKickoffISO:", kickoffISO);
+console.log("pickedKickoffMs:", kickoffMs, kickoffMs ? new Date(kickoffMs).toISOString() : null);
+console.log("statusNorm:", statusNorm);
+
+const hoursToKO = kickoffMs ? (kickoffMs - nowMs) / 36e5 : null;
+console.log("hoursToKO:", hoursToKO);
+
+console.log("MATCHDAY_PRE_HOURS:", MATCHDAY_PRE_HOURS);
+console.log("preWindowOk:", preWindowOk);
+console.log("liveWindowOk:", liveWindowOk);
+console.log("statusSaysLive:", statusSaysLive);
+console.log("statusSaysFT:", statusSaysFT);
+console.log("isMatchday:", isMatchday);
+
+console.log("fixData.matchdayFixture:", fixData?.matchdayFixture?.id, fixData?.matchdayFixture?.kickoff, fixData?.matchdayFixture?.status);
+console.log("fixData.nextFixture:", fixData?.nextFixture?.id, fixData?.nextFixture?.kickoff, fixData?.nextFixture?.status);
+console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?.[0]?.status);
 
   return (
     <SiteShell settings={home.settings} socials={home.socials} sponsors={home.sponsors}>
       <div className="homepage-bg relative min-h-screen">
         <div className="relative z-10">
-          {/* ══════════════════════════════════════════════════════════
-              1. HERO HIGHLIGHT — ROTATING highlights thumbnails (random)
-          ══════════════════════════════════════════════════════════ */}
           {/* HERO SLOT */}
-{isMatchday && nextFixture ? (
-  <MatchdayHero
-    fixture={nextFixture}
-    ticketsUrl={home.settings?.ticketsUrl || "/tickets"}
-    bgImageUrl={matchdayBg}
-  />
-) : breakingStory ? (
-  <BreakingStoryHero story={breakingStory} />
-) : (
-  <HeroHighlightRotator highlights={highlights} featured={featured} maxSlides={5} intervalMs={7000} />
-)}
+          {isMatchday && nextFixture ? (
+            <MatchdayHero
+              fixture={nextFixture}
+              ticketsUrl={home.settings?.ticketsUrl || "/tickets"}
+              bgImageUrl={matchdayBg}
+            />
+          ) : breakingStory ? (
+            <BreakingStoryHero story={breakingStory} />
+          ) : (
+            <HeroHighlightRotator
+              highlights={highlights}
+              featured={featured}
+              maxSlides={5}
+              intervalMs={7000}
+            />
+          )}
 
-          {/* ══════════════════════════════════════════════════════════
-              2. "TODAY ON MOMBASAUNITED.COM" — News list
-          ══════════════════════════════════════════════════════════ */}
+          {/* TODAY ON */}
           <TodayOnClubSection
-  items={latestNews}   // MUST be sorted desc already (newest first)
-  title="Today on MombasaUnited.com"
-  moreHref="/news"
-  maxSecondary={4}
-/>
+            items={latestNews}
+            title="Today on MombasaUnited.com"
+            moreHref="/news"
+            maxSecondary={4}
+          />
 
-          {/* ══════════════════════════════════════════════════════════
-              3. "THE HIGHLIGHTS" — Full-width dark video section
-          ══════════════════════════════════════════════════════════ */}
+          {/* HIGHLIGHTS */}
           <HighlightsSection highlights={highlights} />
 
-          {/* ══════════════════════════════════════════════════════════
-              4. LATEST RESULT — big hero block (separate component)
-          ══════════════════════════════════════════════════════════ */}
+          {/* LATEST RESULT HERO */}
           <LatestResultHero
             latestResult={latestResult}
             fixturesPageHref="/fixtures"
@@ -188,9 +193,7 @@ const matchdayBg =
             ]}
           />
 
-          {/* ══════════════════════════════════════════════════════════
-              5. "IN CASE YOU MISSED IT" — More news grid
-          ══════════════════════════════════════════════════════════ */}
+          {/* IN CASE YOU MISSED IT */}
           {moreNews.length > 0 && (
             <section className="bg-white border-t border-line">
               <div className="container-ms py-12 md:py-16">
@@ -247,14 +250,10 @@ const matchdayBg =
             </section>
           )}
 
-          {/* ══════════════════════════════════════════════════════════
-              6. KIT SHOWCASE (preserved)
-          ══════════════════════════════════════════════════════════ */}
+          {/* SHOP */}
           <HomeShopSection />
 
-          {/* ══════════════════════════════════════════════════════════
-              7. MATCHES STRIP — Fixtures/Results tabs (full-width rail)
-          ══════════════════════════════════════════════════════════ */}
+          {/* MATCHES STRIP */}
           <MatchesRail
             fixtures={fixtures}
             results={pastResults}
@@ -264,12 +263,9 @@ const matchdayBg =
             defaultTab="fixtures"
           />
 
-          {/* ══════════════════════════════════════════════════════════
-              8. MEMBERSHIP CTA + PLANS GRID
-          ══════════════════════════════════════════════════════════ */}
+          {/* MEMBERSHIP */}
           <section className="bg-white">
             <div className="container-ms pb-20 pt-8">
-              {/* Banner */}
               <div className="overflow-hidden rounded-2xl border border-line shadow-soft">
                 <div className="relative h-[140px] md:h-[160px] bg-ink">
                   {home.settings?.homeMembershipImage?.url ? (
@@ -306,7 +302,6 @@ const matchdayBg =
                 </div>
               </div>
 
-              {/* Membership tier cards */}
               {plans.length > 0 && (
                 <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                   {plans.map((plan: any) => {

@@ -1,12 +1,27 @@
-// FILE: frontend/src/components/MatchdayHero.tsx
-
 import Link from "next/link";
 import { MatchClock } from "@/components/MatchClock";
+
+const NAIROBI_TZ = "Africa/Nairobi";
+
+function parseKickoffMs(raw?: string | null) {
+  if (!raw) return NaN;
+
+  const s = String(raw).trim();
+  if (!s) return NaN;
+
+  const t = new Date(s).getTime();
+  return Number.isFinite(t) ? t : NaN;
+}
 
 /* helpers */
 function fmtLongDate(d?: string | null) {
   if (!d) return "";
-  return new Date(d).toLocaleDateString("en-GB", {
+
+  const ms = parseKickoffMs(d);
+  if (!Number.isFinite(ms)) return "";
+
+  return new Date(ms).toLocaleDateString("en-GB", {
+    timeZone: NAIROBI_TZ,
     weekday: "long",
     day: "2-digit",
     month: "long",
@@ -34,7 +49,6 @@ function pickKickoff(x: any) {
   return x?.kickoff || x?.date || x?.scheduledAt || null;
 }
 
-/* logos hidden on mobile */
 function TeamBadge({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
   return (
     <div className="hidden sm:flex w-9 h-9 md:w-12 md:h-12 rounded-full bg-white/15 items-center justify-center flex-shrink-0">
@@ -68,8 +82,7 @@ export function MatchdayHero({
   const league = pickLeague(fixture);
   const kickoff = pickKickoff(fixture);
 
-  // --- Smart CTA ---
-  const kickoffMs = kickoff ? new Date(String(kickoff)).getTime() : null;
+  const kickoffMs = kickoff ? parseKickoffMs(String(kickoff)) : NaN;
   const nowMs = Date.now();
   const liveWindowMs = 135 * 60 * 1000;
   const statusNorm = String(fixture?.status || "").toUpperCase();
@@ -79,9 +92,11 @@ export function MatchdayHero({
       ? "POST"
       : statusNorm === "LIVE" || statusNorm === "IN_PROGRESS"
       ? "LIVE"
-      : kickoffMs && nowMs < kickoffMs
+      : Number.isFinite(kickoffMs) && nowMs < kickoffMs
       ? "PRE"
-      : kickoffMs && nowMs >= kickoffMs && nowMs <= kickoffMs + liveWindowMs
+      : Number.isFinite(kickoffMs) &&
+        nowMs >= kickoffMs &&
+        nowMs <= kickoffMs + liveWindowMs
       ? "LIVE"
       : "POST";
 
@@ -95,13 +110,10 @@ export function MatchdayHero({
   const ctaLabel =
     inferred === "PRE" ? "TICKET INFO" : inferred === "LIVE" ? "MATCH CENTRE" : "MATCH REPORT";
 
-  // ✅ Premium name typography
-  // - MOBILE: no line-clamp (prevents missing letters)
-  // - SM+: clamp to 2 lines to keep it neat
   const nameCls = [
     "text-white font-extrabold uppercase",
     "tracking-[-0.015em]",
-    "leading-[1.08]",          // a bit more breathing on tiny screens
+    "leading-[1.08]",
     "py-0.5",
     "whitespace-normal",
     "break-words",
@@ -116,19 +128,19 @@ export function MatchdayHero({
     <MatchClock kickoffISO={String(kickoff)} status={fixture?.status || null} />
   ) : (
     <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-black/35 border border-white/25 rounded-sm">
-      <span className="text-white font-extrabold text-[11px] tracking-[0.18em] uppercase">TBC</span>
+      <span className="text-white font-extrabold text-[11px] tracking-[0.18em] uppercase">
+        TBC
+      </span>
     </div>
   );
 
   return (
     <section className="relative w-full overflow-hidden">
-      {/* background */}
       <div className="absolute inset-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src={bgImageUrl} alt="" className="w-full h-full object-cover" />
       </div>
 
-      {/* overlays */}
       <div className="absolute inset-0 bg-black/55" />
       <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-black/55" />
 
@@ -145,15 +157,13 @@ export function MatchdayHero({
               </span>
             </div>
 
-            {/* 3-column on ALL screens, but center column constrained on mobile */}
             <div className="mt-6 sm:mt-8 md:mt-10 w-full max-w-[1100px]">
               <div
                 className="grid items-center gap-2.5 sm:gap-6 md:gap-8"
                 style={{
-                  gridTemplateColumns: "minmax(0,1fr) minmax(92px,130px) minmax(0,1fr)", // ✅ mobile-friendly
+                  gridTemplateColumns: "minmax(0,1fr) minmax(92px,130px) minmax(0,1fr)",
                 }}
               >
-                {/* HOME */}
                 <div className="min-w-0 text-right">
                   <div className="flex items-center justify-end gap-2 sm:gap-3">
                     <div className={nameCls}>{homeTeam}</div>
@@ -161,10 +171,8 @@ export function MatchdayHero({
                   </div>
                 </div>
 
-                {/* CLOCK */}
                 <div className="flex justify-center">{clockNode}</div>
 
-                {/* AWAY */}
                 <div className="min-w-0 text-left">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <TeamBadge name={awayTeam} logoUrl={awayLogo} />
