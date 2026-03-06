@@ -81,9 +81,7 @@ export function MatchClock({
 
     return (
       <div className={pillBase}>
-        <span className="text-white/85 text-[10px] sm:text-[11px] font-extrabold tracking-[0.18em] uppercase">
-          KO IN
-        </span>
+        
         <span className="text-white font-extrabold text-[11px] sm:text-[13px] tracking-[0.12em] tabular-nums">
           {formatCountdown(ms)}
         </span>
