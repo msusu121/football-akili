@@ -1,4 +1,4 @@
-import { Router } from "express";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { prisma } from "../../lib/prisma.js";
 
 export const publicRouter = Router();
@@ -7,27 +7,109 @@ const NAIROBI_OFFSET_HOURS = 3;
 const NAIROBI_OFFSET_MS = NAIROBI_OFFSET_HOURS * 60 * 60 * 1000;
 const NAIROBI_OFFSET_SUFFIX = "+03:00";
 
-function pad2(n) {
+type Nullable<T> = T | null | undefined;
+
+type MediaLike = {
+  path?: string | null;
+} & Record<string, unknown>;
+
+type SponsorInput = {
+  name?: string | null;
+  website?: string | null;
+  url?: string | null;
+  tier?: string | null;
+  logo?: Nullable<MediaLike>;
+};
+
+type SocialInput = {
+  platform?: string | null;
+  url?: string | null;
+};
+
+type SettingsInput = {
+  clubName?: string | null;
+  ticketsUrl?: string | null;
+  membershipUrl?: string | null;
+  shopUrl?: string | null;
+  partnerName?: string | null;
+  headerLogo?: Nullable<MediaLike>;
+  partnerLogo?: Nullable<MediaLike>;
+};
+
+type TicketEventLike = {
+  id: string;
+};
+
+type MatchInput = {
+  id: string;
+  kickoffAt?: Date | string | null;
+  competition?: string | null;
+  season?: string | null;
+  venue?: string | null;
+  status?: string | null;
+  homeScore?: number | null;
+  awayScore?: number | null;
+  isHome?: boolean | null;
+  opponent?: string | null;
+  ticketEvent?: Nullable<TicketEventLike>;
+};
+
+type LeagueTableRow = {
+  position: number;
+  teamName: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+  logoUrl: string | null;
+};
+
+type MappedSettings = {
+  clubName: string | null;
+  ticketsUrl: string | null;
+  membershipUrl: string | null;
+  shopUrl: string | null;
+  headerLogo: { url: string | null } | null;
+  partnerLogo: { url: string | null } | null;
+  partnerName: string | null;
+};
+
+type MappedMatch = {
+  id: string;
+  kickoff: string | null;
+  competitionName: string | null;
+  season: string | null;
+  venue: string | null;
+  status: string | null;
+  homeScore: number | null;
+  awayScore: number | null;
+  homeTeamName: string;
+  awayTeamName: string;
+  homeTeamLogo: string | null;
+  awayTeamLogo: string | null;
+  ticketEventId: string | null;
+};
+
+function pad2(n: number): string {
   return String(n).padStart(2, "0");
 }
 
 /**
- * Your DB is currently being treated like "naive Nairobi wall time".
+ * DB stores naive Nairobi wall time like:
+ *   2025-12-02 12:00:00
  *
- * Example of what is happening now:
- * - DB stores: 2026-03-07 15:00:00   (no timezone)
- * - Prisma/JS reads it as a Date
- * - toISOString() turns it into something with Z
- * - frontend reads that as UTC and displays +3h ahead in Kenya
- *
- * This function fixes that by preserving the same clock fields
- * and attaching +03:00 explicitly.
+ * Prisma/JS reads it as a Date object.
+ * We preserve the same clock fields and explicitly attach +03:00.
  *
  * Example:
- *   DB Date object representing "2026-03-07 15:00:00"
- *   -> "2026-03-07T15:00:00+03:00"
+ *   DB naive 2025-12-02 12:00:00
+ *   -> 2025-12-02T12:00:00+03:00
  */
-function dbNaiveDateToNairobiIso(value) {
+function dbNaiveDateToNairobiIso(value: Nullable<Date | string>): string | null {
   if (!value) return null;
 
   const d = value instanceof Date ? value : new Date(value);
@@ -44,99 +126,100 @@ function dbNaiveDateToNairobiIso(value) {
 }
 
 /**
- * Because your DB kickoffAt is stored as timezone-less Nairobi wall time,
- * comparisons must use the same convention.
- *
- * Real Nairobi time now:
- *   2026-03-06 14:00 EAT
- * Absolute UTC now:
- *   2026-03-06 11:00Z
- *
- * But DB naive value for 14:00 Nairobi behaves like:
- *   2026-03-06 14:00:00 (read as if it were UTC-ish)
- *
- * So for DB comparisons we shift "now" by +3 hours.
+ * DB kickoffAt is stored as naive Nairobi wall time.
+ * So DB comparisons must use a "naive Nairobi now".
  */
-function nowForNaiveNairobiDb() {
+function nowForNaiveNairobiDb(): Date {
   return new Date(Date.now() + NAIROBI_OFFSET_MS);
 }
 
-function withMediaUrl(asset) {
+function withMediaUrl<T extends MediaLike>(asset: Nullable<T>): (T & { url: string }) | null {
   if (!asset) return null;
+
   const base =
     process.env.ASSETS_PUBLIC_URL ||
     process.env.PUBLIC_MEDIA_BASE_URL ||
     process.env.S3_PUBLIC_BASE_URL ||
     "";
-  return { ...asset, url: base ? `${base}/${asset.path}` : asset.path };
+
+  const path = typeof asset.path === "string" ? asset.path : "";
+  return {
+    ...asset,
+    url: base && path ? `${base}/${path}` : path,
+  };
 }
 
-function mediaUrl(path) {
+function mediaUrl(path: Nullable<string>): string | null {
   if (!path) return null;
   const base = process.env.ASSETS_PUBLIC_URL || process.env.S3_PUBLIC_BASE_URL || "";
   return base ? `${base}/${path}` : path;
 }
 
-function mapSponsors(items) {
-  return (items || []).map((s) => ({
-    name: s.name,
-    url: s.website || s.url || null,
-    tier: s.tier,
-    logoUrl: mediaUrl(s.logo?.path),
+function mapSponsors(items: Nullable<readonly SponsorInput[]>): Array<{
+  name: string | null;
+  url: string | null;
+  tier: string | null;
+  logoUrl: string | null;
+}> {
+  return (items ?? []).map((s) => ({
+    name: s.name ?? null,
+    url: s.website ?? s.url ?? null,
+    tier: s.tier ?? null,
+    logoUrl: mediaUrl(s.logo?.path ?? null),
   }));
 }
 
-function mapSocials(items) {
-  return (items || []).map((x) => ({
-    platform: x.platform,
-    url: x.url,
+function mapSocials(items: Nullable<readonly SocialInput[]>): Array<{
+  platform: string | null;
+  url: string | null;
+}> {
+  return (items ?? []).map((x) => ({
+    platform: x.platform ?? null,
+    url: x.url ?? null,
   }));
 }
 
-function mapSettings(s) {
+function mapSettings(s: Nullable<SettingsInput>): MappedSettings | null {
   if (!s) return null;
 
   return {
-    clubName: s.clubName,
-    ticketsUrl: s.ticketsUrl,
-    membershipUrl: s.membershipUrl,
-    shopUrl: s.shopUrl,
-    headerLogo: s.headerLogo ? { url: mediaUrl(s.headerLogo.path) } : null,
-    partnerLogo: s.partnerLogo ? { url: mediaUrl(s.partnerLogo.path) } : null,
-    partnerName: s.partnerName || null,
+    clubName: s.clubName ?? null,
+    ticketsUrl: s.ticketsUrl ?? null,
+    membershipUrl: s.membershipUrl ?? null,
+    shopUrl: s.shopUrl ?? null,
+    headerLogo: s.headerLogo ? { url: mediaUrl(s.headerLogo.path ?? null) } : null,
+    partnerLogo: s.partnerLogo ? { url: mediaUrl(s.partnerLogo.path ?? null) } : null,
+    partnerName: s.partnerName ?? null,
   };
 }
 
-function mapMatch(m, clubName, clubLogoUrl) {
-  const isHome = !!m.isHome;
+function mapMatch(m: MatchInput, clubName: string, clubLogoUrl: string | null): MappedMatch {
+  const isHome = Boolean(m.isHome);
 
-  const homeTeamName = isHome ? clubName : m.opponent;
-  const awayTeamName = isHome ? m.opponent : clubName;
+  const homeTeamName = isHome ? clubName : m.opponent || "Opponent";
+  const awayTeamName = isHome ? m.opponent || "Opponent" : clubName;
 
   const homeTeamLogo = isHome ? clubLogoUrl : null;
   const awayTeamLogo = isHome ? null : clubLogoUrl;
 
   return {
     id: m.id,
-    kickoff: dbNaiveDateToNairobiIso(m.kickoffAt),
-    competitionName: m.competition,
-    season: m.season,
-    venue: m.venue || null,
-
-    status: m.status,
-    homeScore: m.homeScore,
-    awayScore: m.awayScore,
-
+    kickoff: dbNaiveDateToNairobiIso(m.kickoffAt ?? null),
+    competitionName: m.competition ?? null,
+    season: m.season ?? null,
+    venue: m.venue ?? null,
+    status: m.status ?? null,
+    homeScore: m.homeScore ?? null,
+    awayScore: m.awayScore ?? null,
     homeTeamName,
     awayTeamName,
     homeTeamLogo,
     awayTeamLogo,
-
-    ticketEventId: m.ticketEvent?.id || null,
+    ticketEventId: m.ticketEvent?.id ?? null,
   };
 }
 
-publicRouter.get("/home", async (_req, res, next) => {
+publicRouter.get("/home", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const dbNow = nowForNaiveNairobiDb();
 
@@ -194,12 +277,13 @@ publicRouter.get("/home", async (_req, res, next) => {
       orderBy: { kickoffAt: "asc" },
     });
 
-    const nextMatch = nextMatchRaw
-      ? {
-          ...nextMatchRaw,
-          kickoffAt: dbNaiveDateToNairobiIso(nextMatchRaw.kickoffAt),
-        }
-      : null;
+    const nextMatch =
+      nextMatchRaw != null
+        ? {
+            ...nextMatchRaw,
+            kickoffAt: dbNaiveDateToNairobiIso(nextMatchRaw.kickoffAt),
+          }
+        : null;
 
     res.json({
       settings: settings
@@ -259,19 +343,20 @@ publicRouter.get("/home", async (_req, res, next) => {
   }
 });
 
-publicRouter.get("/faqs", async (_req, res, next) => {
+publicRouter.get("/faqs", async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const items = await prisma.fAQ.findMany({
       where: { isActive: true },
       orderBy: { sort: "asc" },
     });
+
     res.json({ items });
   } catch (e) {
     next(e);
   }
 });
 
-publicRouter.get("/fixtures", async (req, res, next) => {
+publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunction) => {
   try {
     const season = typeof req.query.season === "string" ? req.query.season.trim() : "";
     const seasonWhere = season ? { season } : {};
@@ -320,7 +405,7 @@ publicRouter.get("/fixtures", async (req, res, next) => {
       }),
     ]);
 
-    let leagueTable = [];
+    let leagueTable: LeagueTableRow[] = [];
 
     try {
       const snap = await prisma.leagueTableSnapshot.findFirst({
@@ -341,30 +426,29 @@ publicRouter.get("/fixtures", async (req, res, next) => {
           goalsAgainst: r.goalsAgainst,
           goalDifference: r.goalDifference,
           points: r.points,
-          logoUrl: r.logoUrl || null,
+          logoUrl: r.logoUrl ?? null,
         }));
       }
     } catch {
-      // keep empty until installed
+      leagueTable = [];
     }
 
     const upcomingFixtures = upcoming.map((m) => mapMatch(m, clubName, clubLogoUrl));
     const pastResults = results.map((m) => mapMatch(m, clubName, clubLogoUrl));
 
     const next = upcomingFixtures[0] || null;
-    const countdownSeconds = next?.kickoff
-      ? Math.max(0, Math.floor((new Date(next.kickoff).getTime() - Date.now()) / 1000))
-      : null;
+    const countdownSeconds =
+      next?.kickoff != null
+        ? Math.max(0, Math.floor((new Date(next.kickoff).getTime() - Date.now()) / 1000))
+        : null;
 
     res.json({
       settings,
       socials: mapSocials(socialsRaw),
       sponsors: mapSponsors(sponsorsRaw),
-
       upcomingFixtures,
       results: pastResults,
       leagueTable,
-
       nextFixture: next,
       countdownSeconds,
     });
