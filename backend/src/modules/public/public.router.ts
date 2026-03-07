@@ -381,13 +381,16 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
     const clubName = settings?.clubName || "Mombasa United";
     const clubLogoUrl = settings?.headerLogo?.url || null;
 
+    // ✅ DB stores naive Nairobi wall time → comparisons must use "naive Nairobi now"
     const dbNow = nowForNaiveNairobiDb();
 
+    // ✅ pull upcoming + results
     const [upcoming, results] = await Promise.all([
       prisma.match.findMany({
         where: {
           ...seasonWhere,
           kickoffAt: { gte: dbNow },
+          // ✅ don't use null/"" here; Prisma enum/string non-null will break
           status: { not: "FT" },
         },
         orderBy: { kickoffAt: "asc" },
@@ -405,8 +408,8 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
       }),
     ]);
 
+    // ✅ League table
     let leagueTable: LeagueTableRow[] = [];
-
     try {
       const snap = await prisma.leagueTableSnapshot.findFirst({
         where: { ...(season ? { season } : {}) },
@@ -433,23 +436,82 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
       leagueTable = [];
     }
 
+    // ─────────────────────────────────────────────────────────────
+    // ✅ MATCHDAY FIXTURE: LIVE → inferred-live → next upcoming
+    // ─────────────────────────────────────────────────────────────
+    const LIVE_STATUSES = ["LIVE", "IN_PROGRESS"];
+    const FINISHED_STATUSES = ["FT", "FULL_TIME", "COMPLETED"];
+    const INACTIVE_STATUSES = ["POSTPONED", "CANCELLED", "CANCELED", "ABANDONED", "SUSPENDED"];
+
+    // 1) Prefer explicit LIVE (cap 24h)
+    const liveSince = new Date(dbNow.getTime() - 24 * 60 * 60 * 1000);
+
+    const liveMatch = await prisma.match.findFirst({
+      where: {
+        ...seasonWhere,
+        kickoffAt: { gte: liveSince, lte: dbNow },
+        status: { in: LIVE_STATUSES as any },
+      },
+      orderBy: { kickoffAt: "desc" },
+      include: { ticketEvent: true },
+    });
+
+    // 2) Infer live by time (even if status is still SCHEDULED)
+    const INFER_LIVE_MINUTES = 135; // must match frontend
+    const inferSince = new Date(dbNow.getTime() - INFER_LIVE_MINUTES * 60 * 1000);
+
+    const inferredLiveMatch =
+      liveMatch ||
+      (await prisma.match.findFirst({
+        where: {
+          ...seasonWhere,
+          kickoffAt: { gte: inferSince, lte: dbNow },
+          // ✅ allow SCHEDULED / any active status; exclude only finished/inactive
+          status: { notIn: [...FINISHED_STATUSES, ...INACTIVE_STATUSES] as any },
+        },
+        orderBy: { kickoffAt: "desc" },
+        include: { ticketEvent: true },
+      }));
+
+    // 3) Else fallback to next upcoming
+    const matchdayRaw = inferredLiveMatch || upcoming[0] || null;
+
     const upcomingFixtures = upcoming.map((m) => mapMatch(m, clubName, clubLogoUrl));
     const pastResults = results.map((m) => mapMatch(m, clubName, clubLogoUrl));
 
     const next = upcomingFixtures[0] || null;
+
+    // ✅ Countdown uses epoch ms; DO NOT subtract 3 hours here
     const countdownSeconds =
       next?.kickoff != null
         ? Math.max(0, Math.floor((new Date(next.kickoff).getTime() - Date.now()) / 1000))
         : null;
 
+    // ✅ This is what your homepage expects
+    const matchdayFixture = matchdayRaw ? mapMatch(matchdayRaw, clubName, clubLogoUrl) : null;
+
+    // ✅ optional quick logs
+    console.log("[fixtures] dbNow:", dbNow.toISOString());
+    console.log("[fixtures] liveMatch:", liveMatch?.id, liveMatch?.kickoffAt, liveMatch?.status);
+    console.log(
+      "[fixtures] inferredLive:",
+      inferredLiveMatch?.id,
+      inferredLiveMatch?.kickoffAt,
+      inferredLiveMatch?.status
+    );
+    console.log("[fixtures] matchdayRaw:", matchdayRaw?.id, matchdayRaw?.kickoffAt, matchdayRaw?.status);
+
     res.json({
       settings,
       socials: mapSocials(socialsRaw),
       sponsors: mapSponsors(sponsorsRaw),
+
       upcomingFixtures,
       results: pastResults,
       leagueTable,
+
       nextFixture: next,
+      matchdayFixture, // ✅ IMPORTANT
       countdownSeconds,
     });
   } catch (e) {

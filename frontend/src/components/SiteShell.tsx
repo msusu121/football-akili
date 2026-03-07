@@ -136,6 +136,458 @@ function SocialIcon({ platform }: { platform: string }) {
   return <span className="text-xs font-bold uppercase">{platform.substring(0, 2)}</span>;
 }
 
+/* ──────────────────────────────────────────────────────────────
+   ✅ FULL-WIDTH TAKEOVER HEADER AD (ManUtd-style)
+   - Always 100vw (breaks out of container)
+   - First: animated "MOMBASA BORN & BRED" (intro)
+   - Then: cycles actual sponsor creatives (Khushi Motors etc)
+   - Uses HeaderAdBanner as fallback when reduced-motion is enabled
+   - Does NOT touch your existing header/menu logic
+   ────────────────────────────────────────────────────────────── */
+type HeaderAdItem = {
+  id: string;
+  title?: string | null;
+  href?: string | null;
+  ctaLabel?: string | null;
+  imageUrl?: string | null;
+};
+
+function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
+  const ads = Array.isArray(items) ? items.filter((x) => !!x?.imageUrl) : [];
+  const [reduced, setReduced] = useState(false);
+
+  // phase: 0 = intro, 1 = ads
+  const [phase, setPhase] = useState<0 | 1>(0);
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const mq = window.matchMedia?.("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(!!mq?.matches);
+    sync();
+    mq?.addEventListener?.("change", sync);
+    return () => mq?.removeEventListener?.("change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!ads.length) return;
+    if (reduced) return;
+
+    let t1: number | null = null;
+    let t2: number | null = null;
+
+    const INTRO_MS = 2600; // "Born & Bred" first
+    const AD_MS = 8000; // each sponsor slide
+
+    // intro -> ads
+    t1 = window.setTimeout(() => setPhase(1), INTRO_MS);
+
+    // rotate ads (start after intro)
+    const startRotate = () => {
+      t2 = window.setInterval(() => {
+        setIdx((v) => (v + 1) % ads.length);
+      }, AD_MS);
+    };
+
+    const startTimer = window.setTimeout(startRotate, INTRO_MS + 150);
+
+    const onVis = () => {
+      // stop rotating when tab hidden (keeps UX clean)
+      if (document.hidden) {
+        if (t2) window.clearInterval(t2);
+        t2 = null;
+      } else {
+        // restart only if already in ads phase
+        if (phase === 1 && !t2) startRotate();
+      }
+    };
+    document.addEventListener("visibilitychange", onVis);
+
+    return () => {
+      if (t1) window.clearTimeout(t1);
+      if (t2) window.clearInterval(t2);
+      window.clearTimeout(startTimer);
+      document.removeEventListener("visibilitychange", onVis);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ads.length, reduced]);
+
+  if (!ads.length) return null;
+
+  // Reduced-motion fallback = your existing banner component (still full width)
+  if (reduced) {
+    return (
+      <div className="muTakeoverFullBleed">
+        <HeaderAdBanner items={ads as any} />
+        <style jsx global>{`
+          .muTakeoverFullBleed {
+            width: 100vw;
+            position: relative;
+            left: 50%;
+            right: 50%;
+            margin-left: -50vw;
+            margin-right: -50vw;
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  const activeAd = ads[idx];
+
+  return (
+    <div className="muTakeoverFullBleed">
+      <div className="muTakeoverWrap" role="region" aria-label="Partner promotion">
+        {/* Slides stack */}
+        <div className={`muSlide muIntro ${phase === 0 ? "isActive" : ""}`}>
+          <div className="muIntroInner">
+            <div className="muIntroTop">MOMBASA</div>
+            <div className="muIntroMid">
+              <span className="muBorn">BORN</span>
+              <span className="muAmp">&amp;</span>
+            </div>
+            <div className="muIntroBot">
+              <span className="muGhost">B</span>
+              <span className="muBred">BRED</span>
+            </div>
+          </div>
+          <div className="muSheen" aria-hidden="true" />
+        </div>
+
+        <a
+          className={`muSlide muAd ${phase === 1 ? "isActive" : ""}`}
+          href={activeAd?.href || "#"}
+          target={activeAd?.href ? "_blank" : undefined}
+          rel={activeAd?.href ? "noopener noreferrer" : undefined}
+          aria-label={activeAd?.title || "Partner promotion"}
+        >
+          <div className="muAdBg" aria-hidden="true" />
+          {/* Creative image full width */}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            className="muAdImg"
+            src={String(activeAd?.imageUrl || "")}
+            alt={activeAd?.title || "Partner promotion"}
+            loading="eager"
+          />
+
+          {/* Overlay CTA like MU (right side) */}
+          <div className="muAdOverlay">
+            <div className="muAdMeta">
+              <div className="muAdKicker">OFFICIAL PARTNER</div>
+              <div className="muAdTitle">{(activeAd?.title || "Partner").toUpperCase()}</div>
+            </div>
+
+            <div className="muAdCtaWrap">
+              <span className="muAdCta">{(activeAd?.ctaLabel || "SHOP NOW").toUpperCase()} →</span>
+            </div>
+          </div>
+
+          <div className="muSheen" aria-hidden="true" />
+        </a>
+      </div>
+
+      {/* FULL-BLEED + ANIMATION CSS */}
+      <style jsx global>{`
+        .muTakeoverFullBleed {
+          width: 100vw;
+          position: relative;
+          left: 50%;
+          right: 50%;
+          margin-left: -50vw;
+          margin-right: -50vw;
+        }
+
+        .muTakeoverWrap {
+          position: relative;
+          overflow: hidden;
+          height: 92px;
+          background: #0b0f14;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        @media (min-width: 640px) {
+          .muTakeoverWrap {
+            height: 104px;
+          }
+        }
+        @media (min-width: 768px) {
+          .muTakeoverWrap {
+            height: 112px;
+          }
+        }
+
+        .muSlide {
+          position: absolute;
+          inset: 0;
+          opacity: 0;
+          transform: translateY(10px) scale(1.01);
+          transition: opacity 520ms ease, transform 520ms ease;
+          will-change: opacity, transform;
+        }
+        .muSlide.isActive {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+          z-index: 2;
+        }
+
+        /* Intro (Born & Bred) */
+        .muIntro {
+          background: radial-gradient(1200px 180px at 40% 50%, #ffffff 0%, #f6f7fb 40%, #eef1f7 100%);
+        }
+
+        .muIntroInner {
+          height: 100%;
+          display: grid;
+          place-content: center;
+          text-align: center;
+          line-height: 1;
+          padding: 8px 14px;
+        }
+
+        .muIntroTop {
+          font-weight: 900;
+          letter-spacing: -0.02em;
+          color: #10214a;
+          font-size: clamp(18px, 4.2vw, 44px);
+          transform: translateY(8px);
+          opacity: 0;
+          animation: muInUp 620ms ease forwards;
+        }
+
+        .muIntroMid {
+          display: inline-flex;
+          align-items: baseline;
+          justify-content: center;
+          gap: 10px;
+          margin-top: 2px;
+        }
+
+        .muBorn {
+          font-weight: 1000;
+          letter-spacing: -0.04em;
+          font-size: clamp(28px, 7vw, 62px);
+          background: linear-gradient(90deg, #7c3aed, #2563eb, #ef4444, #7c3aed);
+          background-size: 260% 100%;
+          -webkit-background-clip: text;
+          background-clip: text;
+          color: transparent;
+          transform: translateY(10px);
+          opacity: 0;
+          animation: muInUp 660ms ease 120ms forwards, muGrad 1500ms ease 220ms infinite;
+        }
+
+        .muAmp {
+          font-weight: 900;
+          font-size: clamp(22px, 5.4vw, 54px);
+          color: #2563eb;
+          transform: translateY(10px);
+          opacity: 0;
+          animation: muInUp 660ms ease 180ms forwards;
+        }
+
+        .muIntroBot {
+          position: relative;
+          display: grid;
+          place-items: center;
+          margin-top: 0px;
+        }
+
+        .muGhost {
+          position: absolute;
+          inset: auto;
+          font-weight: 1000;
+          font-size: clamp(54px, 12vw, 120px);
+          color: rgba(15, 23, 42, 0.08);
+          transform: translateY(14px) scale(0.98);
+          opacity: 0;
+          animation: muInUp 720ms ease 200ms forwards;
+          pointer-events: none;
+          user-select: none;
+        }
+
+        .muBred {
+          position: relative;
+          font-weight: 1000;
+          letter-spacing: -0.04em;
+          font-size: clamp(34px, 8vw, 76px);
+          color: #ef4444;
+          transform: translateY(12px);
+          opacity: 0;
+          animation: muInUp 720ms ease 240ms forwards;
+        }
+
+        /* Ad slide */
+        .muAd {
+          display: block;
+          background: #0b0f14;
+          text-decoration: none;
+        }
+
+        .muAdBg {
+          position: absolute;
+          inset: 0;
+          background: radial-gradient(900px 180px at 30% 50%, rgba(255, 255, 255, 0.08), transparent 55%),
+            linear-gradient(90deg, rgba(0, 0, 0, 0.75), rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.75));
+          pointer-events: none;
+        }
+
+        .muAdImg {
+          position: absolute;
+          inset: 0;
+          width: 100%;
+          height: 100%;
+          object-fit: cover; /* takeover look */
+          transform: scale(1.02);
+          filter: saturate(1.05) contrast(1.05);
+          animation: muSlowZoom 8200ms ease-in-out infinite;
+        }
+
+        .muAdOverlay {
+          position: relative;
+          height: 100%;
+          display: grid;
+          grid-template-columns: 1fr auto;
+          align-items: center;
+          gap: 14px;
+          padding: 10px 14px;
+        }
+
+        .muAdMeta {
+          min-width: 0;
+          color: rgba(255, 255, 255, 0.95);
+        }
+
+        .muAdKicker {
+          font-size: 10px;
+          font-weight: 900;
+          letter-spacing: 0.28em;
+          opacity: 0.7;
+        }
+
+        .muAdTitle {
+          margin-top: 2px;
+          font-size: clamp(14px, 2.2vw, 22px);
+          font-weight: 1000;
+          letter-spacing: -0.02em;
+          line-height: 1.05;
+          text-transform: uppercase;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .muAdCtaWrap {
+          display: flex;
+          align-items: center;
+          justify-content: flex-end;
+        }
+
+        .muAdCta {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          padding: 10px 16px;
+          border-radius: 999px;
+          background: rgba(255, 255, 255, 0.92);
+          color: #0b0f14;
+          font-weight: 1000;
+          font-size: 11px;
+          letter-spacing: 0.18em;
+          text-transform: uppercase;
+          transform: translateY(0);
+          transition: transform 200ms ease, background 200ms ease;
+          white-space: nowrap;
+        }
+
+        .muAd:hover .muAdCta {
+          transform: translateY(-1px);
+          background: #ffffff;
+        }
+
+        /* Mobile: keep takeover clean (no CTA button crowding) */
+        @media (max-width: 420px) {
+          .muAdOverlay {
+            grid-template-columns: 1fr;
+            justify-items: center;
+            text-align: center;
+          }
+          .muAdCtaWrap {
+            display: none; /* MU mobile often keeps creative clean */
+          }
+          .muAdTitle {
+            white-space: normal;
+          }
+        }
+
+        /* Subtle sheen sweep */
+        .muSheen {
+          position: absolute;
+          top: -40%;
+          left: -30%;
+          width: 40%;
+          height: 180%;
+          background: linear-gradient(
+            90deg,
+            transparent,
+            rgba(255, 255, 255, 0.14),
+            transparent
+          );
+          transform: skewX(-18deg);
+          animation: muSheen 2600ms ease-in-out infinite;
+          pointer-events: none;
+          opacity: 0.8;
+          mix-blend-mode: screen;
+        }
+
+        @keyframes muInUp {
+          to {
+            transform: translateY(0);
+            opacity: 1;
+          }
+        }
+
+        @keyframes muGrad {
+          0% {
+            background-position: 0% 50%;
+          }
+          100% {
+            background-position: 100% 50%;
+          }
+        }
+
+        @keyframes muSheen {
+          0% {
+            transform: translateX(-180%) skewX(-18deg);
+            opacity: 0;
+          }
+          20% {
+            opacity: 0.85;
+          }
+          60% {
+            opacity: 0.2;
+          }
+          100% {
+            transform: translateX(420%) skewX(-18deg);
+            opacity: 0;
+          }
+        }
+
+        @keyframes muSlowZoom {
+          0% {
+            transform: scale(1.02);
+          }
+          50% {
+            transform: scale(1.06);
+          }
+          100% {
+            transform: scale(1.02);
+          }
+        }
+      `}</style>
+    </div>
+  );
+}
+
 export function SiteShell({
   children,
   settings,
@@ -197,13 +649,17 @@ export function SiteShell({
         if (!r.ok) return;
         const json = await r.json();
         if (!alive) return;
-        setHeaderAds((json?.items || []).map((x: any) => ({
-          id: x.id,
-          title: x.title,
-          href: x.href,
-          ctaLabel: x.ctaLabel,
-          imageUrl: x.imageUrl,
-        })));
+
+        // keep your mapping, but ensure imageUrl always present
+        setHeaderAds(
+          (json?.items || []).map((x: any) => ({
+            id: x.id,
+            title: x.title,
+            href: x.href,
+            ctaLabel: x.ctaLabel,
+            imageUrl: x.imageUrl, // backend should return resolved URL
+          }))
+        );
       } catch {
         // silently ignore (ads are optional)
       }
@@ -245,8 +701,11 @@ export function SiteShell({
         ref={headerRef as any}
         className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "shadow-soft" : ""}`}
       >
-        {/* ✅ ManUtd-like ad banner ABOVE header */}
-        <HeaderAdBanner items={headerAds} />
+        {/* ✅ FULL-WIDTH TAKEOVER ABOVE header (MU-style)
+            First: animated "Mombasa Born & Bred"
+            Then: Khushi Motors (and any other HEADER_TOP ads)
+        */}
+        <HeaderTakeover items={headerAds as any} />
 
         {/* TOP BAR */}
         <div className="bg-ink text-white border-b border-white/10">
@@ -328,7 +787,9 @@ export function SiteShell({
                     }`}
                   >
                     {link.label}
-                    {isActive && <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-[color:var(--brand-accent)] rounded-full" />}
+                    {isActive && (
+                      <span className="absolute bottom-0 left-4 right-4 h-[2px] bg-[color:var(--brand-accent)] rounded-full" />
+                    )}
                   </Link>
                 );
               })}
