@@ -332,7 +332,7 @@ function FixtureCard({
           </button>
         </div>
 
-        {/* TICKET INFO — centered below with arrow */}
+        {/* TICKET INFO — centered below with arrow 
         <div className="flex items-center justify-center mt-3 gap-1">
           <Link
             href={ticketsUrl}
@@ -345,7 +345,7 @@ function FixtureCard({
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
           </span>
-        </div>
+        </div>    */}
       </div>
     </div>
   );
@@ -411,7 +411,7 @@ function ResultCard({ result }: { result: any }) {
           </button>
         </div>
 
-        {/* MATCH REVIEW — centered below */}
+        {/* MATCH REVIEW — centered below
         <div className="flex items-center justify-center mt-3 gap-1">
           <Link
             href="#"
@@ -424,7 +424,7 @@ function ResultCard({ result }: { result: any }) {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
             </svg>
           </span>
-        </div>
+        </div>    */} 
       </div>
     </div>
   );

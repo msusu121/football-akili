@@ -108,7 +108,7 @@ export function MatchdayHero({
       : "/fixtures?tab=results";
 
   const ctaLabel =
-    inferred === "PRE" ? "TICKET INFO" : inferred === "LIVE" ? "MATCH CENTRE" : "MATCH REPORT";
+    inferred === "PRE" ? "" : inferred === "LIVE" ? "MATCH CENTRE" : "MATCH REPORT";
 
   const nameCls = [
     "text-white font-extrabold uppercase",

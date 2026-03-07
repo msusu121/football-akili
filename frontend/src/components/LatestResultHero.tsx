@@ -187,13 +187,13 @@ export function LatestResultHero({
               {fmtLongDate(kickoff)}
               {latestResult.venue ? `, ${latestResult.venue}` : ""}
             </div>
-
+{/*
             <Link
               href={`${fixturesPageHref}?tab=results`}
               className="mt-6 sm:mt-8 inline-flex items-center justify-center px-8 sm:px-10 py-3 rounded-full bg-brand text-ink font-extrabold text-[11px] tracking-[0.15em] uppercase hover:opacity-95 transition"
             >
               MATCH REVIEW
-            </Link>
+            </Link>   */}
           </div>
         </div>
       </div>
