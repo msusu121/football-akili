@@ -695,15 +695,20 @@ function AdsPanel({ token, data, onChange }: { token: string; data: any; onChang
   });
 
   // Load media list (so you can pick mediaId)
-  const loadMedia = async () => {
-    setMediaLoading(true);
-    try {
-      const r = await apiJson(`/admin/media${mediaQ ? `?q=${encodeURIComponent(mediaQ)}` : ""}`, { token });
-      setMediaItems(r?.items || []);
-    } finally {
-      setMediaLoading(false);
-    }
-  };
+  type AdminMediaListResponse = { items: any[] };
+
+const loadMedia = async () => {
+  setMediaLoading(true);
+  try {
+    const r = await apiJson<AdminMediaListResponse>(
+      `/admin/media${mediaQ ? `?q=${encodeURIComponent(mediaQ)}` : ""}`,
+      { token }
+    );
+    setMediaItems(r?.items ?? []);
+  } finally {
+    setMediaLoading(false);
+  }
+};
 
   useEffect(() => {
     // load initial media list when entering Ads panel
