@@ -1,29 +1,12 @@
-// ============================================================
-// FILE: frontend/src/components/SiteShell.tsx
-// DROP-IN REPLACEMENT — Global layout: Navbar + Footer
-//
-// FIXES INCLUDED:
-// ✅ Top bar shows on MOBILE + DESKTOP (not md-only)
-// ✅ Top bar is WHITE with BLACK text
-// ✅ Left top-bar label is "SIGN IN" (goes to /login)
-// ✅ Right top-bar label is "TEMBEA MOMBASA"
-// ✅ iPhone 12 header elongation fixed (no wrapping + fixed height)
-// ✅ Mobile order preserved: Logo LEFT → Hamburger → Search (all LEFT)
-// ✅ Mobile menu overlay offset corrected for new header height
-// ============================================================
-
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useState, useEffect, ReactNode } from "react";
+import React, { useEffect, useLayoutEffect, useRef, useState, ReactNode } from "react";
+import { HeaderAdBanner } from "@/components/HeaderAdBanner";
 
-/**
- * IMPORTANT:
- * If your backend returns relative URLs like "/uploads/logo.png",
- * set NEXT_PUBLIC_ASSET_BASE_URL="https://api.yourdomain.com"
- */
 const ASSET_BASE = process.env.NEXT_PUBLIC_ASSET_BASE_URL || process.env.NEXT_PUBLIC_API_URL || "";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 
 function resolveAssetUrl(u?: string | null) {
   if (!u) return "";
@@ -117,7 +100,7 @@ const FOOTER_LINKS = [
   },
 ];
 
-/* ── social icon SVGs ── */
+/* ── social icons ── */
 function SocialIcon({ platform }: { platform: string }) {
   const p = platform.toLowerCase();
   if (p === "facebook" || p === "fb")
@@ -163,8 +146,12 @@ export function SiteShell({
   BG_WASH = "rgba(255, 255, 255, 0.75)",
 }: SiteShellProps) {
   const pathname = usePathname();
+  const headerRef = useRef<HTMLElement | null>(null);
+
   const [mobileOpen, setMobileOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [headerH, setHeaderH] = useState(104); // fallback
+  const [headerAds, setHeaderAds] = useState<any[]>([]);
 
   useEffect(() => setMobileOpen(false), [pathname]);
 
@@ -181,6 +168,54 @@ export function SiteShell({
     };
   }, [mobileOpen]);
 
+  // ✅ Measure header height so mobile menu top always correct (ads/no ads)
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    if (!el) return;
+
+    const update = () => setHeaderH(Math.round(el.getBoundingClientRect().height));
+    update();
+
+    const ro = new ResizeObserver(update);
+    ro.observe(el);
+
+    return () => ro.disconnect();
+  }, []);
+
+  // ✅ Fetch header ads (no page changes needed)
+  useEffect(() => {
+    let alive = true;
+    const controller = new AbortController();
+
+    async function loadAds() {
+      try {
+        const base = API_BASE || "";
+        const r = await fetch(`${base}/public/ads?placement=HEADER_TOP`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!r.ok) return;
+        const json = await r.json();
+        if (!alive) return;
+        setHeaderAds((json?.items || []).map((x: any) => ({
+          id: x.id,
+          title: x.title,
+          href: x.href,
+          ctaLabel: x.ctaLabel,
+          imageUrl: x.imageUrl,
+        })));
+      } catch {
+        // silently ignore (ads are optional)
+      }
+    }
+
+    loadAds();
+    return () => {
+      alive = false;
+      controller.abort();
+    };
+  }, []);
+
   const clubName = settings?.clubName || "Mombasa United FC";
   const clubLogo = resolveAssetUrl(
     settings?.headerLogo?.url ||
@@ -190,8 +225,11 @@ export function SiteShell({
       settings?.logo?.url ||
       settings?.logoUrl
   );
+
   const partnerName = settings?.partnerName || "SportPesa";
-  const partnerLogo = resolveAssetUrl(settings?.partnerLogo?.url || settings?.partnerLogoUrl || settings?.partner?.logo?.url);
+  const partnerLogo = resolveAssetUrl(
+    settings?.partnerLogo?.url || settings?.partnerLogoUrl || settings?.partner?.logo?.url
+  );
 
   return (
     <div
@@ -203,50 +241,38 @@ export function SiteShell({
         backgroundPosition: "top center",
       }}
     >
-      {/* ═══════════════════════════════════════════════════
-          NAVBAR
-          ═══════════════════════════════════════════════════ */}
-      <header className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "shadow-soft" : ""}`}>
-       {/* ✅ TOP BAR — MOBILE + DESKTOP (BLACK BG, WHITE TEXT) */}
-<div className="bg-ink text-white border-b border-white/10">
-  <div className="container-ms h-10 flex items-center justify-between">
-    {/* Left: SIGN IN with person icon */}  
-    <Link
-      href="/login"
-      className="inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.22em] uppercase text-white/90 hover:text-white transition whitespace-nowrap"
-      aria-label="Sign in"
-    >
-      {/* person icon */}
-      <svg
-        className="w-4 h-4 text-white/80"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth={2}
-        viewBox="0 0 24 24"
-        aria-hidden="true"
+      <header
+        ref={headerRef as any}
+        className={`sticky top-0 z-50 transition-all duration-300 ${scrolled ? "shadow-soft" : ""}`}
       >
-        <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M4.5 20.25a7.5 7.5 0 0115 0"
-        />
-      </svg>
+        {/* ✅ ManUtd-like ad banner ABOVE header */}
+        <HeaderAdBanner items={headerAds} />
 
-      <span>Sign In</span>
-    </Link>
+        {/* TOP BAR */}
+        <div className="bg-ink text-white border-b border-white/10">
+          <div className="container-ms h-10 flex items-center justify-between">
+            <Link
+              href="/login"
+              className="inline-flex items-center gap-2 text-[11px] font-extrabold tracking-[0.22em] uppercase text-white/90 hover:text-white transition whitespace-nowrap"
+              aria-label="Sign in"
+            >
+              <svg className="w-4 h-4 text-white/80" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 7.5a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0z" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 20.25a7.5 7.5 0 0115 0" />
+              </svg>
+              <span>Sign In</span>
+            </Link>
 
-    {/* Right: TEMBEA MOMBASA */}
-    <div className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-white whitespace-nowrap">
-      Tembea Mombasa
-    </div>
-  </div>
-</div>
+            <div className="text-[11px] font-extrabold tracking-[0.22em] uppercase text-white whitespace-nowrap">
+              Tembea Mombasa
+            </div>
+          </div>
+        </div>
 
-        {/* Main nav bar (BLUE) */}
+        {/* Main nav bar */}
         <div className={`transition-all duration-300 ${scrolled ? "bg-brand/95 backdrop-blur-md" : "bg-brand"}`}>
           <div className="container-ms flex items-center justify-between h-16 md:h-[72px]">
-            {/* LEFT: Logo + (mobile) Hamburger + Search — exact order */}
+            {/* LEFT */}
             <div className="flex items-center gap-2 shrink-0 min-w-0">
               <Link href="/" className="flex items-center gap-3 min-w-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -263,7 +289,7 @@ export function SiteShell({
                 </span>
               </Link>
 
-              {/* Hamburger (mobile only) */}
+              {/* Hamburger */}
               <button
                 className="md:hidden p-2 text-white/80 hover:text-white transition"
                 onClick={() => setMobileOpen(!mobileOpen)}
@@ -281,19 +307,15 @@ export function SiteShell({
                 )}
               </button>
 
-              {/* Search (mobile only) */}
+              {/* Search */}
               <button className="md:hidden p-2 text-white/60 hover:text-white transition" aria-label="Search">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
               </button>
             </div>
 
-            {/* Desktop nav links (center) */}
+            {/* Desktop nav */}
             <nav className="hidden md:flex items-center gap-1">
               {NAV_LINKS.map((link) => {
                 const isActive = pathname === link.href || pathname.startsWith(link.href + "/");
@@ -312,7 +334,7 @@ export function SiteShell({
               })}
             </nav>
 
-            {/* RIGHT: Desktop Partner + Search */}
+            {/* RIGHT desktop */}
             <div className="hidden md:flex items-center gap-4 shrink-0">
               <div className="hidden lg:flex items-center gap-2">
                 <span className="text-[9px] text-white/30 tracking-wider uppercase">In partnership with</span>
@@ -329,21 +351,18 @@ export function SiteShell({
 
               <button className="p-2 text-white/60 hover:text-white transition" aria-label="Search">
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                  />
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
                 </svg>
               </button>
             </div>
           </div>
 
-          {/* ═══ MOBILE MENU — Full-screen overlay (top offset updated) ═══ */}
+          {/* MOBILE MENU overlay — dynamic top */}
           <div
-            className={`md:hidden fixed inset-0 top-[104px] z-40 bg-brand transition-all duration-300 ${
+            className={`md:hidden fixed inset-0 z-40 bg-brand transition-all duration-300 ${
               mobileOpen ? "opacity-100 translate-y-0 pointer-events-auto" : "opacity-0 -translate-y-4 pointer-events-none"
             }`}
+            style={{ top: headerH }}
           >
             <nav className="flex flex-col p-6 space-y-1">
               {NAV_LINKS.map((link) => {
@@ -399,14 +418,15 @@ export function SiteShell({
         </div>
       </header>
 
-      {/* MAIN */}
       <main className="flex-1">{children}</main>
 
-      {/* SPONSORS BAR */}
+      {/* Sponsors */}
       {sponsors.length > 0 && (
         <section className="bg-white border-t border-line py-10">
           <div className="container-ms">
-            <p className="text-center text-[10px] font-extrabold tracking-[0.3em] uppercase text-muted mb-8">Official Partners</p>
+            <p className="text-center text-[10px] font-extrabold tracking-[0.3em] uppercase text-muted mb-8">
+              Official Partners
+            </p>
             <div className="flex flex-wrap items-center justify-center gap-8 md:gap-14">
               {sponsors.map((s) => {
                 const sLogo = resolveAssetUrl(s.logo?.url || s.logoUrl);
@@ -439,7 +459,7 @@ export function SiteShell({
         </section>
       )}
 
-      {/* FOOTER */}
+      {/* Footer */}
       <footer className="footer-surface">
         <div className="container-ms py-14 md:py-16">
           <div className="grid grid-cols-1 md:grid-cols-5 gap-10 md:gap-8">
@@ -456,7 +476,9 @@ export function SiteShell({
                 />
                 <div>
                   <p className="font-extrabold text-white text-base tracking-wide uppercase">{clubName}</p>
-                  <p className="text-[10px] text-white/40 tracking-[0.2em] uppercase mt-0.5">Est. 2024 · Mombasa, Kenya</p>
+                  <p className="text-[10px] text-white/40 tracking-[0.2em] uppercase mt-0.5">
+                    Est. 2024 · Mombasa, Kenya
+                  </p>
                 </div>
               </div>
 
@@ -500,25 +522,10 @@ export function SiteShell({
         </div>
 
         <div className="border-t border-white/10">
-          <div className="container-ms py-8 flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <p className="text-sm font-bold text-white">Stay in the loop</p>
-              <p className="text-xs text-white/40 mt-1">Get the latest news and fixture updates delivered to your inbox.</p>
-            </div>
-            <div className="newsletter-wrap">
-              <input type="email" placeholder="Your email address" className="newsletter-input" />
-              <button className="newsletter-send" aria-label="Subscribe">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                </svg>
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="border-t border-white/10">
           <div className="container-ms py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-[11px] text-white/30">© {new Date().getFullYear()} {clubName}. All rights reserved.</p>
+            <p className="text-[11px] text-white/30">
+              © {new Date().getFullYear()} {clubName}. All rights reserved.
+            </p>
             <div className="flex items-center gap-6 text-[11px] text-white/30">
               <Link href="/privacy" className="hover:text-white/60 transition">Privacy Policy</Link>
               <Link href="/terms" className="hover:text-white/60 transition">Terms of Use</Link>

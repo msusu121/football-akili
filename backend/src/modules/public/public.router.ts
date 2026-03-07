@@ -456,3 +456,70 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
     next(e);
   }
 });
+
+
+// ===============================
+// PUBLIC ADS
+// GET /public/ads?placement=HEADER_TOP
+// ===============================
+publicRouter.get("/ads", async (req, res, next) => {
+  try {
+    const placement = typeof req.query.placement === "string" ? req.query.placement.trim() : "";
+
+    const now = new Date();
+
+    const where: any = {
+      isActive: true,
+      AND: [
+        { OR: [{ startsAt: null }, { startsAt: { lte: now } }] },
+        { OR: [{ endsAt: null }, { endsAt: { gte: now } }] },
+      ],
+    };
+
+    if (placement) where.placement = placement;
+
+    const ads = await prisma.adBanner.findMany({
+      where,
+      orderBy: [{ placement: "asc" }, { sort: "asc" }, { createdAt: "desc" }],
+      include: { media: true },
+      take: 50,
+    });
+
+    // Robust public URL builder (MinIO/S3 or local /media)
+    const publicMediaBase =
+      process.env.S3_PUBLIC_BASE_URL ||
+      process.env.PUBLIC_MEDIA_BASE_URL ||
+      "http://localhost:4000/media";
+
+    function mediaUrl(asset: any | null) {
+      if (!asset?.path) return null;
+      const p = String(asset.path).trim();
+      if (!p) return null;
+      if (p.startsWith("http://") || p.startsWith("https://")) return p;
+      return `${publicMediaBase.replace(/\/+$/g, "")}/${p.replace(/^\/+/g, "")}`;
+    }
+
+    const items = ads.map((a) => ({
+      id: a.id,
+      title: a.title,
+      placement: a.placement,
+      href: a.href || null,
+      ctaLabel: a.ctaLabel || null,
+      imageUrl: mediaUrl(a.media),
+      startsAt: a.startsAt ? a.startsAt.toISOString() : null,
+      endsAt: a.endsAt ? a.endsAt.toISOString() : null,
+      sort: a.sort,
+    }));
+
+    // group for convenience
+    const grouped = items.reduce((acc: any, it: any) => {
+      acc[it.placement] = acc[it.placement] || [];
+      acc[it.placement].push(it);
+      return acc;
+    }, {});
+
+    res.json({ items, grouped });
+  } catch (e) {
+    next(e);
+  }
+});

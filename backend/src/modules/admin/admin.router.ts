@@ -25,6 +25,19 @@ adminRouter.get("/overview", async (_req, res, next) => {
     next(e);
   }
 });
+// -------------------- Ads --------------------
+const AdUpsertSchema = z.object({
+  title: z.string().min(2),
+  placement: z.enum(["HEADER_TOP", "HEADER_BELOW_NAV", "HOME_INLINE"]).default("HEADER_TOP"),
+  href: z.string().optional().nullable(),
+  ctaLabel: z.string().optional().nullable(),
+  mediaId: z.string().optional().nullable(),
+  startsAt: z.string().datetime().optional().nullable(),
+  endsAt: z.string().datetime().optional().nullable(),
+  sort: z.number().int().optional(),
+  isActive: z.boolean().optional(),
+});
+
 
 // -------------------- Media Library --------------------
 const MediaCreateSchema = z.object({
@@ -499,6 +512,79 @@ adminRouter.put("/highlights/:id", async (req, res, next) => {
 adminRouter.delete("/highlights/:id", async (req, res, next) => {
   try {
     await prisma.highlight.delete({ where: { id: req.params.id } });
+    res.json({ ok: true });
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+
+// ===============================
+// ADS (CRUD)
+// ===============================
+
+adminRouter.get("/ads", async (_req, res, next) => {
+  try {
+    const items = await prisma.adBanner.findMany({
+      orderBy: [{ placement: "asc" }, { sort: "asc" }, { createdAt: "desc" }],
+      include: { media: true },
+      take: 200,
+    });
+    res.json({ items });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminRouter.post("/ads", async (req, res, next) => {
+  try {
+    const body = AdUpsertSchema.parse(req.body);
+    const item = await prisma.adBanner.create({
+      data: {
+        title: body.title,
+        placement: body.placement,
+        href: body.href ?? null,
+        ctaLabel: body.ctaLabel ?? null,
+        mediaId: body.mediaId ?? null,
+        startsAt: body.startsAt ? new Date(body.startsAt) : null,
+        endsAt: body.endsAt ? new Date(body.endsAt) : null,
+        sort: body.sort ?? 0,
+        isActive: body.isActive ?? true,
+      },
+    });
+    res.json({ item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminRouter.put("/ads/:id", async (req, res, next) => {
+  try {
+    const body = AdUpsertSchema.partial().parse(req.body);
+    const item = await prisma.adBanner.update({
+      where: { id: req.params.id },
+      data: {
+        ...(body.title !== undefined ? { title: body.title } : {}),
+        ...(body.placement !== undefined ? { placement: body.placement } : {}),
+        ...(body.href !== undefined ? { href: body.href ?? null } : {}),
+        ...(body.ctaLabel !== undefined ? { ctaLabel: body.ctaLabel ?? null } : {}),
+        ...(body.mediaId !== undefined ? { mediaId: body.mediaId ?? null } : {}),
+        ...(body.startsAt !== undefined ? { startsAt: body.startsAt ? new Date(body.startsAt) : null } : {}),
+        ...(body.endsAt !== undefined ? { endsAt: body.endsAt ? new Date(body.endsAt) : null } : {}),
+        ...(body.sort !== undefined ? { sort: body.sort ?? 0 } : {}),
+        ...(body.isActive !== undefined ? { isActive: body.isActive } : {}),
+      },
+    });
+    res.json({ item });
+  } catch (e) {
+    next(e);
+  }
+});
+
+adminRouter.delete("/ads/:id", async (req, res, next) => {
+  try {
+    await prisma.adBanner.delete({ where: { id: req.params.id } });
     res.json({ ok: true });
   } catch (e) {
     next(e);

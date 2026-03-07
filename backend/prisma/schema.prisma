@@ -90,6 +90,7 @@ model MediaAsset {
   siteHomeShopImageFor   SiteSetting[] @relation("HomeShopImage")
   siteHomeMembershipFor  SiteSetting[] @relation("HomeMembershipImage")
   siteHeroMediaFor       SiteSetting[] @relation("HeroMedia")
+  adBannerMediaFor AdBanner[] @relation("AdBannerMedia")
 }
 
 model NewsPost {
@@ -415,4 +416,38 @@ model SiteSetting {
   heroMedia    MediaAsset? @relation("HeroMedia", fields: [heroMediaId], references: [id])
 
   updatedAt   DateTime @updatedAt
+}
+
+
+// =====================
+// Ads (Header Banners)
+// =====================
+
+enum AdPlacement {
+  HEADER_TOP          // like ManUtd big banner above header
+  HEADER_BELOW_NAV    // optional second strip under nav
+  HOME_INLINE         // optional future use
+}
+
+model AdBanner {
+  id        String      @id @default(cuid())
+  title     String
+  placement AdPlacement @default(HEADER_TOP)
+
+  href      String?     @db.LongText
+  ctaLabel  String?     // optional (e.g., "Learn More")
+
+  mediaId   String?
+  media     MediaAsset? @relation("AdBannerMedia", fields: [mediaId], references: [id])
+
+  startsAt  DateTime?
+  endsAt    DateTime?
+
+  sort      Int         @default(0)
+  isActive  Boolean     @default(true)
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([placement, isActive, sort])
 }

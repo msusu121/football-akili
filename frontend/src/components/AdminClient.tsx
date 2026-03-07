@@ -5,7 +5,7 @@ import { useAuth } from "@/lib/auth";
 import { apiJson, apiUpload } from "@/lib/apiClient";
 import Link from "next/link";
 
-type Section = "overview" | "news" | "matches" | "team" | "products" | "sponsors" | "media" | "highlights" | "settings" | "faqs";
+type Section = "overview" | "news" | "matches" | "team" | "products" | "sponsors" | "media" | "highlights" | "settings" | "faqs" | "ads";
 
 const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "overview", label: "Overview" },
@@ -16,6 +16,7 @@ const SECTIONS: Array<{ key: Section; label: string }> = [
   { key: "sponsors", label: "Sponsors" },
   { key: "media", label: "Media Library" },
   { key: "highlights", label: "Highlights" },
+  { key: "ads", label: "Ads / Banners" }, // ✅ NEW
   { key: "faqs", label: "FAQs" },
   { key: "settings", label: "Site Settings" },
 ];
@@ -42,6 +43,7 @@ export default function AdminClient() {
       if (section === "sponsors") setData(await apiJson("/admin/sponsors", { token }));
       if (section === "media") setData(await apiJson("/admin/media", { token }));
       if (section === "highlights") setData(await apiJson("/admin/highlights", { token }));
+      if (section === "ads") setData(await apiJson("/admin/ads", { token })); // ✅ NEW
       if (section === "faqs") setData(await apiJson("/admin/faqs", { token }));
       if (section === "settings") setData(await apiJson("/admin/settings", { token }));
     } catch (e: any) {
@@ -116,6 +118,7 @@ export default function AdminClient() {
             {section === "sponsors" ? <SponsorsPanel token={token} data={data} onChange={load} /> : null}
             {section === "media" ? <MediaPanel token={token} data={data} onChange={load} /> : null}
             {section === "highlights" ? <HighlightsPanel token={token} data={data} onChange={load} /> : null}
+            {section === "ads" ? <AdsPanel token={token} data={data} onChange={load} /> : null}
             {section === "faqs" ? <FAQsPanel token={token} data={data} onChange={load} /> : null}
             {section === "settings" ? <SettingsPanel token={token} data={data} onChange={load} /> : null}
           </div>
@@ -667,6 +670,287 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
     <div>
       <div className="text-sm text-muted">{label}</div>
       <div className="mt-2">{children}</div>
+    </div>
+  );
+}
+
+
+function AdsPanel({ token, data, onChange }: { token: string; data: any; onChange: () => void }) {
+  const items = data?.items || [];
+
+  const [mediaQ, setMediaQ] = useState("");
+  const [mediaItems, setMediaItems] = useState<any[]>([]);
+  const [mediaLoading, setMediaLoading] = useState(false);
+
+  const [draft, setDraft] = useState<any>({
+    title: "Khushi Motors",
+    placement: "HEADER_TOP",
+    href: "https://khushimotors.co.ke",
+    ctaLabel: "Shop Now",
+    mediaId: "",
+    startsAt: null,
+    endsAt: null,
+    sort: 0,
+    isActive: true,
+  });
+
+  // Load media list (so you can pick mediaId)
+  const loadMedia = async () => {
+    setMediaLoading(true);
+    try {
+      const r = await apiJson(`/admin/media${mediaQ ? `?q=${encodeURIComponent(mediaQ)}` : ""}`, { token });
+      setMediaItems(r?.items || []);
+    } finally {
+      setMediaLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    // load initial media list when entering Ads panel
+    loadMedia();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const create = async () => {
+    if (!draft.title?.trim()) return alert("Title required");
+    if (!draft.mediaId?.trim()) return alert("Pick an image (mediaId) from Media Library list below");
+    await apiJson("/admin/ads", { method: "POST", token, body: draft });
+    onChange();
+    alert("Ad created");
+  };
+
+  const del = async (id: string) => {
+    if (!confirm("Delete this ad?")) return;
+    await apiJson(`/admin/ads/${id}`, { method: "DELETE", token });
+    onChange();
+  };
+
+  const update = async (id: string, patch: any) => {
+    await apiJson(`/admin/ads/${id}`, { method: "PUT", token, body: patch });
+    onChange();
+  };
+
+  return (
+    <div className="grid gap-6">
+      {/* CREATE */}
+      <div className="rounded-2xl border border-line bg-black/20 p-5">
+        <div className="text-sm font-semibold">Create banner ad</div>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          <input
+            className="rounded-2xl border border-line bg-black/30 px-4 py-3"
+            placeholder="title"
+            value={draft.title || ""}
+            onChange={(e) => setDraft((d: any) => ({ ...d, title: e.target.value }))}
+          />
+
+          <select
+            className="rounded-2xl border border-line bg-black/30 px-4 py-3"
+            value={draft.placement}
+            onChange={(e) => setDraft((d: any) => ({ ...d, placement: e.target.value }))}
+          >
+            <option value="HEADER_TOP">HEADER_TOP (Above header)</option>
+            <option value="HEADER_BELOW_NAV">HEADER_BELOW_NAV</option>
+            <option value="HOME_INLINE">HOME_INLINE</option>
+          </select>
+
+          <input
+            className="rounded-2xl border border-line bg-black/30 px-4 py-3 md:col-span-2"
+            placeholder="href (optional)"
+            value={draft.href || ""}
+            onChange={(e) => setDraft((d: any) => ({ ...d, href: e.target.value }))}
+          />
+
+          <input
+            className="rounded-2xl border border-line bg-black/30 px-4 py-3"
+            placeholder="ctaLabel (optional)"
+            value={draft.ctaLabel || ""}
+            onChange={(e) => setDraft((d: any) => ({ ...d, ctaLabel: e.target.value }))}
+          />
+
+          <input
+            className="rounded-2xl border border-line bg-black/30 px-4 py-3"
+            placeholder="sort (0..)"
+            type="number"
+            value={draft.sort ?? 0}
+            onChange={(e) => setDraft((d: any) => ({ ...d, sort: Number(e.target.value) }))}
+          />
+
+          <input
+            className="rounded-2xl border border-line bg-black/30 px-4 py-3"
+            placeholder="startsAt ISO (optional)"
+            value={draft.startsAt || ""}
+            onChange={(e) => setDraft((d: any) => ({ ...d, startsAt: e.target.value || null }))}
+          />
+
+          <input
+            className="rounded-2xl border border-line bg-black/30 px-4 py-3"
+            placeholder="endsAt ISO (optional)"
+            value={draft.endsAt || ""}
+            onChange={(e) => setDraft((d: any) => ({ ...d, endsAt: e.target.value || null }))}
+          />
+
+          <label className="flex items-center gap-2 text-sm text-muted md:col-span-2">
+            <input
+              type="checkbox"
+              checked={!!draft.isActive}
+              onChange={(e) => setDraft((d: any) => ({ ...d, isActive: e.target.checked }))}
+            />
+            Active
+          </label>
+
+          <div className="md:col-span-2 rounded-2xl border border-line bg-black/30 p-4">
+            <div className="text-xs text-muted">Selected mediaId:</div>
+            <div className="mt-1 font-mono text-xs break-all">{draft.mediaId || "— none selected —"}</div>
+          </div>
+        </div>
+
+        <button
+          onClick={create}
+          className="mt-4 px-5 py-3 rounded-full bg-brand text-black font-semibold"
+        >
+          Create Ad
+        </button>
+      </div>
+
+      {/* PICK MEDIA */}
+      <div className="rounded-2xl border border-line bg-black/20 p-5">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <div className="text-sm font-semibold">Pick banner image (Media Library)</div>
+            <div className="text-xs text-muted mt-1">
+              Search media, then click “Use” to set mediaId into the draft.
+            </div>
+          </div>
+
+          <button
+            onClick={loadMedia}
+            className="px-4 py-2 rounded-full border border-line bg-white/5 hover:bg-white/10 text-sm"
+          >
+            Refresh
+          </button>
+        </div>
+
+        <div className="mt-4 flex gap-3">
+          <input
+            className="flex-1 rounded-2xl border border-line bg-black/30 px-4 py-3"
+            placeholder="search media title/path..."
+            value={mediaQ}
+            onChange={(e) => setMediaQ(e.target.value)}
+          />
+          <button
+            onClick={loadMedia}
+            className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/15 text-sm font-semibold"
+          >
+            Search
+          </button>
+        </div>
+
+        {mediaLoading ? <div className="mt-4 text-sm text-muted">Loading media…</div> : null}
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {mediaItems
+            .filter((m) => m.type === "IMAGE") // ads: image first (later we can add VIDEO)
+            .slice(0, 12)
+            .map((m) => (
+              <div key={m.id} className="rounded-2xl border border-line bg-black/30 overflow-hidden">
+                <div className="aspect-[16/6] bg-black/40">
+                  {/* preview via your media route */}
+                  {/* if your backend serves /media/<path> */}
+                  {/* if you use minio public url, you can also store full URL in path */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={`http://localhost:4000/media/${m.path}`}
+                    alt={m.title || m.path}
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).style.opacity = "0.25";
+                    }}
+                  />
+                </div>
+                <div className="p-3">
+                  <div className="text-xs text-muted line-clamp-1">{m.title || "Untitled"}</div>
+                  <div className="mt-1 font-mono text-[11px] text-white/60 line-clamp-1">{m.id}</div>
+                  <button
+                    onClick={() => setDraft((d: any) => ({ ...d, mediaId: m.id }))}
+                    className="mt-3 w-full px-3 py-2 rounded-xl bg-brand text-black font-extrabold text-xs tracking-wider uppercase"
+                  >
+                    Use
+                  </button>
+                </div>
+              </div>
+            ))}
+        </div>
+
+        {!mediaItems.length && !mediaLoading ? (
+          <div className="mt-4 text-sm text-muted">No media yet. Upload an image in Media Library first.</div>
+        ) : null}
+      </div>
+
+      {/* LIST + EDIT */}
+      <div className="grid gap-3">
+        {items.map((a: any) => (
+          <div
+            key={a.id}
+            className="rounded-2xl border border-line bg-black/20 p-4 flex flex-col md:flex-row md:items-start md:justify-between gap-4"
+          >
+            <div className="min-w-0">
+              <div className="text-sm font-semibold line-clamp-1">{a.title}</div>
+              <div className="mt-1 text-xs text-muted">
+                {a.placement} • {a.isActive ? "Active" : "Inactive"} • sort {a.sort ?? 0}
+              </div>
+              <div className="mt-1 text-xs text-muted line-clamp-1">
+                href: {a.href || "—"}
+              </div>
+              <div className="mt-1 text-xs text-muted">
+                startsAt: {a.startsAt ? new Date(a.startsAt).toISOString() : "—"} • endsAt:{" "}
+                {a.endsAt ? new Date(a.endsAt).toISOString() : "—"}
+              </div>
+              <div className="mt-2 font-mono text-[11px] text-white/50 break-all">id: {a.id}</div>
+              <div className="mt-1 font-mono text-[11px] text-white/50 break-all">mediaId: {a.mediaId || "—"}</div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                onClick={() => update(a.id, { isActive: !a.isActive })}
+                className="px-3 py-2 rounded-full border border-line bg-white/5 hover:bg-white/10 text-sm"
+              >
+                {a.isActive ? "Disable" : "Enable"}
+              </button>
+
+              <button
+                onClick={() => {
+                  const s = prompt("New sort value:", String(a.sort ?? 0));
+                  if (s === null) return;
+                  update(a.id, { sort: Number(s) });
+                }}
+                className="px-3 py-2 rounded-full border border-line bg-white/5 hover:bg-white/10 text-sm"
+              >
+                Sort
+              </button>
+
+              <button
+                onClick={() => {
+                  const h = prompt("New href (blank to clear):", a.href || "");
+                  if (h === null) return;
+                  update(a.id, { href: h ? h : null });
+                }}
+                className="px-3 py-2 rounded-full border border-line bg-white/5 hover:bg-white/10 text-sm"
+              >
+                Edit Link
+              </button>
+
+              <button
+                onClick={() => del(a.id)}
+                className="px-3 py-2 rounded-full border border-line bg-white/5 hover:bg-white/10 text-sm"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        ))}
+
+        {!items.length ? <div className="text-sm text-muted">No ads yet.</div> : null}
+      </div>
     </div>
   );
 }
