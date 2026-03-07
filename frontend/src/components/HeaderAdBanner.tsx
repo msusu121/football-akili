@@ -158,7 +158,13 @@ export function HeaderAdBanner({
                     </div>
                   )}
 
-                  
+                  <div className="min-w-0">
+                    
+
+                    <div className="text-white font-extrabold uppercase leading-[1.05] tracking-[-0.01em] text-[clamp(0.95rem,3.6vw,1.35rem)] truncate max-w-[56vw] sm:max-w-[520px]">
+                      {active?.title || "Sponsor"}
+                    </div>
+                  </div>
                 </div>
 
                 {active?.href ? (

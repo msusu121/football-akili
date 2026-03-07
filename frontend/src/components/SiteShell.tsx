@@ -272,10 +272,7 @@ function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
 
           {/* Overlay CTA like MU (right side) */}
           <div className="muAdOverlay">
-            <div className="muAdMeta">
-              <div className="muAdKicker">OFFICIAL PARTNER</div>
-              <div className="muAdTitle">{(activeAd?.title || "Partner").toUpperCase()}</div>
-            </div>
+            
 
             <div className="muAdCtaWrap">
               <span className="muAdCta">{(activeAd?.ctaLabel || "SHOP NOW").toUpperCase()} →</span>
