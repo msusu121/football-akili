@@ -69,13 +69,7 @@ interface SiteShellProps {
   BG_WASH?: string;
 }
 
-type HeaderAdItem = {
-  id: string;
-  title?: string | null;
-  href?: string | null;
-  ctaLabel?: string | null;
-  imageUrl?: string | null;
-};
+
 
 const NAV_LINKS = [
   { label: "LATEST", href: "/news" },
