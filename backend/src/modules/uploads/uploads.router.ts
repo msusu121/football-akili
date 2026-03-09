@@ -1,47 +1,84 @@
-import { Router } from "express";
-import { z } from "zod";
-import { requireAuth, requireRole } from "../middleware/requireAuth.js";
+import { Router, type Request, type Response, type NextFunction } from "express";
+import { z, ZodError } from "zod";
+import multer from "multer";
+import path from "path";
+import crypto from "crypto";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import multer from "multer";
-import fs from "fs";
-import path from "path";
-import { fileURLToPath } from "url";
+import { requireAuth, requireRole } from "../middleware/requireAuth.js";
 
 export const uploadsRouter = Router();
-
-// -------- Local uploads (public folder) --------
-// Saves to backend/public/uploads/<folder>/<filename>
-// and returns { key, publicUrl } where key is stored in DB.
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const UPLOAD_ROOT = path.join(__dirname, "..", "..", "..", "public", "uploads");
-
-function ensureDir(p: string) {
-  if (!fs.existsSync(p)) fs.mkdirSync(p, { recursive: true });
-}
-
-const storage = multer.diskStorage({
-  destination: (req, _file, cb) => {
-    const raw = String((req.body as any)?.folder || "misc");
-    const folder = raw.replace(/^\/+|\/+$/g, "");
-    const dest = path.join(UPLOAD_ROOT, folder);
-    ensureDir(dest);
-    cb(null, dest);
-  },
-  filename: (_req, file, cb) => {
-    const safe = file.originalname.replace(/[^a-zA-Z0-9.\-_]/g, "_");
-    cb(null, `${Date.now()}-${safe}`);
-  },
-});
-
-const upload = multer({ storage });
 
 const CreateUploadSchema = z.object({
   folder: z.string().min(1),
   filename: z.string().min(1),
   mimeType: z.string().min(1),
 });
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: {
+    fileSize: 50 * 1024 * 1024, // 50MB
+  },
+});
+
+function sanitizeFolder(raw: string) {
+  return raw
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/[^a-zA-Z0-9/_-]/g, "_");
+}
+
+function sanitizeFilename(name: string) {
+  const ext = path.extname(name).replace(/[^a-zA-Z0-9.]/g, "");
+  const base = path
+    .basename(name, ext)
+    .replace(/[^a-zA-Z0-9-_]/g, "_")
+    .replace(/_+/g, "_");
+
+  return `${base}${ext}`;
+}
+
+function httpError(message: string, status = 500, extra?: Record<string, unknown>) {
+  return Object.assign(new Error(message), { status, ...extra });
+}
+
+function buildS3Client() {
+  const endpoint = process.env.S3_ENDPOINT;
+  const region = process.env.S3_REGION || "us-east-1";
+  const accessKeyId = process.env.S3_ACCESS_KEY || "";
+  const secretAccessKey = process.env.S3_SECRET_KEY || "";
+
+  if (!endpoint) {
+    throw httpError("S3_ENDPOINT missing", 500);
+  }
+  if (!accessKeyId || !secretAccessKey) {
+    throw httpError("S3 credentials missing", 500);
+  }
+
+  return new S3Client({
+    region,
+    endpoint,
+    forcePathStyle: true,
+    credentials: {
+      accessKeyId,
+      secretAccessKey,
+    },
+  });
+}
+
+function buildPublicUrl(key: string) {
+  const publicBase = (process.env.S3_PUBLIC_BASE_URL || "").replace(/\/+$/g, "");
+  return publicBase ? `${publicBase}/${key}` : key;
+}
+
+function runSingleUpload(req: Request, res: Response) {
+  return new Promise<void>((resolve, reject) => {
+    upload.single("file")(req, res, (err: unknown) => {
+      if (err) return reject(err);
+      resolve();
+    });
+  });
+}
 
 uploadsRouter.post(
   "/presign",
@@ -51,64 +88,86 @@ uploadsRouter.post(
     try {
       const body = CreateUploadSchema.parse(req.body);
       const bucket = process.env.S3_BUCKET || "club-media";
-      const endpoint = process.env.S3_ENDPOINT;
-      const region = process.env.S3_REGION || "us-east-1";
+      const client = buildS3Client();
 
-      if (!endpoint) throw Object.assign(new Error("S3_ENDPOINT missing"), { status: 500 });
+      const folder = sanitizeFolder(body.folder);
+      const filename = sanitizeFilename(body.filename);
+      const key = `${folder}/${Date.now()}-${filename}`;
 
-      const client = new S3Client({
-        region,
-        endpoint,
-        forcePathStyle: true,
-        credentials: {
-          accessKeyId: process.env.S3_ACCESS_KEY || "",
-          secretAccessKey: process.env.S3_SECRET_KEY || "",
-        },
+      const cmd = new PutObjectCommand({
+        Bucket: bucket,
+        Key: key,
+        ContentType: body.mimeType,
       });
 
-      const key = `${body.folder.replace(/\/+$/g, "")}/${Date.now()}-${body.filename}`;
-      const cmd = new PutObjectCommand({ Bucket: bucket, Key: key, ContentType: body.mimeType });
       const uploadUrl = await getSignedUrl(client, cmd, { expiresIn: 60 * 5 });
 
-      const publicBase = process.env.S3_PUBLIC_BASE_URL || "";
-      const publicUrl = publicBase ? `${publicBase}/${key}` : key;
-
-      res.json({
+      return res.json({
         key,
         uploadUrl,
-        publicUrl,
+        publicUrl: buildPublicUrl(key),
       });
-    } catch (e) {
-      next(e);
+    } catch (err) {
+      return next(err);
     }
   }
 );
 
 uploadsRouter.post(
-  "/local",
+  "/upload",
   requireAuth,
   requireRole(["SUPER_ADMIN", "CLUB_ADMIN", "EDITOR"]),
-  upload.single("file"),
   async (req, res, next) => {
     try {
-      const f = (req as any).file as Express.Multer.File | undefined;
-      if (!f) throw Object.assign(new Error("No file uploaded"), { status: 400 });
+      await runSingleUpload(req, res);
 
-      const raw = String((req.body as any)?.folder || "misc");
-      const folder = raw.replace(/^\/+|\/+$/g, "");
-      const key = `${folder}/${f.filename}`;
-      const base = process.env.PUBLIC_MEDIA_BASE_URL || "http://localhost:4000/media";
-      const publicUrl = `${base.replace(/\/+$/g, "")}/${key}`;
+      const file = req.file as Express.Multer.File | undefined;
+      if (!file) {
+        throw httpError("No file uploaded", 400);
+      }
 
-      res.json({
+      const bucket = process.env.S3_BUCKET || "club-media";
+      const client = buildS3Client();
+
+      const rawFolder = String((req.body as any)?.folder || "misc");
+      const folder = sanitizeFolder(rawFolder);
+      const original = sanitizeFilename(file.originalname);
+      const key = `${folder}/${Date.now()}-${crypto.randomUUID()}-${original}`;
+
+      try {
+        await client.send(
+          new PutObjectCommand({
+            Bucket: bucket,
+            Key: key,
+            Body: file.buffer,
+            ContentType: file.mimetype,
+            ContentLength: file.size,
+            Metadata: {
+              originalname: file.originalname,
+            },
+          })
+        );
+      } catch (err: any) {
+        console.error("S3 upload failed", {
+          message: err?.message,
+          name: err?.name,
+          code: err?.code,
+          endpoint: process.env.S3_ENDPOINT,
+          bucket,
+          key,
+        });
+        throw httpError(`S3 upload failed: ${err?.message || "unknown error"}`, 502);
+      }
+
+      return res.json({
         key,
-        publicUrl,
-        mimeType: f.mimetype,
-        bytes: f.size,
-        filename: f.originalname,
+        publicUrl: buildPublicUrl(key),
+        mimeType: file.mimetype,
+        bytes: file.size,
+        filename: file.originalname,
       });
-    } catch (e) {
-      next(e);
+    } catch (err) {
+      return next(err);
     }
   }
 );

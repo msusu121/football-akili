@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 
@@ -27,6 +26,7 @@ function safeSessionGet(k: string) {
     return null;
   }
 }
+
 function safeSessionSet(k: string, v: string) {
   try {
     sessionStorage.setItem(k, v);
@@ -38,10 +38,9 @@ export function HeaderAdBanner({
   brandIntroText = "MOMBASA BORN & BRED",
   brandIntroOncePerSession = true,
   brandIntroMs = 2400,
-  rotateMs = 9000,
+  rotateMs = 8000,
 }: Props) {
   const reduceMotion = useReducedMotion();
-
   const hasAds = Array.isArray(items) && items.length > 0;
 
   const introKey = "mu_header_intro_seen";
@@ -51,11 +50,12 @@ export function HeaderAdBanner({
     return safeSessionGet(introKey) !== "1";
   }, [brandIntroText, brandIntroOncePerSession]);
 
-  const [phase, setPhase] = useState<"INTRO" | "ADS">(() => (shouldShowIntro ? "INTRO" : "ADS"));
+  const [phase, setPhase] = useState<"INTRO" | "ADS">(
+    shouldShowIntro ? "INTRO" : "ADS"
+  );
   const [idx, setIdx] = useState(0);
   const intervalRef = useRef<number | null>(null);
 
-  // INTRO -> ADS
   useEffect(() => {
     if (phase !== "INTRO") return;
 
@@ -70,15 +70,14 @@ export function HeaderAdBanner({
     return () => window.clearTimeout(t);
   }, [phase, brandIntroMs, brandIntroOncePerSession, reduceMotion]);
 
-  // Rotate ADS
   useEffect(() => {
-    if (phase !== "ADS") return;
-    if (!hasAds) return;
+    if (phase !== "ADS" || !hasAds) return;
 
     if (intervalRef.current) window.clearInterval(intervalRef.current);
+
     intervalRef.current = window.setInterval(() => {
       setIdx((v) => (v + 1) % items.length);
-    }, rotateMs) as any;
+    }, rotateMs) as unknown as number;
 
     return () => {
       if (intervalRef.current) window.clearInterval(intervalRef.current);
@@ -88,16 +87,12 @@ export function HeaderAdBanner({
 
   const active = phase === "ADS" && hasAds ? items[idx] : null;
 
-  const enter = reduceMotion ? { opacity: 1 } : { opacity: 0, y: -10, clipPath: "inset(0 0 100% 0)" };
-  const center = reduceMotion ? { opacity: 1 } : { opacity: 1, y: 0, clipPath: "inset(0 0 0% 0)" };
-  const exit = reduceMotion ? { opacity: 0 } : { opacity: 0, y: 8, clipPath: "inset(100% 0 0 0)" };
+  const enter = reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 };
+  const center = { opacity: 1, y: 0 };
+  const exit = reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 };
 
   return (
-    <div className="relative w-full overflow-hidden bg-black">
-      {/* subtle premium wash + moving sheen */}
-      <div className="pointer-events-none absolute inset-0 opacity-[0.12] bg-[radial-gradient(circle_at_20%_20%,white,transparent_45%),radial-gradient(circle_at_80%_30%,white,transparent_40%),radial-gradient(circle_at_50%_120%,white,transparent_55%)]" />
-      <div className="pointer-events-none absolute inset-0 opacity-[0.10] bg-[linear-gradient(110deg,transparent_0%,white_7%,transparent_14%,transparent_100%)] animate-[muSheen_5.5s_linear_infinite]" />
-
+    <div className="relative w-full overflow-hidden border-b border-black/10 bg-[#ececec]">
       <AnimatePresence mode="wait" initial={false}>
         {phase === "INTRO" ? (
           <motion.div
@@ -105,29 +100,29 @@ export function HeaderAdBanner({
             initial={enter}
             animate={center}
             exit={exit}
-            transition={{ duration: reduceMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="h-[74px] sm:h-[84px] w-full"
+            transition={{ duration: reduceMotion ? 0 : 0.4 }}
+            className="relative h-[clamp(170px,52vw,250px)] md:h-[92px] xl:h-[104px] 2xl:h-[112px]"
           >
-            <div className="h-full container-ms flex items-center justify-center">
-              <div className="text-center">
-                <div className="text-white/70 text-[10px] sm:text-[11px] font-extrabold tracking-[0.35em] uppercase">
-                  Official Club Message
-                </div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.98),rgba(243,244,246,0.98),rgba(233,236,241,1))]" />
 
-                <div
-                  className="mt-1 text-white font-extrabold uppercase leading-[0.95] tracking-[-0.02em] text-[clamp(1.05rem,4.6vw,2.10rem)]"
-                  style={{ textShadow: "0 10px 24px rgba(0,0,0,.35)" }}
-                >
-                  {brandIntroText}
-                </div>
-
-                <motion.div
-                  initial={reduceMotion ? { width: "64%" } : { width: 0 }}
-                  animate={{ width: "64%" }}
-                  transition={{ duration: reduceMotion ? 0 : 0.7, delay: 0.06, ease: [0.22, 1, 0.36, 1] }}
-                  className="mx-auto mt-2 h-[2px] bg-brand rounded-full"
-                />
+            <div className="relative mx-auto flex h-full w-full max-w-[1320px] flex-col items-center justify-center px-4 text-center">
+              <div className="text-[10px] font-extrabold uppercase tracking-[0.28em] text-slate-500 sm:text-xs">
+                Mombasa United
               </div>
+
+              <div className="mt-2 flex flex-wrap items-baseline justify-center gap-2 sm:gap-3">
+                <span className="bg-[linear-gradient(90deg,#7c3aed_0%,#2563eb_55%,#ef4444_100%)] bg-clip-text text-[clamp(2.2rem,8vw,6.5rem)] font-black leading-none tracking-[-0.06em] text-transparent">
+                  BORN
+                </span>
+                <span className="text-[clamp(1.6rem,5vw,4rem)] font-black leading-none text-blue-600">
+                  &amp;
+                </span>
+                <span className="text-[clamp(2.2rem,8vw,6.5rem)] font-black leading-none tracking-[-0.06em] text-red-500">
+                  BRED
+                </span>
+              </div>
+
+              <div className="mt-3 h-[3px] w-24 rounded-full bg-brand sm:w-32" />
             </div>
           </motion.div>
         ) : (
@@ -136,58 +131,41 @@ export function HeaderAdBanner({
             initial={enter}
             animate={center}
             exit={exit}
-            transition={{ duration: reduceMotion ? 0 : 0.55, ease: [0.22, 1, 0.36, 1] }}
-            className="h-[74px] sm:h-[84px] w-full"
+            transition={{ duration: reduceMotion ? 0 : 0.5 }}
+            className="relative h-[clamp(170px,52vw,250px)] md:h-[92px] xl:h-[104px] 2xl:h-[112px]"
           >
-            <div className="relative h-full w-full">
-              <div className="container-ms h-full flex items-center justify-between gap-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  {active?.imageUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
+            <div className="relative mx-auto h-full w-full max-w-[1320px] bg-[#ececec]">
+              {active?.href ? (
+                <a
+                  href={active.href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block h-full w-full"
+                  aria-label={active.title || "Partner promotion"}
+                >
+                  <div className="absolute inset-0 flex items-center justify-center bg-[#ececec] p-2 md:p-3">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={active.imageUrl}
-                      alt={active.title}
-                      className="h-[44px] sm:h-[52px] w-auto object-contain rounded-md bg-white/5 border border-white/10 px-2 py-1"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).style.display = "none";
-                      }}
+                      src={active.imageUrl || ""}
+                      alt={active.title || "Partner promotion"}
+                      className="h-full w-full object-contain object-center"
                     />
-                  ) : (
-                    <div className="h-[44px] sm:h-[52px] w-[88px] rounded-md bg-white/5 border border-white/10 flex items-center justify-center">
-                      <span className="text-white/60 text-[10px] font-extrabold tracking-widest uppercase">AD</span>
-                    </div>
-                  )}
-
-                  <div className="min-w-0">
-                    
-
-                    <div className="text-white font-extrabold uppercase leading-[1.05] tracking-[-0.01em] text-[clamp(0.95rem,3.6vw,1.35rem)] truncate max-w-[56vw] sm:max-w-[520px]">
-                      {active?.title || "Sponsor"}
-                    </div>
                   </div>
+                </a>
+              ) : (
+                <div className="absolute inset-0 flex items-center justify-center bg-[#ececec] p-2 md:p-3">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={active?.imageUrl || ""}
+                    alt={active?.title || "Partner promotion"}
+                    className="h-full w-full object-contain object-center"
+                  />
                 </div>
+              )}
 
-                {active?.href ? (
-                  <Link
-                    href={active.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white text-black px-4 sm:px-5 py-2 font-extrabold text-[11px] tracking-[0.16em] uppercase hover:opacity-95 transition"
-                  >
-                    {active?.ctaLabel || "Learn More"}
-                    <span aria-hidden="true" className="text-base leading-none">›</span>
-                  </Link>
-                ) : (
-                  <div className="shrink-0 inline-flex items-center gap-2 rounded-full bg-white/10 text-white px-4 sm:px-5 py-2 font-extrabold text-[11px] tracking-[0.16em] uppercase border border-white/15">
-                    {active?.ctaLabel || "Sponsored"}
-                  </div>
-                )}
-              </div>
-
-              {/* bottom progress bar */}
               {hasAds && !reduceMotion ? (
-                <div className="absolute left-0 right-0 bottom-0 h-[2px] bg-white/10">
-                  <div className="h-full bg-brand animate-[muBar_9s_linear_infinite]" />
+                <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black/10">
+                  <div className="h-full bg-brand animate-[muAdProgress_8s_linear_infinite]" />
                 </div>
               ) : null}
             </div>
@@ -196,17 +174,17 @@ export function HeaderAdBanner({
       </AnimatePresence>
 
       <style jsx>{`
-        @keyframes muSheen {
-          0% { transform: translateX(-35%); opacity: 0.0; }
-          10% { opacity: 0.12; }
-          60% { opacity: 0.08; }
-          100% { transform: translateX(35%); opacity: 0.0; }
-        }
-        @keyframes muBar {
-          0% { width: 0%; }
-          100% { width: 100%; }
+        @keyframes muAdProgress {
+          0% {
+            width: 0%;
+          }
+          100% {
+            width: 100%;
+          }
         }
       `}</style>
     </div>
   );
 }
+
+export default HeaderAdBanner;

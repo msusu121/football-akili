@@ -1,6 +1,7 @@
 import { SiteShell } from "@/components/SiteShell";
 import { apiGet } from "@/lib/api";
 import MembershipCheckout from "@/components/MembershipCheckout";
+import MembershipTiers from "@/components/MembershipTiers";
 
 function Check() {
   return (
@@ -11,7 +12,12 @@ function Check() {
 }
 
 export default async function MembershipPage() {
-  const home = await apiGet<any>("/public/home");
+  const [home, plansRes] = await Promise.all([
+    apiGet<any>("/public/home"),
+    apiGet<any>("/membership/plans"),
+  ]);
+
+  const plans = plansRes?.items || [];
 
   const clubName = String(home.settings?.clubName || "CLUB");
   const first = clubName.split(" ")[0] || "CLUB";
@@ -83,7 +89,7 @@ export default async function MembershipPage() {
             </div>
           </div>
 
-          {/* RIGHT IMAGE (cards style) */}
+          {/* RIGHT IMAGE */}
           <div className="flex justify-center lg:justify-end">
             <div className="relative w-full max-w-[520px]">
               <div className="rounded-2xl border border-line bg-white/80 backdrop-blur shadow-[0_18px_40px_rgba(0,0,0,.10)] p-6">
@@ -99,21 +105,71 @@ export default async function MembershipPage() {
                 )}
               </div>
 
-              {/* subtle floor shadow like the screenshot */}
               <div className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 w-[70%] h-8 blur-xl bg-black/20 rounded-full" />
             </div>
           </div>
         </div>
+      </section>
 
-        {/* CHECKOUT */}
-        <div id="checkout" className="mt-14">
-          <div className="text-xl font-extrabold text-ink">Checkout</div>
-          <div className="mt-4">
-            <MembershipCheckout />
-          </div>
-          <div className="mt-2 text-xs text-muted">
-            DEV: Use the mock confirm button to activate membership.
-          </div>
+      
+
+      {/* TIER CARDS */}
+      <section className="max-w-7xl mx-auto px-4 py-16 sm:py-24">
+        <div className="text-center mb-12">
+          <h2 className="text-3xl font-bold text-[#0a1628]">
+            Choose Your Tier
+          </h2>
+          <p className="text-gray-500 mt-2">
+            All memberships run for the full 2025/26 season
+          </p>
+        </div>
+
+        <MembershipTiers plans={plans} />
+      </section>
+
+      {/* CHECKOUT */}
+      <section id="checkout" className="bg-gray-50 px-4 py-16 sm:py-24">
+        <MembershipCheckout plans={plans} />
+      </section>
+
+      {/* FAQ */}
+      <section className="max-w-3xl mx-auto px-4 py-16">
+        <h2 className="text-2xl font-bold text-center mb-10 text-[#0a1628]">
+          Frequently Asked Questions
+        </h2>
+
+        <div className="space-y-6">
+          {[
+            {
+              q: "Can I upgrade my membership later?",
+              a: "Yes. You can move to a higher membership tier later through your account and payment flow.",
+            },
+            {
+              q: "How do I get my digital membership card?",
+              a: "Once your membership payment is confirmed, your dashboard will show your QR digital card automatically.",
+            },
+            {
+              q: "What payment methods are accepted?",
+              a: "Membership payments are processed through M-Pesa STK Push.",
+            },
+            {
+              q: "When does my membership expire?",
+              a: "Membership runs for the full active season based on the configured plan duration.",
+            },
+          ].map((item) => (
+            <details
+              key={item.q}
+              className="group rounded-xl border border-gray-200 bg-white"
+            >
+              <summary className="cursor-pointer px-6 py-4 font-semibold text-[#0a1628] flex items-center justify-between">
+                {item.q}
+                <span className="text-gray-400 group-open:rotate-45 transition-transform text-xl">
+                  +
+                </span>
+              </summary>
+              <p className="px-6 pb-4 text-sm text-gray-600">{item.a}</p>
+            </details>
+          ))}
         </div>
       </section>
     </SiteShell>

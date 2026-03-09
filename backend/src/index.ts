@@ -18,6 +18,7 @@ import { uploadsRouter } from "./modules/uploads/uploads.router.js";
 import { ticketsRouter } from "./modules/tickets/tickets.router.js";
 import { paymentsRouter } from "./modules/payments/payments.router.js";
 import { adminRouter } from "./modules/admin/admin.router.js";
+import { membershipRouter } from "./modules/membership/membership.router.js";   
 
 dotenv.config();
 
@@ -56,6 +57,7 @@ app.use("/tickets", ticketsRouter);
 app.use(express.json({ limit: "2mb" }));
 app.use("/payments", paymentsRouter);
 app.use("/admin", adminRouter);
+app.use("/membership", membershipRouter);
 
 app.use(errorHandler);
 

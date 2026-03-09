@@ -1,118 +1,345 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/lib/auth";
-import { apiJson } from "@/lib/apiClient";
 
-export default function MembershipCheckout() {
-  const { user, token, refresh } = useAuth();
+const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+
+type Plan = {
+  id: string;
+  tier: "SILVER" | "GOLD" | "PLATINUM" | "DIAMOND";
+  name: string;
+  price: number;
+  currency: string;
+  benefits: string[];
+};
+
+type CheckoutStep = "select" | "pending" | "success" | "error";
+
+export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
   const router = useRouter();
-  const [months, setMonths] = useState(1);
-  const [busy, setBusy] = useState(false);
-  const [tx, setTx] = useState<{ transactionId: string; amount: number; currency: string } | null>(null);
+
+  const [selectedTier, setSelectedTier] = useState<Plan["tier"] | null>(null);
+  const [step, setStep] = useState<CheckoutStep>("select");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const isActive = useMemo(() => {
-    if (!user) return false;
-    if (user.membership !== "ACTIVE") return false;
-    if (!user.membershipUntil) return true;
-    return new Date(user.membershipUntil).getTime() > Date.now();
-  }, [user]);
+  const [checkoutRequestId, setCheckoutRequestId] = useState<string | null>(null);
+  const [customerMessage, setCustomerMessage] = useState<string | null>(null);
+  const [memberData, setMemberData] = useState<any>(null);
 
-  const start = async () => {
+  const [form, setForm] = useState({
+    fullName: "",
+    phone: "",
+    email: "",
+    city: "",
+    jerseySize: "",
+    nextOfKin: "",
+  });
+
+  const selectedPlan = useMemo(
+    () => plans.find((p) => p.tier === selectedTier) || null,
+    [plans, selectedTier]
+  );
+
+  useEffect(() => {
+    const saved = localStorage.getItem("membership_selected_tier");
+    if (saved && plans.some((p) => p.tier === saved)) {
+      setSelectedTier(saved as Plan["tier"]);
+    }
+
+    const handler = (event: Event) => {
+      const custom = event as CustomEvent<{ tier: Plan["tier"] }>;
+      if (custom.detail?.tier) {
+        setSelectedTier(custom.detail.tier);
+      }
+    };
+
+    window.addEventListener("membership-tier-selected", handler as EventListener);
+    return () => {
+      window.removeEventListener("membership-tier-selected", handler as EventListener);
+    };
+  }, [plans]);
+
+  useEffect(() => {
+    if (!checkoutRequestId || step !== "pending") return;
+
+    let cancelled = false;
+
+    const poll = async () => {
+      try {
+        const res = await fetch(`${API}/payments/membership/tx/status/${checkoutRequestId}`, {
+          cache: "no-store",
+        });
+
+        const data = await res.json();
+
+        if (cancelled) return;
+
+        if (data.status === "SUCCESS") {
+          const token = localStorage.getItem("token") || "";
+          const memberRes = await fetch(`${API}/membership/me`, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+            },
+            cache: "no-store",
+          });
+
+          const memberJson = await memberRes.json();
+
+          if (!cancelled) {
+            setMemberData(memberJson.member);
+            setStep("success");
+            setLoading(false);
+          }
+          return;
+        }
+
+        if (data.status === "FAILED" || data.status === "CANCELLED") {
+          if (!cancelled) {
+            setError("M-Pesa payment failed or was cancelled.");
+            setStep("error");
+            setLoading(false);
+          }
+          return;
+        }
+
+        setTimeout(poll, 4000);
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(err?.message || "Failed while checking payment status.");
+          setStep("error");
+          setLoading(false);
+        }
+      }
+    };
+
+    poll();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutRequestId, step]);
+
+  const getHeaders = (): HeadersInit | null => {
+    const token = localStorage.getItem("token") || "";
+    if (!token) return null;
+
+    return {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    };
+  };
+
+  const handleCheckout = async () => {
+    if (!selectedTier) return;
+
+    const headers = getHeaders();
+    if (!headers) {
+      alert("Please log in first.");
+      router.push("/login?next=/membership");
+      return;
+    }
+
+    setLoading(true);
     setError(null);
-    if (!token) return router.push(`/login?next=${encodeURIComponent("/membership")}`);
-    setBusy(true);
+
     try {
-      const data = await apiJson<any>("/payments/membership/checkout", { method: "POST", token, body: { months } });
-      setTx({ transactionId: data.transactionId, amount: data.amount, currency: data.currency });
-    } catch (e: any) {
-      setError(e?.message || "Failed");
-    } finally {
-      setBusy(false);
+      const res = await fetch(`${API}/payments/membership/checkout/stk`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          tier: selectedTier,
+          fullName: form.fullName,
+          phone: form.phone,
+          email: form.email,
+          city: form.city || null,
+          jerseySize: form.jerseySize || null,
+          nextOfKin: form.nextOfKin || null,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data?.error || "Failed to initiate STK push");
+      }
+
+      setCheckoutRequestId(data.checkoutRequestId);
+      setCustomerMessage(data.customerMessage || "STK Push sent. Please complete payment on your phone.");
+      setStep("pending");
+    } catch (err: any) {
+      setError(err.message || "Something went wrong");
+      setStep("error");
+      setLoading(false);
     }
   };
 
-  const confirm = async () => {
-    if (!token || !tx) return;
-    setBusy(true);
+  const handleReset = () => {
+    setSelectedTier(null);
+    setStep("select");
+    setLoading(false);
     setError(null);
-    try {
-      await apiJson<any>("/payments/mock/confirm", { method: "POST", token, body: { transactionId: tx.transactionId } });
-      await refresh();
-      setTx(null);
-    } catch (e: any) {
-      setError(e?.message || "Failed");
-    } finally {
-      setBusy(false);
-    }
+    setCheckoutRequestId(null);
+    setCustomerMessage(null);
+    setMemberData(null);
+    localStorage.removeItem("membership_selected_tier");
   };
 
   return (
-    <div className="mt-6 rounded-3xl border border-line bg-card p-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <div className="text-sm font-semibold">2025/26 MEMBERSHIP</div>
-          <div className="mt-2 text-sm text-muted">Unlock members-only shop access and priority ticket windows.</div>
-        </div>
-        {isActive ? (
-          <div className="rounded-full border border-green-500/30 bg-green-500/10 px-3 py-1 text-xs text-green-200">
-            ACTIVE
+    <div className="max-w-4xl mx-auto">
+      {step === "select" && (
+        <div className="grid gap-8 lg:grid-cols-[1fr_420px]">
+          <div className="rounded-2xl border border-line bg-white p-6">
+            <h3 className="text-2xl font-bold text-ink">Online Registration</h3>
+            <p className="mt-2 text-sm text-muted">
+              Select a tier, fill your details, then pay via M-Pesa STK Push.
+            </p>
+
+            <div className="mt-6 grid gap-3 sm:grid-cols-2">
+              {plans.map((plan) => (
+                <button
+                  key={plan.id}
+                  type="button"
+                  onClick={() => setSelectedTier(plan.tier)}
+                  className={`rounded-xl border p-4 text-left transition ${
+                    selectedTier === plan.tier
+                      ? "border-brand bg-brand/5"
+                      : "border-line hover:border-brand/30"
+                  }`}
+                >
+                  <div className="font-bold text-ink">{plan.name}</div>
+                  <div className="text-sm text-muted mt-1">
+                    {plan.currency} {plan.price.toLocaleString()}
+                  </div>
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-6 grid gap-4 sm:grid-cols-2">
+              <input
+                className="rounded-xl border border-line px-4 py-3"
+                placeholder="Full Name"
+                value={form.fullName}
+                onChange={(e) => setForm((f) => ({ ...f, fullName: e.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-line px-4 py-3"
+                placeholder="Phone Number"
+                value={form.phone}
+                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-line px-4 py-3"
+                placeholder="Email"
+                value={form.email}
+                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-line px-4 py-3"
+                placeholder="City"
+                value={form.city}
+                onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-line px-4 py-3"
+                placeholder="Jersey Size"
+                value={form.jerseySize}
+                onChange={(e) => setForm((f) => ({ ...f, jerseySize: e.target.value }))}
+              />
+              <input
+                className="rounded-xl border border-line px-4 py-3"
+                placeholder="Next of Kin (optional)"
+                value={form.nextOfKin}
+                onChange={(e) => setForm((f) => ({ ...f, nextOfKin: e.target.value }))}
+              />
+            </div>
           </div>
-        ) : (
-          <div className="rounded-full border border-line bg-black/20 px-3 py-1 text-xs text-muted">Not active</div>
-        )}
-      </div>
 
-      {user?.membershipUntil ? (
-        <div className="mt-3 text-xs text-muted">Valid until: {new Date(user.membershipUntil).toDateString()}</div>
-      ) : null}
+          <div className="rounded-2xl border border-line bg-white p-6">
+            <h4 className="text-lg font-bold text-ink">Summary</h4>
 
-      <div className="mt-6 grid gap-3 md:grid-cols-3">
-        <button
-          type="button"
-          onClick={() => setMonths(1)}
-          className={`rounded-2xl border p-4 text-left ${months === 1 ? "border-brand/60 bg-white/5" : "border-line bg-black/20 hover:bg-white/5"}`}
-        >
-          <div className="text-sm font-semibold">1 Month</div>
-          <div className="mt-1 text-xs text-muted">Quick entry</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMonths(6)}
-          className={`rounded-2xl border p-4 text-left ${months === 6 ? "border-brand/60 bg-white/5" : "border-line bg-black/20 hover:bg-white/5"}`}
-        >
-          <div className="text-sm font-semibold">6 Months</div>
-          <div className="mt-1 text-xs text-muted">Best value</div>
-        </button>
-        <button
-          type="button"
-          onClick={() => setMonths(12)}
-          className={`rounded-2xl border p-4 text-left ${months === 12 ? "border-brand/60 bg-white/5" : "border-line bg-black/20 hover:bg-white/5"}`}
-        >
-          <div className="text-sm font-semibold">12 Months</div>
-          <div className="mt-1 text-xs text-muted">Season pass</div>
-        </button>
-      </div>
+            {selectedPlan ? (
+              <>
+                <div className="mt-4 text-sm text-muted">Tier</div>
+                <div className="text-xl font-bold text-ink">{selectedPlan.name}</div>
 
-      {error ? <div className="mt-4 text-sm text-red-300">{error}</div> : null}
+                <div className="mt-4 text-sm text-muted">Price</div>
+                <div className="text-2xl font-extrabold text-ink">
+                  {selectedPlan.currency} {selectedPlan.price.toLocaleString()}
+                </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        {!tx ? (
-          <button disabled={busy} onClick={start} className="px-5 py-3 rounded-full bg-brand text-black font-semibold disabled:opacity-60">
-            {busy ? "Starting…" : "Proceed to payment"}
-          </button>
-        ) : (
-          <>
-            <div className="text-sm text-muted">Pending payment: <span className="text-white font-semibold">{tx.amount} {tx.currency}</span></div>
-            <button disabled={busy} onClick={confirm} className="px-5 py-3 rounded-full bg-brand text-black font-semibold disabled:opacity-60">
-              {busy ? "Confirming…" : "DEV: Confirm payment"}
+                <button
+                  onClick={handleCheckout}
+                  disabled={loading}
+                  className="mt-8 w-full rounded-xl bg-[#0a1628] px-6 py-3 text-white font-semibold disabled:opacity-60"
+                >
+                  {loading ? "Sending STK Push..." : "Pay with M-Pesa"}
+                </button>
+              </>
+            ) : (
+              <div className="mt-4 text-sm text-muted">Select a tier to continue.</div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {step === "pending" && (
+        <div className="max-w-2xl mx-auto text-center rounded-2xl border border-yellow-200 bg-yellow-50 p-8">
+          <h3 className="text-2xl font-bold text-[#0a1628]">Complete Payment on Your Phone</h3>
+          <p className="mt-3 text-gray-700">
+            {customerMessage || "An M-Pesa prompt has been sent to your phone."}
+          </p>
+          <p className="mt-2 text-sm text-gray-500">
+            Waiting for Safaricom confirmation...
+          </p>
+          {checkoutRequestId ? (
+            <p className="mt-4 text-xs text-gray-500 font-mono break-all">
+              CheckoutRequestID: {checkoutRequestId}
+            </p>
+          ) : null}
+        </div>
+      )}
+
+      {step === "success" && (
+        <div className="max-w-2xl mx-auto text-center rounded-2xl border border-green-200 bg-green-50 p-8">
+          <h3 className="text-2xl font-bold text-green-800">Membership Activated</h3>
+          <p className="mt-3 text-green-700">
+            Member Number:{" "}
+            <span className="font-mono font-bold">
+              {memberData?.memberNumber || "Generated"}
+            </span>
+          </p>
+
+          <div className="mt-6 flex justify-center gap-4">
+            <a
+              href="/account/membership"
+              className="rounded-xl bg-[#0a1628] px-6 py-3 font-semibold text-white"
+            >
+              Open My Dashboard
+            </a>
+            <button
+              onClick={handleReset}
+              className="rounded-xl border border-line px-6 py-3 font-semibold"
+            >
+              Done
             </button>
-          </>
-        )}
-        <div className="text-xs text-muted">(Payment integration hook is ready; replace mock confirm with M-Pesa webhook.)</div>
-      </div>
+          </div>
+        </div>
+      )}
+
+      {step === "error" && (
+        <div className="max-w-2xl mx-auto text-center rounded-2xl border border-red-200 bg-red-50 p-8">
+          <h3 className="text-2xl font-bold text-red-800">Payment Failed</h3>
+          <p className="mt-3 text-red-600">{error}</p>
+          <button
+            onClick={handleReset}
+            className="mt-6 rounded-xl bg-[#0a1628] px-6 py-3 font-semibold text-white"
+          >
+            Try Again
+          </button>
+        </div>
+      )}
     </div>
   );
 }

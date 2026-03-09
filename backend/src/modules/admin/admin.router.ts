@@ -153,15 +153,32 @@ const MatchUpsertSchema = z.object({
   venue: z.string().optional().nullable(),
   isHome: z.boolean(),
   opponent: z.string().min(2),
+  opponentLogoId: z.string().optional().nullable(),
   homeScore: z.number().int().nullable().optional(),
   awayScore: z.number().int().nullable().optional(),
   status: z.string().optional(),
 });
 
+function mediaUrl(path?: string | null) {
+  if (!path) return null;
+  const base = process.env.ASSETS_PUBLIC_URL || process.env.S3_PUBLIC_BASE_URL || "";
+  return base ? `${base.replace(/\/+$/g, "")}/${String(path).replace(/^\/+/g, "")}` : path;
+}
+
 adminRouter.get("/matches", async (_req, res, next) => {
   try {
-    const items = await prisma.match.findMany({ orderBy: { kickoffAt: "desc" }, include: { ticketEvent: true }, take: 300 });
-    res.json({ items });
+    const items = await prisma.match.findMany({
+      orderBy: { kickoffAt: "desc" },
+      include: { ticketEvent: true, opponentLogo: true },
+      take: 300,
+    });
+
+    res.json({
+      items: items.map((m) => ({
+        ...m,
+        opponentLogoUrl: mediaUrl(m.opponentLogo?.path),
+      })),
+    });
   } catch (e) {
     next(e);
   }
@@ -174,9 +191,17 @@ adminRouter.post("/matches", async (req, res, next) => {
       data: {
         ...body,
         kickoffAt: body.kickoffAt,
+        opponentLogoId: body.opponentLogoId || null,
+      },
+      include: { opponentLogo: true, ticketEvent: true },
+    });
+
+    res.json({
+      item: {
+        ...item,
+        opponentLogoUrl: mediaUrl(item.opponentLogo?.path),
       },
     });
-    res.json({ item });
   } catch (e) {
     next(e);
   }
@@ -185,14 +210,23 @@ adminRouter.post("/matches", async (req, res, next) => {
 adminRouter.put("/matches/:id", async (req, res, next) => {
   try {
     const body = MatchUpsertSchema.partial().parse(req.body);
+
     const item = await prisma.match.update({
       where: { id: req.params.id },
       data: {
         ...body,
         ...(body.kickoffAt ? { kickoffAt: body.kickoffAt } : {}),
+        ...(body.opponentLogoId !== undefined ? { opponentLogoId: body.opponentLogoId || null } : {}),
+      },
+      include: { opponentLogo: true, ticketEvent: true },
+    });
+
+    res.json({
+      item: {
+        ...item,
+        opponentLogoUrl: mediaUrl(item.opponentLogo?.path),
       },
     });
-    res.json({ item });
   } catch (e) {
     next(e);
   }

@@ -13,10 +13,31 @@ enum Role {
   FAN
 }
 
+
+enum MembershipTier {
+  BASIC
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
 enum MembershipStatus {
   NONE
+  PENDING
   ACTIVE
   EXPIRED
+}
+
+enum LoyaltyTxnType {
+  MEMBERSHIP_SIGNUP
+  MERCH_PURCHASE
+  MATCH_CHECKIN
+  EVENT_ATTENDANCE
+  REFERRAL_BONUS
+  REDEMPTION
+  MANUAL_ADJUSTMENT
 }
 
 enum MatchType {
@@ -57,13 +78,35 @@ model User {
   passwordHash    String
   name            String?
   role            Role             @default(FAN)
-  membership      MembershipStatus @default(NONE)
+  membership      MembershipStatus @default(NONE)  //need be removed
   membershipUntil DateTime?
+  membershipTier    MembershipTier   @default(BASIC)
+  memberNumber      String?          @unique
+  memberSince       DateTime?
   createdAt       DateTime         @default(now())
   updatedAt       DateTime         @updatedAt
+   profile            MembershipProfile?
+  loyaltyWallet      LoyaltyWallet?
+  loyaltyEntries     LoyaltyEntry[]
+  rewardRedemptions  RewardRedemption[]
 
   tickets         Ticket[]
   orders          Order[]
+}
+
+model MembershipPlan {
+  id          String         @id @default(cuid())
+  tier        MembershipTier @unique
+  name        String         // "Basic", "Bronze", "Silver", "Gold"
+  price       Int            // in smallest unit (KES cents or whole KES)
+  currency    String         @default("KES")
+  durationDays Int           @default(365)
+  description String?        @db.LongText
+  benefits    String?        @db.LongText  // JSON array of benefit strings
+  isActive    Boolean        @default(true)
+  sort        Int            @default(0)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
 }
 
 model MediaAsset {
@@ -84,6 +127,7 @@ model MediaAsset {
   highlightThumbFor  Highlight[]   @relation("HighlightThumbnail")
   highlightVideoFor  Highlight[]   @relation("HighlightVideo")
   sponsorLogoFor     Sponsor[]     @relation("SponsorLogo")
+  matchOpponentLogoFor Match[] @relation("MatchOpponentLogo")
 
   siteHeaderLogoFor      SiteSetting[] @relation("HeaderLogo")
   sitePartnerLogoFor     SiteSetting[] @relation("PartnerLogo")
@@ -147,6 +191,8 @@ model Match {
   status      String     @default("SCHEDULED") // SCHEDULED | LIVE | FT | POSTPONED
 
   ticketEvent TicketEvent?
+  opponentLogoId String?
+  opponentLogo   MediaAsset? @relation("MatchOpponentLogo", fields: [opponentLogoId], references: [id])
 
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
@@ -450,4 +496,78 @@ model AdBanner {
   updatedAt DateTime    @updatedAt
 
   @@index([placement, isActive, sort])
+}
+
+
+model MembershipProfile {
+  id         String   @id @default(cuid())
+  userId     String   @unique
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  phone      String
+  city       String?
+  jerseySize String?
+  nextOfKin  String?
+  qrToken    String   @unique
+
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model LoyaltyWallet {
+  userId           String   @id
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  balancePoints    Int      @default(0)
+  lifetimeEarned   Int      @default(0)
+  lifetimeRedeemed Int      @default(0)
+
+  updatedAt        DateTime @updatedAt
+}
+
+model LoyaltyEntry {
+  id            String         @id @default(cuid())
+  userId        String
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type          LoyaltyTxnType
+  points        Int
+  description   String?
+  referenceType String?
+  referenceId   String?
+
+  createdAt     DateTime       @default(now())
+
+  @@index([userId, createdAt])
+}
+
+model LoyaltyReward {
+  id          String             @id @default(cuid())
+  title       String
+  description String?            @db.LongText
+  pointsCost  Int
+  isActive    Boolean            @default(true)
+  sort        Int                @default(0)
+
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  redemptions RewardRedemption[]
+}
+
+model RewardRedemption {
+  id          String        @id @default(cuid())
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  rewardId    String
+  reward      LoyaltyReward @relation(fields: [rewardId], references: [id])
+
+  pointsCost  Int
+  status      String        @default("PENDING")
+  notes       String?       @db.LongText
+
+  createdAt   DateTime      @default(now())
+
+  @@index([userId, createdAt])
 }

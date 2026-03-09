@@ -3,6 +3,82 @@ import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
+async function memberSeeder() {
+  const plans = [
+    {
+      tier: "BASIC",
+      name: "Basic",
+      price: 0,
+      currency: "KES",
+      durationDays: 365,
+      description: "Free registration with basic club access",
+      benefits: JSON.stringify([
+        "Club newsletter",
+        "Digital membership card",
+        "10% merch discount",
+        "Community access"
+      ]),
+      sort: 0,
+    },
+    {
+      tier: "BRONZE",
+      name: "Bronze",
+      price: 1500,
+      currency: "KES",
+      durationDays: 365,
+      description: "Enhanced access with priority tickets",
+      benefits: JSON.stringify([
+        "All Basic benefits",
+        "Priority ticket booking",
+        "15% merch discount",
+        "Birthday greeting from club",
+        "Bronze digital card"
+      ]),
+      sort: 1,
+    },
+    {
+      tier: "SILVER",
+      name: "Silver",
+      price: 3500,
+      currency: "KES",
+      durationDays: 365,
+      description: "Premium access with events and discounts",
+      benefits: JSON.stringify([
+        "All Bronze benefits",
+        "20% merch discount",
+        "1 free match ticket per month",
+        "Meet & greet events",
+        "Silver digital card"
+      ]),
+      sort: 2,
+    },
+    {
+      tier: "GOLD",
+      name: "Gold",
+      price: 7000,
+      currency: "KES",
+      durationDays: 365,
+      description: "Ultimate VIP experience",
+      benefits: JSON.stringify([
+        "All Silver benefits",
+        "30% merch discount",
+        "Season ticket included",
+        "VIP lounge access",
+        "Player meet & greet priority",
+        "Exclusive Gold digital card"
+      ]),
+      sort: 3,
+    },
+  ];
+
+  for (const plan of plans) {
+    await prisma.membershipPlan.upsert({
+      where: { tier: plan.tier as any },
+      update: plan,
+      create: plan,
+    });
+  } 
+
 async function main() {
   // Settings
   await prisma.siteSetting.upsert({
@@ -178,6 +254,7 @@ async function main() {
   });
 }
 
+{/*
 main()
   .then(async () => {
     await prisma.$disconnect();
@@ -187,3 +264,15 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
+
+*/}
+memberSeeder()
+  .then(async () => {
+    await prisma.$disconnect();
+  })
+  .catch(async (e) => {
+    console.error(e);
+    await prisma.$disconnect();
+    process.exit(1);
+  });   
+}

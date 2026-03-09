@@ -11,47 +11,390 @@ import { sendMail, buildShopPaidReceiptEmail, getShopMailDefaults, getSmtpFromen
 
 export const paymentsRouter = Router();
 
-// NOTE: This is a production-ready contract with a DEV mock-confirm endpoint.
-// Swap mock confirm with real M-Pesa/Card webhooks later.
+const PaidMembershipTierSchema = z.enum(["SILVER", "GOLD", "PLATINUM", "DIAMOND"]);
+type PaidMembershipTier = z.infer<typeof PaidMembershipTierSchema>;
 
-const MembershipCheckoutSchema = z.object({
-  months: z.number().int().min(1).max(24).default(1),
+function makeMemberNumber() {
+  const year = new Date().getFullYear();
+  return `MU-${year}-${crypto.randomUUID().slice(0, 8).toUpperCase()}`;
+}
+
+function makeQrToken() {
+  return crypto.randomUUID().replace(/-/g, "");
+}
+
+function pointsForTier(tier: PaidMembershipTier) {
+  return {
+    SILVER: 250,
+    GOLD: 600,
+    PLATINUM: 1400,
+    DIAMOND: 3000,
+  }[tier];
+}
+
+async function ensureWallet(tx: any, userId: string) {
+  return tx.loyaltyWallet.upsert({
+    where: { userId },
+    update: {},
+    create: { userId },
+  });
+}
+
+async function addPoints(
+  tx: any,
+  args: {
+    userId: string;
+    points: number;
+    type:
+      | "MEMBERSHIP_SIGNUP"
+      | "MERCH_PURCHASE"
+      | "MATCH_CHECKIN"
+      | "EVENT_ATTENDANCE"
+      | "REFERRAL_BONUS"
+      | "REDEMPTION"
+      | "MANUAL_ADJUSTMENT";
+    description?: string;
+    referenceType?: string;
+    referenceId?: string;
+  }
+) {
+  await ensureWallet(tx, args.userId);
+
+  await tx.loyaltyEntry.create({
+    data: {
+      userId: args.userId,
+      type: args.type,
+      points: args.points,
+      description: args.description || null,
+      referenceType: args.referenceType || null,
+      referenceId: args.referenceId || null,
+    },
+  });
+
+  const walletData: any = {
+    balancePoints: { increment: args.points },
+  };
+
+  if (args.points > 0) {
+    walletData.lifetimeEarned = { increment: args.points };
+  }
+
+  if (args.points < 0) {
+    walletData.lifetimeRedeemed = { increment: Math.abs(args.points) };
+  }
+
+  await tx.loyaltyWallet.update({
+    where: { userId: args.userId },
+    data: walletData,
+  });
+}
+
+async function activateMembershipOrder(orderId: string) {
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+  });
+
+  if (!order || order.type !== "MEMBERSHIP" || !order.userId) return;
+
+  const meta = safeJson(order.metadata) || {};
+  const tier = PaidMembershipTierSchema.parse(meta.tier);
+  const fullName = String(meta.fullName || "");
+  const email = String(meta.email || "");
+  const phone = String(meta.phone || "");
+  const city = meta.city ? String(meta.city) : null;
+  const jerseySize = meta.jerseySize ? String(meta.jerseySize) : null;
+  const nextOfKin = meta.nextOfKin ? String(meta.nextOfKin) : null;
+
+  const plan = await prisma.membershipPlan.findUnique({
+    where: { tier },
+  });
+
+  if (!plan) {
+    throw Object.assign(new Error("Membership plan not found"), { status: 404 });
+  }
+
+  const existingUser = await prisma.user.findUnique({
+    where: { id: order.userId },
+  });
+
+  if (!existingUser) {
+    throw Object.assign(new Error("User not found"), { status: 404 });
+  }
+
+  const now = new Date();
+  const until = new Date(now.getTime() + (plan.durationDays || 365) * 24 * 60 * 60 * 1000);
+  const memberNumber = existingUser.memberNumber || makeMemberNumber();
+
+  await prisma.$transaction(async (tx) => {
+    await tx.user.update({
+      where: { id: order.userId! },
+      data: {
+        name: fullName || existingUser.name || "",
+        email: email || existingUser.email,
+        membership: "ACTIVE",
+        membershipTier: tier,
+        memberNumber,
+        memberSince: now,
+        membershipUntil: until,
+      },
+    });
+
+    await tx.membershipProfile.upsert({
+      where: { userId: order.userId! },
+      update: {
+        phone,
+        city,
+        jerseySize,
+        nextOfKin,
+      },
+      create: {
+        userId: order.userId!,
+        phone,
+        city,
+        jerseySize,
+        nextOfKin,
+        qrToken: makeQrToken(),
+      },
+    });
+
+    await addPoints(tx, {
+      userId: order.userId!,
+      points: pointsForTier(tier),
+      type: "MEMBERSHIP_SIGNUP",
+      description: `${tier} membership activated`,
+      referenceType: "ORDER",
+      referenceId: order.id,
+    });
+  });
+}
+
+const MembershipCheckoutStkSchema = z.object({
+  tier: PaidMembershipTierSchema,
+  fullName: z.string().min(2),
+  phone: z.string().min(8),
+  email: z.string().email(),
+  city: z.string().optional().nullable(),
+  jerseySize: z.string().optional().nullable(),
+  nextOfKin: z.string().optional().nullable(),
 });
 
-paymentsRouter.post("/membership/checkout", requireAuth, async (req, res, next) => {
+paymentsRouter.post("/membership/checkout/stk", requireAuth, async (req, res, next) => {
   try {
-    const body = MembershipCheckoutSchema.parse(req.body);
-    const monthly = Number(process.env.MEMBERSHIP_PRICE || 500);
-    const total = monthly * body.months;
+    const body = MembershipCheckoutStkSchema.parse(req.body);
     const currency = process.env.CURRENCY || "KES";
+    const phone = normalizePhone(body.phone);
+
+    const plan = await prisma.membershipPlan.findUnique({
+      where: { tier: body.tier },
+    });
+
+    if (!plan || !plan.isActive) {
+      throw Object.assign(new Error("Membership plan not found"), { status: 404 });
+    }
+
+    if (plan.price <= 0) {
+      throw Object.assign(new Error("This route is only for paid membership plans"), { status: 400 });
+    }
+
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        name: body.fullName,
+        email: body.email,
+        membership: "PENDING",
+        membershipTier: body.tier,
+      },
+    });
+
+    await prisma.membershipProfile.upsert({
+      where: { userId: req.user!.id },
+      update: {
+        phone: body.phone,
+        city: body.city || null,
+        jerseySize: body.jerseySize || null,
+        nextOfKin: body.nextOfKin || null,
+      },
+      create: {
+        userId: req.user!.id,
+        phone: body.phone,
+        city: body.city || null,
+        jerseySize: body.jerseySize || null,
+        nextOfKin: body.nextOfKin || null,
+        qrToken: makeQrToken(),
+      },
+    });
 
     const order = await prisma.order.create({
       data: {
         userId: req.user!.id,
         type: "MEMBERSHIP",
-        currency,
-        total,
-        metadata: JSON.stringify({ months: body.months, monthly }),
+        currency: plan.currency || currency,
+        total: plan.price,
+        metadata: JSON.stringify({
+          tier: body.tier,
+          fullName: body.fullName,
+          phone: body.phone,
+          email: body.email,
+          city: body.city || null,
+          jerseySize: body.jerseySize || null,
+          nextOfKin: body.nextOfKin || null,
+        }),
       },
     });
 
     const tx = await prisma.paymentTransaction.create({
       data: {
-        provider: "MANUAL",
-        amount: total,
-        currency,
+        provider: "MPESA",
+        amount: plan.price,
+        currency: plan.currency || currency,
         status: "PENDING",
         orderId: order.id,
         userId: req.user!.id,
       },
     });
 
+    const secret = process.env.MPESA_CALLBACK_SECRET || "";
+    const base = process.env.PUBLIC_BASE_URL!;
+    const callbackUrl = `${base}/api/payments/membership/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
+
+    const accountRef = `MEM-${order.id.slice(-10)}`;
+
+    const stk = await stkPush({
+      amount: plan.price,
+      phone,
+      accountReference: accountRef,
+      transactionDesc: `${body.tier} membership`,
+      callbackUrl,
+    });
+
+    await prisma.paymentTransaction.update({
+      where: { id: tx.id },
+      data: { reference: stk.CheckoutRequestID },
+    });
+
     res.json({
       orderId: order.id,
       transactionId: tx.id,
-      amount: total,
-      currency,
-      message: "DEV mode: call /payments/mock/confirm to simulate payment success.",
+      checkoutRequestId: stk.CheckoutRequestID,
+      merchantRequestId: stk.MerchantRequestID,
+      amount: plan.price,
+      currency: plan.currency || currency,
+      customerMessage: stk.CustomerMessage,
+      tier: body.tier,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+
+
+
+
+paymentsRouter.post("/membership/checkout/stk", requireAuth, async (req, res, next) => {
+  try {
+    const body = MembershipCheckoutStkSchema.parse(req.body);
+    const currency = process.env.CURRENCY || "KES";
+    const phone = normalizePhone(body.phone);
+
+    const plan = await prisma.membershipPlan.findUnique({
+      where: { tier: body.tier },
+    });
+
+    if (!plan || !plan.isActive) {
+      throw Object.assign(new Error("Membership plan not found"), { status: 404 });
+    }
+
+    if (plan.price <= 0) {
+      throw Object.assign(new Error("This route is only for paid membership plans"), { status: 400 });
+    }
+
+    await prisma.user.update({
+      where: { id: req.user!.id },
+      data: {
+        name: body.fullName,
+        email: body.email,
+        membership: "PENDING",
+        membershipTier: body.tier,
+      },
+    });
+
+    await prisma.membershipProfile.upsert({
+      where: { userId: req.user!.id },
+      update: {
+        phone: body.phone,
+        city: body.city || null,
+        jerseySize: body.jerseySize || null,
+        nextOfKin: body.nextOfKin || null,
+      },
+      create: {
+        userId: req.user!.id,
+        phone: body.phone,
+        city: body.city || null,
+        jerseySize: body.jerseySize || null,
+        nextOfKin: body.nextOfKin || null,
+        qrToken: makeQrToken(),
+      },
+    });
+
+    const order = await prisma.order.create({
+      data: {
+        userId: req.user!.id,
+        type: "MEMBERSHIP",
+        currency: plan.currency || currency,
+        total: plan.price,
+        metadata: JSON.stringify({
+          tier: body.tier,
+          fullName: body.fullName,
+          phone: body.phone,
+          email: body.email,
+          city: body.city || null,
+          jerseySize: body.jerseySize || null,
+          nextOfKin: body.nextOfKin || null,
+        }),
+      },
+    });
+
+    const tx = await prisma.paymentTransaction.create({
+      data: {
+        provider: "MPESA",
+        amount: plan.price,
+        currency: plan.currency || currency,
+        status: "PENDING",
+        orderId: order.id,
+        userId: req.user!.id,
+      },
+    });
+
+    const secret = process.env.MPESA_CALLBACK_SECRET || "";
+    const base = process.env.PUBLIC_BASE_URL!;
+    const callbackUrl = `${base}/api/payments/membership/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
+
+    const accountRef = `MEM-${order.id.slice(-10)}`;
+
+    const stk = await stkPush({
+      amount: plan.price,
+      phone,
+      accountReference: accountRef,
+      transactionDesc: `${body.tier} membership`,
+      callbackUrl,
+    });
+
+    await prisma.paymentTransaction.update({
+      where: { id: tx.id },
+      data: { reference: stk.CheckoutRequestID },
+    });
+
+    res.json({
+      orderId: order.id,
+      transactionId: tx.id,
+      checkoutRequestId: stk.CheckoutRequestID,
+      merchantRequestId: stk.MerchantRequestID,
+      amount: plan.price,
+      currency: plan.currency || currency,
+      customerMessage: stk.CustomerMessage,
+      tier: body.tier,
     });
   } catch (e) {
     next(e);
@@ -595,6 +938,28 @@ paymentsRouter.get("/tx/status/:checkoutRequestId", async (req, res, next) => {
     const tx = await prisma.paymentTransaction.findFirst({ where: { reference: checkoutRequestId } });
     if (!tx) return res.status(404).json({ status: "NOT_FOUND" });
     res.json({ status: tx.status, orderId: tx.orderId });
+  } catch (e) {
+    next(e);
+  }
+});
+
+paymentsRouter.get("/membership/tx/status/:checkoutRequestId", async (req, res, next) => {
+  try {
+    const checkoutRequestId = z.string().min(1).parse(req.params.checkoutRequestId);
+
+    const tx = await prisma.paymentTransaction.findFirst({
+      where: {
+        reference: checkoutRequestId,
+        order: { type: "MEMBERSHIP" },
+      },
+    });
+
+    if (!tx) return res.status(404).json({ status: "NOT_FOUND" });
+
+    res.json({
+      status: tx.status,
+      orderId: tx.orderId,
+    });
   } catch (e) {
     next(e);
   }
