@@ -950,11 +950,20 @@ paymentsRouter.get("/membership/tx/status/:checkoutRequestId", async (req, res, 
     const tx = await prisma.paymentTransaction.findFirst({
       where: {
         reference: checkoutRequestId,
-        order: { type: "MEMBERSHIP" },
       },
     });
 
-    if (!tx) return res.status(404).json({ status: "NOT_FOUND" });
+    if (!tx || !tx.orderId) {
+      return res.status(404).json({ status: "NOT_FOUND" });
+    }
+
+    const order = await prisma.order.findUnique({
+      where: { id: tx.orderId },
+    });
+
+    if (!order || order.type !== "MEMBERSHIP") {
+      return res.status(404).json({ status: "NOT_FOUND" });
+    }
 
     res.json({
       status: tx.status,

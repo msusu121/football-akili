@@ -1,10 +1,27 @@
-import { PrismaClient, Role, MembershipStatus, MediaType, MatchType } from "@prisma/client";
+import {
+  PrismaClient,
+  Role,
+  MembershipStatus,
+  MediaType,
+  MatchType,
+  MembershipTier,
+} from "@prisma/client";
+
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
 
 async function memberSeeder() {
-  const plans = [
+  const plans: Array<{
+  tier: MembershipTier;
+  name: string;
+  price: number;
+  currency: string;
+  durationDays: number;
+  description: string;
+  benefits: string;
+  sort: number;
+}> = [
     {
       tier: "BASIC",
       name: "Basic",
@@ -73,7 +90,7 @@ async function memberSeeder() {
 
   for (const plan of plans) {
     await prisma.membershipPlan.upsert({
-      where: { tier: plan.tier as any },
+      where: { tier: plan.tier  },
       update: plan,
       create: plan,
     });
