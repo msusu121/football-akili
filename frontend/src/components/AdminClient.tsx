@@ -1408,53 +1408,325 @@ function MediaPanel({ token, data, onChange }: any) {
 /* ═══════════════════════════════════════════════════════════
    HIGHLIGHTS
    ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   HIGHLIGHTS
+   ═══════════════════════════════════════════════════════════ */
 function HighlightsPanel({ token, data, onChange }: any) {
   const items = data?.items || [];
-  const [draft, setDraft] = useState({ title: "", videoUrl: "", matchId: "" });
+  const [saving, setSaving] = useState(false);
+  const [uploadingThumb, setUploadingThumb] = useState(false);
+  const [uploadingVideo, setUploadingVideo] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [thumbPreview, setThumbPreview] = useState("");
+  const [videoPreview, setVideoPreview] = useState("");
+
+  const emptyDraft = {
+    title: "",
+    videoUrl: "",
+    matchId: "",
+    thumbnailId: "",
+    videoMediaId: "",
+  };
+
+  const [draft, setDraft] = useState<any>(emptyDraft);
+
+  const resetForm = () => {
+    setDraft(emptyDraft);
+    setEditingId(null);
+    setThumbPreview("");
+    setVideoPreview("");
+  };
+
+  const uploadThumbnail = async (file: File) => {
+    try {
+      setUploadingThumb(true);
+      const created = await uploadAndRegisterMedia(
+        token,
+        file,
+        "highlights/thumbnails",
+        "IMAGE",
+        file.name
+      );
+      setDraft((d: any) => ({ ...d, thumbnailId: created.media.id }));
+      setThumbPreview(created.publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Thumbnail upload failed");
+    } finally {
+      setUploadingThumb(false);
+    }
+  };
+
+  const uploadVideo = async (file: File) => {
+    try {
+      setUploadingVideo(true);
+      const created = await uploadAndRegisterMedia(
+        token,
+        file,
+        "highlights/videos",
+        "VIDEO",
+        file.name
+      );
+      setDraft((d: any) => ({ ...d, videoMediaId: created.media.id, videoUrl: created.publicUrl }));
+      setVideoPreview(created.publicUrl);
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Video upload failed");
+    } finally {
+      setUploadingVideo(false);
+    }
+  };
 
   const create = async () => {
-    await apiJson("/admin/highlights", {
-      method: "POST",
-      token,
-      body: { ...draft, matchId: draft.matchId || null },
+    try {
+      setSaving(true);
+      await apiJson("/admin/highlights", {
+        method: "POST",
+        token,
+        body: {
+          title: draft.title,
+          videoUrl: draft.videoUrl || null,
+          matchId: draft.matchId || null,
+          thumbnailId: draft.thumbnailId || null,
+          videoMediaId: draft.videoMediaId || null,
+        },
+      });
+      resetForm();
+      onChange();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to create highlight");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const update = async () => {
+    if (!editingId) return;
+    try {
+      setSaving(true);
+      await apiJson(`/admin/highlights/${editingId}`, {
+        method: "PUT",
+        token,
+        body: {
+          title: draft.title,
+          videoUrl: draft.videoUrl || null,
+          matchId: draft.matchId || null,
+          thumbnailId: draft.thumbnailId || null,
+          videoMediaId: draft.videoMediaId || null,
+        },
+      });
+      resetForm();
+      onChange();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to update highlight");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startEdit = (h: any) => {
+    setEditingId(h.id);
+    setDraft({
+      title: h.title || "",
+      videoUrl: h.videoUrl || "",
+      matchId: h.matchId || "",
+      thumbnailId: h.thumbnailId || "",
+      videoMediaId: h.videoMediaId || "",
     });
-    setDraft({ title: "", videoUrl: "", matchId: "" });
-    onChange();
+    setThumbPreview(
+      h.thumbnailUrl ||
+        h?.thumbnail?.publicUrl ||
+        (h?.thumbnail?.path ? mediaUrlFromKey(h.thumbnail.path) : "") ||
+        ""
+    );
+    setVideoPreview(
+      h.videoMediaUrl ||
+        h?.videoMedia?.publicUrl ||
+        (h?.videoMedia?.path ? mediaUrlFromKey(h.videoMedia.path) : "") ||
+        ""
+    );
   };
 
   const del = async (id: string) => {
     if (!confirm("Delete highlight?")) return;
     await apiJson(`/admin/highlights/${id}`, { method: "DELETE", token });
+    if (editingId === id) resetForm();
     onChange();
   };
 
   return (
     <div className="grid gap-6">
       <div className={cardCls}>
-        <h3 className="text-sm font-semibold mb-3 text-foreground">Add highlight</h3>
-        <div className="grid gap-3">
-          <input className={inputCls} placeholder="title" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} />
-          <input className={inputCls} placeholder="video URL (YouTube, etc.)" value={draft.videoUrl} onChange={(e) => setDraft((d) => ({ ...d, videoUrl: e.target.value }))} />
-          <input className={inputCls} placeholder="match ID (optional)" value={draft.matchId} onChange={(e) => setDraft((d) => ({ ...d, matchId: e.target.value }))} />
+        <h3 className="text-sm font-semibold mb-3 text-foreground">
+          {editingId ? "Edit highlight" : "Add highlight"}
+        </h3>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <input
+            className={inputCls}
+            placeholder="title"
+            value={draft.title}
+            onChange={(e) => setDraft((d: any) => ({ ...d, title: e.target.value }))}
+          />
+          <input
+            className={inputCls}
+            placeholder="video URL (YouTube, etc.)"
+            value={draft.videoUrl}
+            onChange={(e) => setDraft((d: any) => ({ ...d, videoUrl: e.target.value }))}
+          />
+          <input
+            className={inputCls + " sm:col-span-2"}
+            placeholder="match ID (optional)"
+            value={draft.matchId}
+            onChange={(e) => setDraft((d: any) => ({ ...d, matchId: e.target.value }))}
+          />
         </div>
-        <button onClick={create} className={btnPrimary + " mt-4"}>Create</button>
+
+        {/* Thumbnail upload */}
+        <div className="mt-5 rounded-2xl border border-input bg-muted/30 p-4">
+          <div className="text-sm font-semibold text-foreground">Thumbnail</div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            Upload a thumbnail image for this highlight.
+          </div>
+          <div className="mt-4">
+            <input
+              type="file"
+              accept="image/*"
+              disabled={uploadingThumb}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadThumbnail(f);
+              }}
+            />
+          </div>
+          {uploadingThumb ? (
+            <div className="mt-3 text-xs text-muted-foreground">Uploading thumbnail...</div>
+          ) : null}
+          <div className="mt-3 text-xs text-muted-foreground break-all">
+            thumbnailId: {draft.thumbnailId || "—"}
+          </div>
+          {thumbPreview ? (
+            <div className="mt-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={thumbPreview}
+                alt="Thumbnail preview"
+                className="h-24 w-auto rounded-lg object-cover border border-input"
+              />
+            </div>
+          ) : null}
+        </div>
+
+        {/* Video upload */}
+        <div className="mt-4 rounded-2xl border border-input bg-muted/30 p-4">
+          <div className="text-sm font-semibold text-foreground">Video file</div>
+          <div className="mt-2 text-xs text-muted-foreground">
+            Upload a video file directly, or use the video URL field above for YouTube/external links.
+          </div>
+          <div className="mt-4">
+            <input
+              type="file"
+              accept="video/*"
+              disabled={uploadingVideo}
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadVideo(f);
+              }}
+            />
+          </div>
+          {uploadingVideo ? (
+            <div className="mt-3 text-xs text-muted-foreground">Uploading video...</div>
+          ) : null}
+          <div className="mt-3 text-xs text-muted-foreground break-all">
+            videoMediaId: {draft.videoMediaId || "—"}
+          </div>
+          {videoPreview ? (
+            <div className="mt-4">
+              <video
+                src={videoPreview}
+                controls
+                className="h-32 w-auto rounded-lg border border-input"
+              />
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-3">
+          {editingId ? (
+            <>
+              <button onClick={update} className={btnPrimary} disabled={saving}>
+                {saving ? "Saving..." : "Update"}
+              </button>
+              <button onClick={resetForm} className={btnOutline}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button onClick={create} className={btnPrimary} disabled={saving}>
+              {saving ? "Saving..." : "Create"}
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="grid gap-3">
-        {items.map((h: any) => (
-          <div key={h.id} className={cardCls + " flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3"}>
-            <div className="min-w-0">
-              <p className="text-sm font-semibold text-foreground">{h.title}</p>
-              <p className="text-xs text-muted-foreground mt-0.5 break-all">{h.videoUrl}</p>
+        {items.map((h: any) => {
+          const tPreview =
+            h.thumbnailUrl ||
+            h?.thumbnail?.publicUrl ||
+            (h?.thumbnail?.path ? mediaUrlFromKey(h.thumbnail.path) : null);
+
+          return (
+            <div
+              key={h.id}
+              className={cardCls + " flex flex-col sm:flex-row sm:items-start gap-4"}
+            >
+              <div className="flex items-start gap-3 flex-1 min-w-0">
+                {tPreview ? (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img
+                    src={tPreview}
+                    alt={h.title || "Thumbnail"}
+                    className="h-16 w-24 rounded-lg object-cover border border-input flex-shrink-0"
+                  />
+                ) : (
+                  <div className="h-16 w-24 rounded-lg bg-muted/50 border border-input flex-shrink-0 flex items-center justify-center text-xs text-muted-foreground">
+                    No thumb
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{h.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5 break-all line-clamp-1">
+                    {h.videoUrl || "No video URL"}
+                  </p>
+                  {h.matchId ? (
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Match: {h.matchId}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+              <div className="flex items-center gap-2 flex-shrink-0">
+                <button onClick={() => startEdit(h)} className={btnOutline}>
+                  Edit
+                </button>
+                <button onClick={() => del(h.id)} className={btnDanger}>
+                  Delete
+                </button>
+              </div>
             </div>
-            <button onClick={() => del(h.id)} className={btnDanger}>Delete</button>
-          </div>
-        ))}
-        {!items.length && <p className="text-sm text-muted-foreground">No highlights yet.</p>}
+          );
+        })}
+        {!items.length && (
+          <p className="text-sm text-muted-foreground">No highlights yet.</p>
+        )}
       </div>
     </div>
   );
 }
+
 
 /* ═══════════════════════════════════════════════════════════
    ADS / BANNERS

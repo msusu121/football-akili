@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { useAuth } from "@/context/AuthContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -18,6 +19,7 @@ type CheckoutStep = "select" | "pending" | "success" | "error";
 
 export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
   const router = useRouter();
+  const { token, isLoading } = useAuth();
 
   const [selectedTier, setSelectedTier] = useState<Plan["tier"] | null>(null);
   const [step, setStep] = useState<CheckoutStep>("select");
@@ -62,9 +64,18 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
   }, [plans]);
 
   useEffect(() => {
+    if (isLoading) return;
+
+    if (!token) {
+      router.replace(`/login?next=${encodeURIComponent("/membership")}`);
+    }
+  }, [isLoading, token, router]);
+
+  useEffect(() => {
     if (!checkoutRequestId || step !== "pending") return;
 
     let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | null = null;
 
     const poll = async () => {
       try {
@@ -77,11 +88,12 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
         if (cancelled) return;
 
         if (data.status === "SUCCESS") {
-          const token = localStorage.getItem("token") || "";
           const memberRes = await fetch(`${API}/membership/me`, {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: token
+              ? {
+                  Authorization: `Bearer ${token}`,
+                }
+              : {},
             cache: "no-store",
           });
 
@@ -104,7 +116,7 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
           return;
         }
 
-        setTimeout(poll, 4000);
+        timer = setTimeout(poll, 4000);
       } catch (err: any) {
         if (!cancelled) {
           setError(err?.message || "Failed while checking payment status.");
@@ -118,11 +130,11 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
 
     return () => {
       cancelled = true;
+      if (timer) clearTimeout(timer);
     };
-  }, [checkoutRequestId, step]);
+  }, [checkoutRequestId, step, token]);
 
   const getHeaders = (): HeadersInit | null => {
-    const token = localStorage.getItem("token") || "";
     if (!token) return null;
 
     return {
@@ -136,8 +148,8 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
 
     const headers = getHeaders();
     if (!headers) {
-      alert("Please log in first.");
-      router.push("/login?next=/membership");
+      localStorage.setItem("membership_selected_tier", selectedTier);
+      router.replace(`/login?next=${encodeURIComponent("/membership")}`);
       return;
     }
 
@@ -165,8 +177,11 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
         throw new Error(data?.error || "Failed to initiate STK push");
       }
 
+      localStorage.setItem("membership_selected_tier", selectedTier);
       setCheckoutRequestId(data.checkoutRequestId);
-      setCustomerMessage(data.customerMessage || "STK Push sent. Please complete payment on your phone.");
+      setCustomerMessage(
+        data.customerMessage || "STK Push sent. Please complete payment on your phone."
+      );
       setStep("pending");
     } catch (err: any) {
       setError(err.message || "Something went wrong");
@@ -185,6 +200,26 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
     setMemberData(null);
     localStorage.removeItem("membership_selected_tier");
   };
+
+  if (isLoading) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="rounded-2xl border border-line bg-white p-6 text-sm text-muted">
+          Checking your session...
+        </div>
+      </div>
+    );
+  }
+
+  if (!token) {
+    return (
+      <div className="max-w-4xl mx-auto">
+        <div className="rounded-2xl border border-line bg-white p-6 text-sm text-muted">
+          Redirecting to login...
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto">
@@ -209,7 +244,7 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
                   }`}
                 >
                   <div className="font-bold text-ink">{plan.name}</div>
-                  <div className="text-sm text-muted mt-1">
+                  <div className="mt-1 text-sm text-muted">
                     {plan.currency} {plan.price.toLocaleString()}
                   </div>
                 </button>
@@ -272,7 +307,7 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
                 <button
                   onClick={handleCheckout}
                   disabled={loading}
-                  className="mt-8 w-full rounded-xl bg-[#0a1628] px-6 py-3 text-white font-semibold disabled:opacity-60"
+                  className="mt-8 w-full rounded-xl bg-[#0a1628] px-6 py-3 font-semibold text-white disabled:opacity-60"
                 >
                   {loading ? "Sending STK Push..." : "Pay with M-Pesa"}
                 </button>
@@ -285,16 +320,14 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
       )}
 
       {step === "pending" && (
-        <div className="max-w-2xl mx-auto text-center rounded-2xl border border-yellow-200 bg-yellow-50 p-8">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-yellow-200 bg-yellow-50 p-8 text-center">
           <h3 className="text-2xl font-bold text-[#0a1628]">Complete Payment on Your Phone</h3>
           <p className="mt-3 text-gray-700">
             {customerMessage || "An M-Pesa prompt has been sent to your phone."}
           </p>
-          <p className="mt-2 text-sm text-gray-500">
-            Waiting for Safaricom confirmation...
-          </p>
+          <p className="mt-2 text-sm text-gray-500">Waiting for Safaricom confirmation...</p>
           {checkoutRequestId ? (
-            <p className="mt-4 text-xs text-gray-500 font-mono break-all">
+            <p className="mt-4 break-all font-mono text-xs text-gray-500">
               CheckoutRequestID: {checkoutRequestId}
             </p>
           ) : null}
@@ -302,7 +335,7 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
       )}
 
       {step === "success" && (
-        <div className="max-w-2xl mx-auto text-center rounded-2xl border border-green-200 bg-green-50 p-8">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-green-200 bg-green-50 p-8 text-center">
           <h3 className="text-2xl font-bold text-green-800">Membership Activated</h3>
           <p className="mt-3 text-green-700">
             Member Number:{" "}
@@ -329,7 +362,7 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
       )}
 
       {step === "error" && (
-        <div className="max-w-2xl mx-auto text-center rounded-2xl border border-red-200 bg-red-50 p-8">
+        <div className="mx-auto max-w-2xl rounded-2xl border border-red-200 bg-red-50 p-8 text-center">
           <h3 className="text-2xl font-bold text-red-800">Payment Failed</h3>
           <p className="mt-3 text-red-600">{error}</p>
           <button
