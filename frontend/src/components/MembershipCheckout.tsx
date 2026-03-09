@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useAuth } from "@/context/AuthContext";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -17,9 +16,16 @@ type Plan = {
 
 type CheckoutStep = "select" | "pending" | "success" | "error";
 
+function getStoredToken() {
+  if (typeof window === "undefined") return "";
+  return window.localStorage.getItem("club_token") || "";
+}
+
 export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
   const router = useRouter();
-  const { token, isLoading } = useAuth();
+
+  const [authReady, setAuthReady] = useState(false);
+  const [token, setToken] = useState<string>("");
 
   const [selectedTier, setSelectedTier] = useState<Plan["tier"] | null>(null);
   const [step, setStep] = useState<CheckoutStep>("select");
@@ -50,6 +56,10 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
       setSelectedTier(saved as Plan["tier"]);
     }
 
+    const t = getStoredToken();
+    setToken(t);
+    setAuthReady(true);
+
     const handler = (event: Event) => {
       const custom = event as CustomEvent<{ tier: Plan["tier"] }>;
       if (custom.detail?.tier) {
@@ -64,12 +74,12 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
   }, [plans]);
 
   useEffect(() => {
-    if (isLoading) return;
+    if (!authReady) return;
 
     if (!token) {
       router.replace(`/login?next=${encodeURIComponent("/membership")}`);
     }
-  }, [isLoading, token, router]);
+  }, [authReady, token, router]);
 
   useEffect(() => {
     if (!checkoutRequestId || step !== "pending") return;
@@ -88,10 +98,12 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
         if (cancelled) return;
 
         if (data.status === "SUCCESS") {
+          const currentToken = getStoredToken();
+
           const memberRes = await fetch(`${API}/membership/me`, {
-            headers: token
+            headers: currentToken
               ? {
-                  Authorization: `Bearer ${token}`,
+                  Authorization: `Bearer ${currentToken}`,
                 }
               : {},
             cache: "no-store",
@@ -132,14 +144,15 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
       cancelled = true;
       if (timer) clearTimeout(timer);
     };
-  }, [checkoutRequestId, step, token]);
+  }, [checkoutRequestId, step]);
 
   const getHeaders = (): HeadersInit | null => {
-    if (!token) return null;
+    const currentToken = getStoredToken();
+    if (!currentToken) return null;
 
     return {
       "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+      Authorization: `Bearer ${currentToken}`,
     };
   };
 
@@ -201,7 +214,7 @@ export default function MembershipCheckout({ plans }: { plans: Plan[] }) {
     localStorage.removeItem("membership_selected_tier");
   };
 
-  if (isLoading) {
+  if (!authReady) {
     return (
       <div className="max-w-4xl mx-auto">
         <div className="rounded-2xl border border-line bg-white p-6 text-sm text-muted">
