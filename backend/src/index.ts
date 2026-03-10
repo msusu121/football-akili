@@ -49,6 +49,7 @@ app.use(
     credentials: true,
   })
 );
+app.options("*", cors());
 app.use(express.json({ limit: "2mb" }));
 app.use(morgan("dev"));
 
