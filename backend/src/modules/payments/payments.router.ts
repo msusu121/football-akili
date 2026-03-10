@@ -255,7 +255,7 @@ paymentsRouter.post("/membership/checkout/stk", requireAuth, async (req, res, ne
 
     const secret = process.env.MPESA_CALLBACK_SECRET || "";
     const base = process.env.PUBLIC_BASE_URL!;
-    const callbackUrl = `${base}/api/payments/membership/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
+    const callbackUrl = `${base}/payments/membership/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
 
     const accountRef = `MEM-${order.id.slice(-10)}`;
 
