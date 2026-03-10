@@ -31,9 +31,21 @@ const __dirname = path.dirname(__filename);
 app.use("/media", express.static(path.join(__dirname, "..", "public", "uploads")));
 
 app.use(helmet());
+//app.use(
+//  cors({
+//    origin: (process.env.CORS_ORIGIN || "http://localhost:3000").split(","),
+//    credentials: true,
+//  })
+//);
 app.use(
   cors({
-    origin: (process.env.CORS_ORIGIN || "http://localhost:3000").split(","),
+    origin: [
+      "https://mombasaunited.com",
+      "https://www.mombasaunited.com",
+      "http://localhost:3000"
+    ],
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
   })
 );
