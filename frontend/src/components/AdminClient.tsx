@@ -71,7 +71,7 @@ async function uploadFileToBucket(
   const form = new FormData();
   form.append("folder", folder);
   form.append("file", file);
-  return apiUpload("/uploads/upload", { token, form });
+  return apiUpload("/upload/upload", { token, form });
 }
 
 async function uploadAndRegisterMedia(
