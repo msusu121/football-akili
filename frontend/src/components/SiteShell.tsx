@@ -9,7 +9,6 @@ import React, {
   useState,
   ReactNode,
 } from "react";
-import { HeaderAdBanner } from "@/components/HeaderAdBanner";
 
 const ASSET_BASE =
   process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
@@ -69,7 +68,33 @@ interface SiteShellProps {
   BG_WASH?: string;
 }
 
+type HeaderAdItem = {
+  id: string;
+  title?: string | null;
+  href?: string | null;
+  ctaLabel?: string | null;
+  imageUrl?: string | null;
+  desktopImageUrl?: string | null;
+  mobileImageUrl?: string | null;
+  focusX?: number | null;
+  focusY?: number | null;
+  headline?: string | null;
+  subheadline?: string | null;
+};
 
+type PublicHeaderAdApiItem = {
+  id: string;
+  title?: string | null;
+  href?: string | null;
+  ctaLabel?: string | null;
+  imageUrl?: string | null;
+  desktopImageUrl?: string | null;
+  mobileImageUrl?: string | null;
+  focusX?: number | null;
+  focusY?: number | null;
+  headline?: string | null;
+  subheadline?: string | null;
+};
 
 const NAV_LINKS = [
   { label: "LATEST", href: "/news" },
@@ -160,24 +185,39 @@ function SocialIcon({ platform }: { platform: string }) {
   );
 }
 
-type HeaderAdItem = {
-  id: string;
-  title?: string | null;
-  href?: string | null;
-  ctaLabel?: string | null;
-  imageUrl?: string | null;
-  desktopImageUrl?: string | null;
-  mobileImageUrl?: string | null;
-  focusX?: number | null;
-  focusY?: number | null;
-  headline?: string | null;
-  subheadline?: string | null;
-};
-
 function clampPercent(value: unknown, fallback: number) {
   const n = Number(value);
   if (!Number.isFinite(n)) return `${fallback}%`;
   return `${Math.max(0, Math.min(100, n))}%`;
+}
+
+const INITIAL_TAKEOVER_MS = 60_000;
+const RETURN_TAKEOVER_MIN_MS = 18_000;
+const RETURN_TAKEOVER_MAX_MS = 30_000;
+const RETURN_GAP_MIN_MS = 4 * 60_000;
+const RETURN_GAP_MAX_MS = 10 * 60_000;
+const HIDDEN_TAB_RETRY_MIN_MS = 45_000;
+const HIDDEN_TAB_RETRY_MAX_MS = 90_000;
+const INTRO_MS = 2_200;
+const AD_ROTATE_MS = 8_000;
+
+// in-memory runtime only
+let runtimeInitialShown = false;
+let runtimeActiveUntil = 0;
+let runtimeNextAt = 0;
+let runtimeAdCursor = 0;
+
+function randomInt(min: number, max: number) {
+  return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function pickRandomIndex(length: number, exclude = -1) {
+  if (length <= 1) return 0;
+  let next = exclude;
+  while (next === exclude) {
+    next = randomInt(0, length - 1);
+  }
+  return next;
 }
 
 export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
@@ -185,10 +225,28 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
     (x) => !!(x?.imageUrl || x?.desktopImageUrl || x?.mobileImageUrl)
   );
 
+  const adSignature = ads
+    .map((ad) =>
+      [
+        ad.id,
+        ad.imageUrl || "",
+        ad.desktopImageUrl || "",
+        ad.mobileImageUrl || "",
+        ad.headline || "",
+        ad.subheadline || "",
+      ].join("|")
+    )
+    .join("::");
+
   const [idx, setIdx] = useState(0);
   const [reduced, setReduced] = useState(false);
   const [phase, setPhase] = useState<"INTRO" | "ADS">("INTRO");
-  const [loaded, setLoaded] = useState<Record<string, boolean>>({});
+  const [visible, setVisible] = useState(false);
+
+  const introTimerRef = useRef<number | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
+  const returnTimerRef = useRef<number | null>(null);
+  const rotateTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -216,62 +274,143 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
       ].filter(Boolean);
 
       sources.forEach((src) => {
-        if (loaded[src]) return;
-
         const img = new Image();
-        img.onload = () => {
-          setLoaded((prev) => (prev[src] ? prev : { ...prev, [src]: true }));
-        };
-        img.onerror = () => {
-          setLoaded((prev) => (prev[src] ? prev : { ...prev, [src]: true }));
-        };
         img.src = src;
       });
     });
-  }, [ads, loaded]);
-
-  const activeAd = ads.length ? ads[idx % ads.length] : null;
-
-  const desktopSrc = activeAd
-    ? String(activeAd.desktopImageUrl || activeAd.imageUrl || "").trim()
-    : "";
-
-  const mobileSrc = activeAd
-    ? String(activeAd.mobileImageUrl || activeAd.imageUrl || desktopSrc).trim()
-    : "";
-
-  const activeReady = !!(
-    (desktopSrc && loaded[desktopSrc]) ||
-    (mobileSrc && loaded[mobileSrc])
-  );
+  }, [ads, adSignature]);
 
   useEffect(() => {
-    if (!activeAd) return;
-    if (!activeReady) return;
+    if (typeof window === "undefined") return;
 
-    if (reduced) {
-      setPhase("ADS");
+    const clearAllTimers = () => {
+      if (introTimerRef.current) window.clearTimeout(introTimerRef.current);
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+      if (returnTimerRef.current) window.clearTimeout(returnTimerRef.current);
+      if (rotateTimerRef.current) window.clearInterval(rotateTimerRef.current);
+
+      introTimerRef.current = null;
+      hideTimerRef.current = null;
+      returnTimerRef.current = null;
+      rotateTimerRef.current = null;
+    };
+
+    if (!ads.length) {
+      clearAllTimers();
+      setVisible(false);
+      setPhase("INTRO");
       return;
     }
 
-    const introTimer = window.setTimeout(() => {
-      setPhase("ADS");
-    }, 2200);
+    const returnDuration = () =>
+      randomInt(RETURN_TAKEOVER_MIN_MS, RETURN_TAKEOVER_MAX_MS);
 
-    return () => window.clearTimeout(introTimer);
-  }, [activeAd?.id, activeReady, reduced]);
+    const returnGap = () => randomInt(RETURN_GAP_MIN_MS, RETURN_GAP_MAX_MS);
+
+    const hiddenRetryGap = () =>
+      randomInt(HIDDEN_TAB_RETRY_MIN_MS, HIDDEN_TAB_RETRY_MAX_MS);
+
+    const scheduleReturn = (delayMs: number) => {
+      const safeDelay = Math.max(15_000, delayMs);
+      runtimeNextAt = Date.now() + safeDelay;
+
+      if (returnTimerRef.current) {
+        window.clearTimeout(returnTimerRef.current);
+      }
+
+      returnTimerRef.current = window.setTimeout(() => {
+        if (document.visibilityState === "hidden") {
+          scheduleReturn(hiddenRetryGap());
+          return;
+        }
+
+        runtimeAdCursor = pickRandomIndex(ads.length, runtimeAdCursor);
+        setIdx(runtimeAdCursor);
+        showTakeover(returnDuration(), true);
+      }, safeDelay);
+    };
+
+    const hideTakeover = () => {
+      setVisible(false);
+      setPhase("INTRO");
+      runtimeActiveUntil = 0;
+      scheduleReturn(returnGap());
+    };
+
+    const showTakeover = (durationMs: number, withIntro: boolean) => {
+      if (introTimerRef.current) window.clearTimeout(introTimerRef.current);
+      if (hideTimerRef.current) window.clearTimeout(hideTimerRef.current);
+      if (rotateTimerRef.current) window.clearInterval(rotateTimerRef.current);
+
+      runtimeNextAt = 0;
+      runtimeActiveUntil = Date.now() + durationMs;
+
+      setVisible(true);
+      setPhase(withIntro && !reduced ? "INTRO" : "ADS");
+
+      if (withIntro && !reduced) {
+        const introDuration = Math.min(INTRO_MS, Math.max(900, durationMs - 500));
+        introTimerRef.current = window.setTimeout(() => {
+          setPhase("ADS");
+        }, introDuration);
+      }
+
+      hideTimerRef.current = window.setTimeout(() => {
+        hideTakeover();
+      }, durationMs);
+    };
+
+    runtimeAdCursor = Math.min(runtimeAdCursor, Math.max(ads.length - 1, 0));
+    setIdx(runtimeAdCursor);
+
+    const now = Date.now();
+
+    if (runtimeActiveUntil > now) {
+      showTakeover(runtimeActiveUntil - now, false);
+      return clearAllTimers;
+    }
+
+    if (!runtimeInitialShown) {
+      runtimeInitialShown = true;
+      runtimeAdCursor = pickRandomIndex(ads.length, -1);
+      setIdx(runtimeAdCursor);
+      showTakeover(INITIAL_TAKEOVER_MS, true);
+      return clearAllTimers;
+    }
+
+    if (runtimeNextAt > now) {
+      scheduleReturn(runtimeNextAt - now);
+      return clearAllTimers;
+    }
+
+    scheduleReturn(returnGap());
+    return clearAllTimers;
+  }, [ads.length, adSignature, reduced]);
 
   useEffect(() => {
-    if (reduced || ads.length <= 1 || phase !== "ADS") return;
+    if (!visible || phase !== "ADS" || ads.length <= 1) return;
 
-    const timer = window.setInterval(() => {
-      setIdx((prev) => (prev + 1) % ads.length);
-    }, 8000);
+    rotateTimerRef.current = window.setInterval(() => {
+      runtimeAdCursor = pickRandomIndex(ads.length, runtimeAdCursor);
+      setIdx(runtimeAdCursor);
+    }, AD_ROTATE_MS);
 
-    return () => window.clearInterval(timer);
-  }, [ads.length, reduced, phase]);
+    return () => {
+      if (rotateTimerRef.current) window.clearInterval(rotateTimerRef.current);
+      rotateTimerRef.current = null;
+    };
+  }, [visible, phase, ads.length]);
 
+  const activeAd = ads.length ? ads[idx % ads.length] : null;
   if (!activeAd) return null;
+
+  const desktopSrc = String(
+    activeAd.desktopImageUrl || activeAd.imageUrl || ""
+  ).trim();
+
+  const mobileSrc = String(
+    activeAd.mobileImageUrl || activeAd.imageUrl || desktopSrc
+  ).trim();
 
   const focusX = clampPercent(activeAd.focusX, 50);
   const focusY = clampPercent(activeAd.focusY, 58);
@@ -315,373 +454,406 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
   );
 
   return (
-    <div className="muTakeoverFullBleed">
-      <div className="muTakeoverWrap" role="region" aria-label="Partner promotion">
-        <div
-          className={`muSlide muIntro ${
-            phase === "INTRO" || (phase === "ADS" && !activeReady) ? "isActive" : ""
-          }`}
-        >
-          <div className="muIntroInner">
-            <div className="muIntroTop">MOMBASA</div>
-            <div className="muIntroMid">
-              <span className="muBorn">BORN</span>
-              <span className="muAmp">&amp;</span>
-              <span className="muBred">BRED</span>
-            </div>
-          </div>
-        </div>
-
-        {activeAd.href ? (
-          <a
-            key={`${activeAd.id}-${idx}`}
-            href={activeAd.href}
-            target="_blank"
-            rel="noopener noreferrer"
-            aria-label={activeAd.title || headline}
-            className={`muSlide muAd ${
-              phase === "ADS" && activeReady ? "isActive" : ""
-            }`}
-          >
-            {adMedia}
-          </a>
-        ) : (
+    <div className={`muTakeoverShell ${visible ? "isVisible" : ""}`}>
+      <div className="muTakeoverShellInner">
+        <div className="muTakeoverFullBleed">
           <div
-            key={`${activeAd.id}-${idx}`}
-            aria-label={activeAd.title || headline}
-            className={`muSlide muAd ${
-              phase === "ADS" && activeReady ? "isActive" : ""
-            }`}
+            className="muTakeoverWrap"
+            role="region"
+            aria-label="Partner promotion"
           >
-            {adMedia}
-          </div>
-        )}
+            <div
+              className={`muSlide muIntro ${
+                phase === "INTRO" ? "isActive" : ""
+              }`}
+            >
+              <div className="muIntroInner">
+                <div className="muIntroTop">MOMBASA</div>
+                <div className="muIntroMid">
+                  <span className="muBorn">BORN</span>
+                  <span className="muAmp">&amp;</span>
+                  <span className="muBred">BRED</span>
+                </div>
+              </div>
+            </div>
 
-        {phase === "ADS" && activeReady && !reduced && ads.length > 1 ? (
-          <div className="muProgressTrack" aria-hidden="true">
-            <div key={`${activeAd.id}-${idx}`} className="muProgressBar" />
+            {activeAd.href ? (
+              <a
+                key={`${activeAd.id}-${idx}`}
+                href={activeAd.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label={activeAd.title || headline}
+                className={`muSlide muAd ${phase === "ADS" ? "isActive" : ""}`}
+              >
+                {adMedia}
+              </a>
+            ) : (
+              <div
+                key={`${activeAd.id}-${idx}`}
+                aria-label={activeAd.title || headline}
+                className={`muSlide muAd ${phase === "ADS" ? "isActive" : ""}`}
+              >
+                {adMedia}
+              </div>
+            )}
+
+            {visible && phase === "ADS" && ads.length > 1 ? (
+              <div className="muProgressTrack" aria-hidden="true">
+                <div key={`${activeAd.id}-${idx}`} className="muProgressBar" />
+              </div>
+            ) : null}
           </div>
-        ) : null}
+
+          <style jsx global>{`
+            .muTakeoverShell {
+              max-height: 0;
+              opacity: 0;
+              overflow: hidden;
+              transition: max-height 520ms cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 280ms ease;
+              will-change: max-height, opacity;
+            }
+
+            .muTakeoverShell.isVisible {
+              max-height: 190px;
+              opacity: 1;
+            }
+
+            .muTakeoverShellInner {
+              min-height: 0;
+            }
+
+            .muTakeoverFullBleed {
+              width: 100vw;
+              position: relative;
+              left: 50%;
+              right: 50%;
+              margin-left: -50vw;
+              margin-right: -50vw;
+              background: #06142f;
+            }
+
+            .muTakeoverWrap {
+              position: relative;
+              width: 100%;
+              overflow: hidden;
+              background: #06142f;
+              border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+              isolation: isolate;
+              height: 110px;
+            }
+
+            @media (min-width: 480px) {
+              .muTakeoverWrap {
+                height: 124px;
+              }
+            }
+
+            @media (min-width: 768px) {
+              .muTakeoverWrap {
+                height: 136px;
+              }
+            }
+
+            @media (min-width: 1024px) {
+              .muTakeoverWrap {
+                height: 150px;
+              }
+            }
+
+            @media (min-width: 1280px) {
+              .muTakeoverWrap {
+                height: 164px;
+              }
+            }
+
+            .muSlide {
+              position: absolute;
+              inset: 0;
+              opacity: 0;
+              transform: translateY(6px);
+              transition: opacity 380ms ease, transform 380ms ease;
+              will-change: opacity, transform;
+            }
+
+            .muSlide.isActive {
+              opacity: 1;
+              transform: translateY(0);
+              z-index: 2;
+            }
+
+            .muAd {
+              display: block;
+              width: 100%;
+              height: 100%;
+              text-decoration: none;
+              color: inherit;
+            }
+
+            .muTakeoverMedia {
+              position: relative;
+              width: 100%;
+              height: 100%;
+              background: transparent;
+            }
+
+            .muTakeoverMedia picture {
+              display: block;
+              width: 100%;
+              height: 100%;
+            }
+
+            .muTakeoverImg {
+              display: block;
+              width: 100%;
+              height: 100%;
+              object-fit: cover;
+              object-position: var(--mu-focus-x, 50%) var(--mu-focus-y, 58%);
+              user-select: none;
+              -webkit-user-drag: none;
+            }
+
+            .muTakeoverCopy {
+              position: absolute;
+              left: 50%;
+              top: 47%;
+              transform: translate(-50%, -50%);
+              z-index: 2;
+              width: min(92%, 980px);
+              text-align: center;
+              pointer-events: none;
+            }
+
+            .muTakeoverHeadline {
+              color: #fff;
+              font-weight: 1000;
+              letter-spacing: 0.04em;
+              line-height: 0.92;
+              text-transform: uppercase;
+              text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+              font-size: clamp(16px, 3vw, 40px);
+            }
+
+            .muTakeoverSubWrap {
+              margin-top: 4px;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              gap: 10px;
+            }
+
+            .muTakeoverLine {
+              width: clamp(28px, 6vw, 90px);
+              height: 2px;
+              border-radius: 999px;
+              background: rgba(255, 255, 255, 0.95);
+              flex: 0 0 auto;
+            }
+
+            .muTakeoverSubheadline {
+              color: rgba(255, 255, 255, 0.98);
+              font-weight: 800;
+              letter-spacing: 0.22em;
+              line-height: 1;
+              text-transform: uppercase;
+              white-space: nowrap;
+              text-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
+              font-size: clamp(8px, 1.35vw, 18px);
+            }
+
+            .muIntro {
+              background: radial-gradient(
+                circle at center,
+                rgba(255, 255, 255, 0.98) 0%,
+                rgba(243, 244, 246, 0.98) 58%,
+                rgba(233, 236, 241, 1) 100%
+              );
+            }
+
+            .muIntroInner {
+              position: absolute;
+              inset: 0;
+              display: grid;
+              place-content: center;
+              text-align: center;
+              padding: 12px 18px;
+              line-height: 0.9;
+            }
+
+            .muIntroTop {
+              font-weight: 1000;
+              color: #10214a;
+              letter-spacing: -0.04em;
+              font-size: clamp(14px, 2.6vw, 34px);
+              animation: muIntroTopIn 520ms ease both;
+            }
+
+            .muIntroMid {
+              display: inline-flex;
+              align-items: baseline;
+              justify-content: center;
+              gap: 8px;
+              margin-top: 2px;
+              flex-wrap: wrap;
+            }
+
+            .muBorn {
+              font-weight: 1000;
+              letter-spacing: -0.05em;
+              font-size: clamp(24px, 6vw, 64px);
+              background: linear-gradient(
+                90deg,
+                #7c3aed 0%,
+                #2563eb 60%,
+                #ef4444 100%
+              );
+              -webkit-background-clip: text;
+              background-clip: text;
+              color: transparent;
+              animation: muBornIn 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+            }
+
+            .muAmp {
+              font-weight: 1000;
+              color: #2563eb;
+              font-size: clamp(16px, 3vw, 34px);
+              animation: muAmpIn 650ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1)
+                both;
+            }
+
+            .muBred {
+              font-weight: 1000;
+              color: #ef4444;
+              letter-spacing: -0.05em;
+              font-size: clamp(24px, 6vw, 64px);
+              animation: muBredIn 650ms 180ms cubic-bezier(0.2, 0.8, 0.2, 1)
+                both;
+            }
+
+            @keyframes muIntroTopIn {
+              from {
+                opacity: 0;
+                transform: translateY(-8px);
+              }
+              to {
+                opacity: 1;
+                transform: translateY(0);
+              }
+            }
+
+            @keyframes muBornIn {
+              from {
+                opacity: 0;
+                transform: translateX(-16px) scale(0.96);
+              }
+              to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+              }
+            }
+
+            @keyframes muAmpIn {
+              from {
+                opacity: 0;
+                transform: scale(0.75);
+              }
+              to {
+                opacity: 1;
+                transform: scale(1);
+              }
+            }
+
+            @keyframes muBredIn {
+              from {
+                opacity: 0;
+                transform: translateX(16px) scale(0.96);
+              }
+              to {
+                opacity: 1;
+                transform: translateX(0) scale(1);
+              }
+            }
+
+            @media (max-width: 767px) {
+              .muTakeoverCopy {
+                top: 44%;
+                width: 94%;
+              }
+
+              .muTakeoverHeadline {
+                font-size: clamp(18px, 7vw, 34px);
+              }
+
+              .muTakeoverSubWrap {
+                gap: 7px;
+                margin-top: 3px;
+              }
+
+              .muTakeoverLine {
+                width: clamp(18px, 10vw, 44px);
+                height: 2px;
+              }
+
+              .muTakeoverSubheadline {
+                font-size: clamp(7px, 2.7vw, 11px);
+                letter-spacing: 0.16em;
+              }
+
+              .muIntroInner {
+                padding: 10px 14px;
+              }
+            }
+
+            .muProgressTrack {
+              position: absolute;
+              left: 0;
+              right: 0;
+              bottom: 0;
+              height: 2px;
+              background: rgba(255, 255, 255, 0.12);
+              z-index: 3;
+            }
+
+            .muProgressBar {
+              width: 100%;
+              height: 100%;
+              transform-origin: left center;
+              background: var(--brand-accent, #f4b400);
+              animation: muTakeoverProgress 8s linear forwards;
+            }
+
+            @keyframes muTakeoverProgress {
+              from {
+                transform: scaleX(0);
+              }
+              to {
+                transform: scaleX(1);
+              }
+            }
+
+            @media (prefers-reduced-motion: reduce) {
+              .muTakeoverShell {
+                transition: none;
+              }
+
+              .muSlide,
+              .muBorn,
+              .muAmp,
+              .muBred,
+              .muIntroTop {
+                transition: none;
+                animation: none;
+                transform: none;
+              }
+
+              .muProgressBar {
+                animation: none;
+              }
+            }
+          `}</style>
+        </div>
       </div>
-
-      <style jsx global>{`
-        .muTakeoverFullBleed {
-          width: 100vw;
-          position: relative;
-          left: 50%;
-          right: 50%;
-          margin-left: -50vw;
-          margin-right: -50vw;
-          background: #06142f;
-        }
-
-        .muTakeoverWrap {
-          position: relative;
-          width: 100%;
-          overflow: hidden;
-          background: #06142f;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-          isolation: isolate;
-          height: 110px;
-        }
-
-        @media (min-width: 480px) {
-          .muTakeoverWrap {
-            height: 124px;
-          }
-        }
-
-        @media (min-width: 768px) {
-          .muTakeoverWrap {
-            height: 136px;
-          }
-        }
-
-        @media (min-width: 1024px) {
-          .muTakeoverWrap {
-            height: 150px;
-          }
-        }
-
-        @media (min-width: 1280px) {
-          .muTakeoverWrap {
-            height: 164px;
-          }
-        }
-
-        .muSlide {
-          position: absolute;
-          inset: 0;
-          opacity: 0;
-          transform: translateY(6px);
-          transition: opacity 380ms ease, transform 380ms ease;
-          will-change: opacity, transform;
-        }
-
-        .muSlide.isActive {
-          opacity: 1;
-          transform: translateY(0);
-          z-index: 2;
-        }
-
-        .muAd {
-          display: block;
-          width: 100%;
-          height: 100%;
-          text-decoration: none;
-          color: inherit;
-        }
-
-        .muTakeoverMedia {
-          position: relative;
-          width: 100%;
-          height: 100%;
-          background: transparent;
-        }
-
-        .muTakeoverMedia picture {
-          display: block;
-          width: 100%;
-          height: 100%;
-        }
-
-        .muTakeoverImg {
-          display: block;
-          width: 100%;
-          height: 100%;
-          object-fit: cover;
-          object-position: var(--mu-focus-x, 50%) var(--mu-focus-y, 58%);
-          user-select: none;
-          -webkit-user-drag: none;
-        }
-
-        .muTakeoverCopy {
-          position: absolute;
-          left: 50%;
-          top: 47%;
-          transform: translate(-50%, -50%);
-          z-index: 2;
-          width: min(92%, 980px);
-          text-align: center;
-          pointer-events: none;
-        }
-
-        .muTakeoverHeadline {
-          color: #fff;
-          font-weight: 1000;
-          letter-spacing: 0.04em;
-          line-height: 0.92;
-          text-transform: uppercase;
-          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
-          font-size: clamp(16px, 3vw, 40px);
-        }
-
-        .muTakeoverSubWrap {
-          margin-top: 4px;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 10px;
-        }
-
-        .muTakeoverLine {
-          width: clamp(28px, 6vw, 90px);
-          height: 2px;
-          border-radius: 999px;
-          background: rgba(255, 255, 255, 0.95);
-          flex: 0 0 auto;
-        }
-
-        .muTakeoverSubheadline {
-          color: rgba(255, 255, 255, 0.98);
-          font-weight: 800;
-          letter-spacing: 0.22em;
-          line-height: 1;
-          text-transform: uppercase;
-          white-space: nowrap;
-          text-shadow: 0 2px 10px rgba(0, 0, 0, 0.24);
-          font-size: clamp(8px, 1.35vw, 18px);
-        }
-
-        .muIntro {
-          background: radial-gradient(
-            circle at center,
-            rgba(255, 255, 255, 0.98) 0%,
-            rgba(243, 244, 246, 0.98) 58%,
-            rgba(233, 236, 241, 1) 100%
-          );
-        }
-
-        .muIntroInner {
-          position: absolute;
-          inset: 0;
-          display: grid;
-          place-content: center;
-          text-align: center;
-          padding: 12px 18px;
-          line-height: 0.9;
-        }
-
-        .muIntroTop {
-          font-weight: 1000;
-          color: #10214a;
-          letter-spacing: -0.04em;
-          font-size: clamp(14px, 2.6vw, 34px);
-          animation: muIntroTopIn 520ms ease both;
-        }
-
-        .muIntroMid {
-          display: inline-flex;
-          align-items: baseline;
-          justify-content: center;
-          gap: 8px;
-          margin-top: 2px;
-          flex-wrap: wrap;
-        }
-
-        .muBorn {
-          font-weight: 1000;
-          letter-spacing: -0.05em;
-          font-size: clamp(24px, 6vw, 64px);
-          background: linear-gradient(90deg, #7c3aed 0%, #2563eb 60%, #ef4444 100%);
-          -webkit-background-clip: text;
-          background-clip: text;
-          color: transparent;
-          animation: muBornIn 650ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-        }
-
-        .muAmp {
-          font-weight: 1000;
-          color: #2563eb;
-          font-size: clamp(16px, 3vw, 34px);
-          animation: muAmpIn 650ms 120ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-        }
-
-        .muBred {
-          font-weight: 1000;
-          color: #ef4444;
-          letter-spacing: -0.05em;
-          font-size: clamp(24px, 6vw, 64px);
-          animation: muBredIn 650ms 180ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-        }
-
-        @keyframes muIntroTopIn {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-
-        @keyframes muBornIn {
-          from {
-            opacity: 0;
-            transform: translateX(-16px) scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
-        }
-
-        @keyframes muAmpIn {
-          from {
-            opacity: 0;
-            transform: scale(0.75);
-          }
-          to {
-            opacity: 1;
-            transform: scale(1);
-          }
-        }
-
-        @keyframes muBredIn {
-          from {
-            opacity: 0;
-            transform: translateX(16px) scale(0.96);
-          }
-          to {
-            opacity: 1;
-            transform: translateX(0) scale(1);
-          }
-        }
-
-        @media (max-width: 767px) {
-          .muTakeoverCopy {
-            top: 44%;
-            width: 94%;
-          }
-
-          .muTakeoverHeadline {
-            font-size: clamp(18px, 7vw, 34px);
-          }
-
-          .muTakeoverSubWrap {
-            gap: 7px;
-            margin-top: 3px;
-          }
-
-          .muTakeoverLine {
-            width: clamp(18px, 10vw, 44px);
-            height: 2px;
-          }
-
-          .muTakeoverSubheadline {
-            font-size: clamp(7px, 2.7vw, 11px);
-            letter-spacing: 0.16em;
-          }
-
-          .muIntroInner {
-            padding: 10px 14px;
-          }
-        }
-
-        .muProgressTrack {
-          position: absolute;
-          left: 0;
-          right: 0;
-          bottom: 0;
-          height: 2px;
-          background: rgba(255, 255, 255, 0.12);
-          z-index: 3;
-        }
-
-        .muProgressBar {
-          width: 100%;
-          height: 100%;
-          transform-origin: left center;
-          background: var(--brand-accent, #f4b400);
-          animation: muTakeoverProgress 8s linear forwards;
-        }
-
-        @keyframes muTakeoverProgress {
-          from {
-            transform: scaleX(0);
-          }
-          to {
-            transform: scaleX(1);
-          }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .muSlide,
-          .muBorn,
-          .muAmp,
-          .muBred,
-          .muIntroTop {
-            transition: none;
-            animation: none;
-            transform: none;
-          }
-
-          .muProgressBar {
-            animation: none;
-          }
-        }
-      `}</style>
     </div>
   );
 }
@@ -743,28 +915,41 @@ export function SiteShell({
           cache: "no-store",
         });
 
-        if (!r.ok) return;
+        if (!r.ok) {
+          setHeaderAds([]);
+          return;
+        }
 
         const json = await r.json();
         if (!alive) return;
 
-        setHeaderAds(
-  (json?.items || []).map((x: any) => ({
-    id: x.id,
-    title: x.title,
-    href: x.href,
-    ctaLabel: x.ctaLabel,
-    imageUrl: x.imageUrl,
-    desktopImageUrl: x.desktopImageUrl,
-    mobileImageUrl: x.mobileImageUrl,
-    focusX: x.focusX ?? 50,
-    focusY: x.focusY ?? 58,
-    headline: x.headline ?? "KHUSHI MOTORS",
-    subheadline: x.subheadline ?? "RIDE WITH HAPPINESS",
-  }))
-);
+        const items: PublicHeaderAdApiItem[] = Array.isArray(json?.items)
+          ? json.items
+          : [];
+
+        const normalized = items
+          .map((x) => ({
+            id: x.id,
+            title: x.title,
+            href: x.href,
+            ctaLabel: x.ctaLabel,
+            imageUrl: resolveAssetUrl(x.imageUrl),
+            desktopImageUrl:
+              resolveAssetUrl(x.desktopImageUrl) || resolveAssetUrl(x.imageUrl),
+            mobileImageUrl:
+              resolveAssetUrl(x.mobileImageUrl) || resolveAssetUrl(x.imageUrl),
+            focusX: x.focusX ?? 50,
+            focusY: x.focusY ?? 58,
+            headline: x.headline ?? "KHUSHI MOTORS",
+            subheadline: x.subheadline ?? "RIDE WITH HAPPINESS",
+          }))
+          .filter(
+            (x) => !!(x.imageUrl || x.desktopImageUrl || x.mobileImageUrl)
+          );
+
+        setHeaderAds(normalized);
       } catch {
-        //
+        if (alive) setHeaderAds([]);
       }
     }
 
@@ -1175,18 +1360,29 @@ export function SiteShell({
         </div>
 
         <div className="border-t border-white/10">
-          <div className="container-ms flex flex-col items-center justify-between gap-3 py-5 sm:flex-row">
+          <div className="container-ms flex flex-col items-center justify-between gap-3 py-5 md:flex-row">
             <p className="text-[11px] text-white/30">
               © {new Date().getFullYear()} {clubName}. All rights reserved.
             </p>
 
-            <div className="flex items-center gap-6 text-[11px] text-white/30">
+            <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] text-white/30">
               <Link href="/privacy" className="transition hover:text-white/60">
                 Privacy Policy
               </Link>
+
               <Link href="/terms" className="transition hover:text-white/60">
                 Terms of Use
               </Link>
+
+              <a
+                href="https://akilimatic.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="transition hover:text-white/70"
+              >
+                Powered by{" "}
+                <span className="font-semibold text-white/60">Akilimatic</span>
+              </a>
             </div>
           </div>
         </div>
