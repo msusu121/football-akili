@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface FixturesClientProps {
@@ -54,11 +54,7 @@ function monthKey(d?: string | null) {
 type TabType = "fixtures" | "results" | "tables";
 
 function getClubName(data: any) {
-  return (
-    data?.settings?.clubName ||
-    data?.clubName ||
-    "Mombasa United FC"
-  );
+  return data?.settings?.clubName || data?.clubName || "Mombasa United FC";
 }
 
 function getClubLogo(data: any) {
@@ -75,59 +71,41 @@ function getClubLogo(data: any) {
 }
 
 function getKickoff(match: any) {
-  return match.kickoff || match.kickoffAt || match.date || match.scheduledAt;
+  return match?.kickoff || match?.kickoffAt || match?.date || match?.scheduledAt;
 }
 
 function getCompetition(match: any) {
   return (
-    match.competition?.name ||
-    match.competitionName ||
-    match.competition ||
-    match.league ||
+    match?.competition?.name ||
+    match?.competitionName ||
+    match?.competition ||
+    match?.league ||
     "League"
   );
 }
 
-function getDisplayMatch(match: any, clubName: string, clubLogo: string) {
-  const isHome = Boolean(match.isHome);
-
-  const nestedHomeName =
-    match.homeTeam?.name || match.homeTeamName || match.home || "";
-  const nestedAwayName =
-    match.awayTeam?.name || match.awayTeamName || match.away || "";
-
-  const nestedHomeLogo = resolveAssetUrl(
-    match.homeTeam?.logo?.url || match.homeTeamLogo || ""
-  );
-  const nestedAwayLogo = resolveAssetUrl(
-    match.awayTeam?.logo?.url || match.awayTeamLogo || ""
-  );
-
-  const opponentName =
-    match.opponent ||
-    (isHome ? nestedAwayName : nestedHomeName) ||
-    nestedAwayName ||
-    nestedHomeName ||
-    "TBD";
-
-  const opponentLogo = resolveAssetUrl(
-    match.opponentLogo?.url ||
-      match.opponentLogoUrl ||
-      match.opponentLogo?.path ||
-      (isHome ? nestedAwayLogo : nestedHomeLogo) ||
-      nestedAwayLogo ||
-      nestedHomeLogo ||
+function getOpponentLogo(match: any) {
+  return resolveAssetUrl(
+    match?.opponentLogo?.publicUrl ||
+      match?.opponentLogoUrl ||
+      match?.opponentLogo?.url ||
+      match?.opponentLogo?.path ||
       ""
   );
+}
 
-  if (nestedHomeName || nestedAwayName) {
-    return {
-      homeTeam: nestedHomeName || (isHome ? clubName : opponentName),
-      awayTeam: nestedAwayName || (isHome ? opponentName : clubName),
-      homeLogo: nestedHomeLogo || (isHome ? clubLogo : opponentLogo),
-      awayLogo: nestedAwayLogo || (isHome ? opponentLogo : clubLogo),
-    };
-  }
+function getDisplayMatch(match: any, clubName: string, clubLogo: string) {
+  const isHome = Boolean(match?.isHome);
+
+  const opponentName =
+    match?.opponent ||
+    match?.awayTeamName ||
+    match?.homeTeamName ||
+    match?.awayTeam?.name ||
+    match?.homeTeam?.name ||
+    "TBD";
+
+  const opponentLogo = getOpponentLogo(match);
 
   if (isHome) {
     return {
@@ -152,19 +130,19 @@ export function FixturesClient({ data }: FixturesClientProps) {
   const [activeTab, setActiveTab] = useState<TabType>(initialTab);
 
   const fixtures = useMemo(
-    () => (data.upcomingFixtures || data.fixtures || []) as any[],
+    () => (data?.upcomingFixtures || data?.fixtures || []) as any[],
     [data]
   );
   const results = useMemo(
-    () => (data.results || data.pastResults || []) as any[],
+    () => (data?.results || data?.pastResults || []) as any[],
     [data]
   );
   const table = useMemo(
-    () => (data.leagueTable || data.table || []) as any[],
+    () => (data?.leagueTable || data?.table || []) as any[],
     [data]
   );
 
-  const ticketsUrl = data.settings?.ticketsUrl || "/tickets";
+  const ticketsUrl = data?.settings?.ticketsUrl || "/tickets";
   const clubName = getClubName(data);
   const clubLogo = getClubLogo(data);
 
@@ -312,6 +290,7 @@ export function FixturesClient({ data }: FixturesClientProps) {
                           const isMombasa = (row.teamName || row.team || "")
                             .toLowerCase()
                             .includes("mombasa");
+
                           return (
                             <tr
                               key={row.id || i}
@@ -322,6 +301,7 @@ export function FixturesClient({ data }: FixturesClientProps) {
                               <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm text-gray-500">
                                 {row.position || i + 1}
                               </td>
+
                               <td className="py-2.5 sm:py-3 px-2 sm:px-3">
                                 <div className="flex items-center gap-2 sm:gap-3">
                                   <div className="hidden sm:flex w-7 h-7 rounded-full bg-gray-100 items-center justify-center flex-shrink-0">
@@ -339,21 +319,37 @@ export function FixturesClient({ data }: FixturesClientProps) {
                                       </span>
                                     )}
                                   </div>
+
                                   <span
                                     className={`text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none ${
-                                      isMombasa ? "text-[#2563eb] font-extrabold" : "text-gray-800"
+                                      isMombasa
+                                        ? "text-[#2563eb] font-extrabold"
+                                        : "text-gray-800"
                                     }`}
                                   >
                                     {row.teamName || row.team}
                                   </span>
                                 </div>
                               </td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.played ?? row.p ?? "-"}</td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.won ?? row.w ?? "-"}</td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.drawn ?? row.d ?? "-"}</td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.lost ?? row.l ?? "-"}</td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.goalDifference ?? row.gd ?? "-"}</td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm font-extrabold">{row.points ?? row.pts ?? "-"}</td>
+
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
+                                {row.played ?? row.p ?? "-"}
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
+                                {row.won ?? row.w ?? "-"}
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
+                                {row.drawn ?? row.d ?? "-"}
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
+                                {row.lost ?? row.l ?? "-"}
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
+                                {row.goalDifference ?? row.gd ?? "-"}
+                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm font-extrabold">
+                                {row.points ?? row.pts ?? "-"}
+                              </td>
                             </tr>
                           );
                         })}
@@ -426,7 +422,12 @@ function FixtureCard({
 
           <button className="flex-shrink-0 ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
         </div>
@@ -493,7 +494,12 @@ function ResultCard({
 
           <button className="flex-shrink-0 ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M19 9l-7 7-7-7"
+              />
             </svg>
           </button>
         </div>
@@ -529,9 +535,7 @@ function TeamBadge({
   const safeLogo = resolveAssetUrl(logoUrl);
 
   return (
-    <div
-      className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0`}
-    >
+    <div className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0`}>
       {safeLogo ? (
         <img src={safeLogo} alt={name} className={`${imgDim} object-contain`} />
       ) : (
@@ -542,4 +546,3 @@ function TeamBadge({
     </div>
   );
 }
-
