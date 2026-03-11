@@ -1040,13 +1040,13 @@ export function SiteShell({
               <Link href="/" className="flex min-w-0 items-center gap-3">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
-                  src={clubLogo}
-                  alt={clubName}
-                  className="h-18 w-auto max-w-[240px] shrink-0 object-contain bg-transparent md:h-14 md:max-w-[240px]"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
-                  }}
-                />
+  src={clubLogo}
+  alt={clubName}
+  className="h-16 w-auto max-w-[260px] shrink-0 object-contain bg-transparent md:h-20 md:max-w-[320px]"
+  onError={(e) => {
+    (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
+  }}
+/>
                 <span className="hidden truncate text-sm font-extrabold uppercase tracking-wide text-white lg:block">
                   {clubName}
                 </span>
