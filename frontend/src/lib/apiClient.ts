@@ -45,7 +45,7 @@ export async function apiUpload<T>(
   path: string,
   opts: { token?: string | null; form: FormData; method?: string }
 ): Promise<T> {
-  const res = await fetch(`${API_URL}${path}`, {
+  const res = await fetch(`${API_UPLOAD_URL}${path}`, {
     method: opts.method || "POST",
     headers: {
       ...(opts.token ? { Authorization: `Bearer ${opts.token}` } : {}),

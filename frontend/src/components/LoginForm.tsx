@@ -323,15 +323,15 @@ export default function LoginForm({ logoUrl, clubName }: LoginFormProps) {
         <div className="flex flex-col items-center mb-8">
           {resolvedLogo ? (
             <img
-              src={resolvedLogo}
-              alt={displayName}
-              className="h-16 w-16 rounded-2xl object-contain mb-3"
-              onError={(e) => {
-                (e.currentTarget as HTMLImageElement).style.display = "none";
-              }}
-            />
+  src={resolvedLogo}
+  alt={displayName}
+  className="h-36 w-36 rounded-2xl object-contain mb-4"
+  onError={(e) => {
+    (e.currentTarget as HTMLImageElement).style.display = "none";
+  }}
+/>
           ) : (
-            <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center mb-3">
+            <div className="h-36 w-36 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-800 flex items-center justify-center mb-4">
               <span className="text-2xl font-black text-white">MU</span>
             </div>
           )}
