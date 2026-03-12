@@ -31,6 +31,32 @@ function fmtTime(d?: string | null) {
     hour12: false,
   });
 }
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
+}
+
+function pickOpponentLogo(x: any) {
+  return resolveAssetUrl(
+    x?.opponentLogoUrl ||
+      x?.opponentLogo?.publicUrl ||
+      x?.opponentLogo?.url ||
+      x?.opponentLogo?.path ||
+      ""
+  );
+}
 
 function pickTeamName(x: any, side: "home" | "away") {
   if (side === "home")
