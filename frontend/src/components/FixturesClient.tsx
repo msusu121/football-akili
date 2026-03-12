@@ -1,25 +1,27 @@
-// ============================================================
-// FILE: frontend/src/components/FixturesClient.tsx
-// Client component for the Matches & Results page
-//
-// Tabs: Fixtures | Results | Tables
-// Man Utd-inspired card-based layout grouped by month
-// ✅ Exact Man Utd layout: TeamA [logo] [time] [logo] TeamB
-// ✅ Tabs: white bg pill for active, not underline
-// ✅ Date bar: light gray bg
-// ✅ Logos hidden on mobile
-// ✅ Table contained on mobile with horizontal scroll
-// ✅ TICKET INFO centered with red arrow
-// ============================================================
-
 "use client";
 
-import Link from "next/link";
 import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
 
 interface FixturesClientProps {
   data: any;
+}
+
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
 }
 
 /* ── helpers ── */
@@ -91,10 +93,8 @@ export function FixturesClient({ data }: FixturesClientProps) {
 
   return (
     <>
-      {/* Page header — dark bg, Man Utd style */}
       <section className="bg-[#1a1a2e]">
         <div className="max-w-[1400px] mx-auto px-4 md:px-6">
-          {/* Tabs row — right-aligned on desktop, full-width on mobile */}
           <div className="flex items-center justify-center py-3">
             <div className="flex items-center gap-0">
               {tabs.map((tab) => (
@@ -115,10 +115,8 @@ export function FixturesClient({ data }: FixturesClientProps) {
         </div>
       </section>
 
-      {/* Content area */}
       <section className="bg-white min-h-[60vh]">
         <div className="max-w-[1000px] mx-auto px-3 sm:px-4 md:px-6 py-6 md:py-10">
-          {/* ── FIXTURES TAB ── */}
           {activeTab === "fixtures" && (
             <>
               {fixtures.length === 0 ? (
@@ -151,7 +149,6 @@ export function FixturesClient({ data }: FixturesClientProps) {
             </>
           )}
 
-          {/* ── RESULTS TAB ── */}
           {activeTab === "results" && (
             <>
               {results.length === 0 ? (
@@ -180,7 +177,6 @@ export function FixturesClient({ data }: FixturesClientProps) {
             </>
           )}
 
-          {/* ── TABLES TAB ── */}
           {activeTab === "tables" && (
             <>
               {table.length === 0 ? (
@@ -227,9 +223,8 @@ export function FixturesClient({ data }: FixturesClientProps) {
                                 <div className="flex items-center gap-2 sm:gap-3">
                                   <div className="hidden sm:flex w-7 h-7 rounded-full bg-gray-100 items-center justify-center flex-shrink-0">
                                     {row.logo?.url || row.logoUrl ? (
-                                      // eslint-disable-next-line @next/next/no-img-element
                                       <img
-                                        src={row.logo?.url || row.logoUrl}
+                                        src={resolveAssetUrl(row.logo?.url || row.logoUrl)}
                                         alt={row.teamName || row.team}
                                         className="w-5 h-5 object-contain"
                                       />
@@ -270,7 +265,7 @@ export function FixturesClient({ data }: FixturesClientProps) {
   );
 }
 
-/* ── Fixture Card — Man Utd exact layout ── */
+/* ── Fixture Card ── */
 function FixtureCard({
   fix,
   ticketsUrl,
@@ -278,16 +273,21 @@ function FixtureCard({
   fix: any;
   ticketsUrl: string;
 }) {
-  const homeTeam = fix.homeTeam?.name || fix.homeTeamName || fix.home || "TBD";
-  const awayTeam = fix.awayTeam?.name || fix.awayTeamName || fix.away || "TBD";
-  const league = fix.competition?.name || fix.competitionName || fix.league || "League";
+  const homeTeam = fix.homeTeamName || "TBD";
+  const awayTeam = fix.awayTeamName || "TBD";
+  const league = fix.competitionName || fix.league || "League";
   const dateStr = fix.kickoff || fix.date || fix.scheduledAt;
-  const homeLogo = fix.homeTeam?.logo?.url || fix.homeTeamLogo || null;
-  const awayLogo = fix.awayTeam?.logo?.url || fix.awayTeamLogo || null;
+
+  const isHome = Boolean(fix.isHome);
+  const clubLogoOnHomeSide = resolveAssetUrl(fix.homeTeamLogo || "");
+  const clubLogoOnAwaySide = resolveAssetUrl(fix.awayTeamLogo || "");
+  const opponentLogo = resolveAssetUrl(fix.opponentLogoUrl || "");
+
+  const homeLogo = isHome ? clubLogoOnHomeSide : opponentLogo;
+  const awayLogo = isHome ? opponentLogo : clubLogoOnAwaySide;
 
   return (
     <div className="bg-white">
-      {/* Date + competition bar — light gray like Man Utd */}
       <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-[#f2f2f2]">
         <span className="text-[11px] sm:text-xs font-bold text-gray-600">
           {fmtDate(dateStr)}
@@ -298,10 +298,8 @@ function FixtureCard({
         </span>
       </div>
 
-      {/* Teams row — centered: TeamA [logo] [TIME] [logo] TeamB + chevron */}
       <div className="px-3 sm:px-5 py-4 sm:py-5">
         <div className="flex items-center">
-          {/* Home team — right aligned */}
           <div className="flex items-center justify-end gap-2 sm:gap-3 flex-1 min-w-0">
             <span className="text-[13px] sm:text-sm md:text-base font-bold text-[#1a1a1a] truncate text-right">
               {homeTeam}
@@ -309,14 +307,12 @@ function FixtureCard({
             <TeamBadge name={homeTeam} logoUrl={homeLogo} size="lg" />
           </div>
 
-          {/* Time box — dark centered pill */}
           <div className="flex-shrink-0 mx-2 sm:mx-4 px-3 sm:px-4 py-1.5 bg-[#1a1a2e] rounded-sm">
             <span className="text-[11px] sm:text-sm font-bold text-white tracking-wide">
               {fmtTime(dateStr)}
             </span>
           </div>
 
-          {/* Away team — left aligned */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             <TeamBadge name={awayTeam} logoUrl={awayLogo} size="lg" />
             <span className="text-[13px] sm:text-sm md:text-base font-bold text-[#1a1a1a] truncate">
@@ -324,45 +320,34 @@ function FixtureCard({
             </span>
           </div>
 
-          {/* Chevron dropdown */}
           <button className="flex-shrink-0 ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
-
-        {/* TICKET INFO — centered below with arrow 
-        <div className="flex items-center justify-center mt-3 gap-1">
-          <Link
-            href={ticketsUrl}
-            className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            TICKET INFO
-          </Link>
-          <span className="text-[#2563eb]">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </span>
-        </div>    */}
       </div>
     </div>
   );
 }
 
-/* ── Result Card — Man Utd exact layout ── */
+/* ── Result Card ── */
 function ResultCard({ result }: { result: any }) {
-  const homeTeam = result.homeTeam?.name || result.homeTeamName || result.home || "TBD";
-  const awayTeam = result.awayTeam?.name || result.awayTeamName || result.away || "TBD";
-  const league = result.competition?.name || result.competitionName || result.league || "League";
+  const homeTeam = result.homeTeamName || "TBD";
+  const awayTeam = result.awayTeamName || "TBD";
+  const league = result.competitionName || result.league || "League";
   const dateStr = result.kickoff || result.date || result.scheduledAt;
-  const homeLogo = result.homeTeam?.logo?.url || result.homeTeamLogo || null;
-  const awayLogo = result.awayTeam?.logo?.url || result.awayTeamLogo || null;
+
+  const isHome = Boolean(result.isHome);
+  const clubLogoOnHomeSide = resolveAssetUrl(result.homeTeamLogo || "");
+  const clubLogoOnAwaySide = resolveAssetUrl(result.awayTeamLogo || "");
+  const opponentLogo = resolveAssetUrl(result.opponentLogoUrl || "");
+
+  const homeLogo = isHome ? clubLogoOnHomeSide : opponentLogo;
+  const awayLogo = isHome ? opponentLogo : clubLogoOnAwaySide;
 
   return (
     <div className="bg-white">
-      {/* Date + competition bar — light gray */}
       <div className="flex items-center gap-2 px-4 sm:px-5 py-2.5 bg-[#f2f2f2]">
         <span className="text-[11px] sm:text-xs font-bold text-gray-600">
           {fmtDate(dateStr)}
@@ -373,10 +358,8 @@ function ResultCard({ result }: { result: any }) {
         </span>
       </div>
 
-      {/* Teams row — centered: TeamA [logo] [SCORE] [logo] TeamB + chevron */}
       <div className="px-3 sm:px-5 py-4 sm:py-5">
         <div className="flex items-center">
-          {/* Home team — right aligned */}
           <div className="flex items-center justify-end gap-2 sm:gap-3 flex-1 min-w-0">
             <span className="text-[13px] sm:text-sm md:text-base font-bold text-[#1a1a1a] truncate text-right">
               {homeTeam}
@@ -384,7 +367,6 @@ function ResultCard({ result }: { result: any }) {
             <TeamBadge name={homeTeam} logoUrl={homeLogo} size="lg" />
           </div>
 
-          {/* Score box — dark centered */}
           <div className="flex-shrink-0 mx-2 sm:mx-4 flex items-center gap-1.5 sm:gap-2">
             <span className="text-lg sm:text-xl font-extrabold text-[#1a1a1a]">
               {result.homeScore ?? "-"}
@@ -395,7 +377,6 @@ function ResultCard({ result }: { result: any }) {
             </span>
           </div>
 
-          {/* Away team — left aligned */}
           <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
             <TeamBadge name={awayTeam} logoUrl={awayLogo} size="lg" />
             <span className="text-[13px] sm:text-sm md:text-base font-bold text-[#1a1a1a] truncate">
@@ -403,28 +384,12 @@ function ResultCard({ result }: { result: any }) {
             </span>
           </div>
 
-          {/* Chevron dropdown */}
           <button className="flex-shrink-0 ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
-
-        {/* MATCH REVIEW — centered below
-        <div className="flex items-center justify-center mt-3 gap-1">
-          <Link
-            href="#"
-            className="text-[10px] sm:text-[11px] font-extrabold uppercase tracking-[0.12em] text-gray-500 hover:text-gray-700 transition-colors"
-          >
-            MATCH REVIEW
-          </Link>
-          <span className="text-[#2563eb]">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M17 8l4 4m0 0l-4 4m4-4H3" />
-            </svg>
-          </span>
-        </div>    */} 
       </div>
     </div>
   );
@@ -448,11 +413,8 @@ function TeamBadge({
   const textSize = size === "lg" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]";
 
   return (
-    <div
-      className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0`}
-    >
+    <div className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0`}>
       {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={name} className={`${imgDim} object-contain`} />
       ) : (
         <span className={`${textSize} font-extrabold text-gray-400`}>
