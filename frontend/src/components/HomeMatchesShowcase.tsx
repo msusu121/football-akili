@@ -3,7 +3,24 @@
 import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
 /* ── helpers ── */
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
+}
+
 function fmtLongDate(d?: string | null) {
   if (!d) return "";
   return new Date(d).toLocaleDateString("en-GB", {
@@ -31,54 +48,6 @@ function fmtTime(d?: string | null) {
     hour12: false,
   });
 }
-const ASSET_BASE =
-  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
-  process.env.NEXT_PUBLIC_API_URL ||
-  "";
-
-function resolveAssetUrl(u?: string | null) {
-  if (!u) return "";
-  const url = String(u).trim();
-  if (!url) return "";
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  if (url.startsWith("//")) return "https:" + url;
-  if (ASSET_BASE) {
-    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
-  }
-  return url;
-}
-
-function pickOpponentLogo(x: any) {
-  return resolveAssetUrl(
-    x?.opponentLogoUrl ||
-      x?.opponentLogo?.publicUrl ||
-      x?.opponentLogo?.url ||
-      x?.opponentLogo?.path ||
-      ""
-  );
-}
-
-function pickTeamName(x: any, side: "home" | "away") {
-  if (side === "home")
-    return x?.homeTeam?.name || x?.homeTeamName || x?.home || "TBD";
-  return x?.awayTeam?.name || x?.awayTeamName || x?.away || "TBD";
-}
-
-function pickLogo(x: any, side: "home" | "away") {
-  const clubHomeLogo = resolveAssetUrl(x?.homeTeam?.logo?.url || x?.homeTeamLogo || "");
-  const clubAwayLogo = resolveAssetUrl(x?.awayTeam?.logo?.url || x?.awayTeamLogo || "");
-  const opponentLogo = pickOpponentLogo(x);
-
-  if (typeof x?.isHome === "boolean") {
-    if (side === "home") {
-      return x.isHome ? clubHomeLogo || null : opponentLogo || clubHomeLogo || null;
-    }
-    return x.isHome ? opponentLogo || clubAwayLogo || null : clubAwayLogo || null;
-  }
-
-  if (side === "home") return clubHomeLogo || null;
-  return clubAwayLogo || null;
-}
 
 function pickLeague(x: any) {
   return x?.competition?.name || x?.competitionName || x?.league || "League";
@@ -88,12 +57,52 @@ function pickKickoff(x: any) {
   return x?.kickoff || x?.date || x?.scheduledAt || null;
 }
 
+function pickHomeTeamName(x: any) {
+  return x?.homeTeamName || x?.homeTeam?.name || x?.home || "TBD";
+}
+
+function pickAwayTeamName(x: any) {
+  return x?.awayTeamName || x?.awayTeam?.name || x?.away || "TBD";
+}
+
+function getOpponentLogoUrl(x: any) {
+  return resolveAssetUrl(
+    x?.opponentLogoUrl ||
+      x?.opponentLogo?.publicUrl ||
+      x?.opponentLogo?.url ||
+      x?.opponentLogo?.path ||
+      ""
+  );
+}
+
+function getMatchLogos(x: any) {
+  const isHome = Boolean(x?.isHome);
+
+  const homeTeamLogo = resolveAssetUrl(
+    x?.homeTeamLogo || x?.homeTeam?.logo?.url || ""
+  );
+  const awayTeamLogo = resolveAssetUrl(
+    x?.awayTeamLogo || x?.awayTeam?.logo?.url || ""
+  );
+  const opponentLogo = getOpponentLogoUrl(x);
+
+  const homeLogo = isHome ? homeTeamLogo : opponentLogo;
+  const awayLogo = isHome ? opponentLogo : awayTeamLogo;
+
+  return {
+    homeLogo: homeLogo || null,
+    awayLogo: awayLogo || null,
+  };
+}
+
 function isResultMatch(x: any) {
-  // Treat as result if it has scores OR status indicates FT
   const hs = x?.homeScore;
   const as = x?.awayScore;
   const status = String(x?.status || "").toUpperCase();
-  return (hs !== null && hs !== undefined && as !== null && as !== undefined) || status === "FT";
+  return (
+    (hs !== null && hs !== undefined && as !== null && as !== undefined) ||
+    status === "FT"
+  );
 }
 
 /* ── rotating background ── */
@@ -105,11 +114,16 @@ function RotatingBackground({
   intervalMs?: number;
 }) {
   const safe = images.filter(Boolean);
-  const [idx, setIdx] = useState(() => (safe.length ? Math.floor(Math.random() * safe.length) : 0));
+  const [idx, setIdx] = useState(() =>
+    safe.length ? Math.floor(Math.random() * safe.length) : 0
+  );
 
   useEffect(() => {
     if (safe.length <= 1) return;
-    const t = window.setInterval(() => setIdx((v) => (v + 1) % safe.length), intervalMs);
+    const t = window.setInterval(
+      () => setIdx((v) => (v + 1) % safe.length),
+      intervalMs
+    );
     return () => window.clearInterval(t);
   }, [safe.length, intervalMs]);
 
@@ -118,7 +132,6 @@ function RotatingBackground({
   return (
     <div className="absolute inset-0">
       {safe.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           key={src}
           src={src}
@@ -133,30 +146,47 @@ function RotatingBackground({
   );
 }
 
-/* ── Team badge (logos hidden on mobile) ── */
+/* ── Team badge ── */
 function TeamBadge({
   name,
   logoUrl,
   size = "lg",
+  dark = false,
 }: {
   name: string;
   logoUrl?: string | null;
   size?: "sm" | "lg";
+  dark?: boolean;
 }) {
   const dim =
     size === "lg"
       ? "hidden sm:flex w-8 h-8 md:w-10 md:h-10"
       : "hidden sm:flex w-6 h-6 md:w-8 md:h-8";
-  const imgDim = size === "lg" ? "w-6 h-6 md:w-8 md:h-8" : "w-4 h-4 md:w-5 md:h-5";
-  const textSize = size === "lg" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]";
+
+  const imgDim =
+    size === "lg"
+      ? "w-6 h-6 md:w-8 md:h-8"
+      : "w-4 h-4 md:w-5 md:h-5";
+
+  const textSize =
+    size === "lg"
+      ? "text-[9px] md:text-[10px]"
+      : "text-[8px] md:text-[9px]";
 
   return (
-    <div className={`${dim} rounded-full bg-white/15 items-center justify-center flex-shrink-0`}>
+    <div
+      className={`${dim} rounded-full items-center justify-center flex-shrink-0 ${
+        dark ? "bg-white/15" : "bg-gray-100"
+      }`}
+    >
       {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img src={logoUrl} alt={name} className={`${imgDim} object-contain`} />
       ) : (
-        <span className={`${textSize} font-extrabold text-white/60`}>
+        <span
+          className={`${textSize} font-extrabold ${
+            dark ? "text-white/60" : "text-gray-400"
+          }`}
+        >
           {String(name || "").substring(0, 2).toUpperCase()}
         </span>
       )}
@@ -182,11 +212,9 @@ export function HomeMatchesShowcase({
 }) {
   const railRef = useRef<HTMLDivElement | null>(null);
 
-  // matches rail like Man Utd: a blend of recent results + upcoming fixtures
   const railItems = useMemo(() => {
     const r = Array.isArray(results) ? results : [];
     const f = Array.isArray(fixtures) ? fixtures : [];
-    // keep it “home-like”: 2 most recent results + next 6 fixtures (cap 8)
     const recentResults = r.slice(0, 2);
     const nextFixtures = f.slice(0, 6);
     return [...recentResults, ...nextFixtures].slice(0, 8);
@@ -195,25 +223,22 @@ export function HomeMatchesShowcase({
   const scrollByCards = (dir: "left" | "right") => {
     const el = railRef.current;
     if (!el) return;
-    const amt = 360; // roughly one card + gap
-    el.scrollBy({ left: dir === "left" ? -amt : amt, behavior: "smooth" });
+    el.scrollBy({ left: dir === "left" ? -360 : 360, behavior: "smooth" });
   };
 
-  // ── LATEST RESULT hero (Man Utd style) ──
   const showResultHero = !!latestResult;
+  const heroHomeTeam = latestResult ? pickHomeTeamName(latestResult) : "";
+  const heroAwayTeam = latestResult ? pickAwayTeamName(latestResult) : "";
+  const heroLogos = latestResult ? getMatchLogos(latestResult) : { homeLogo: null, awayLogo: null };
 
   return (
     <>
       {showResultHero && (
         <section className="relative w-full overflow-hidden">
-          {/* Background rotation */}
           <RotatingBackground images={bgImages} intervalMs={6500} />
-
-          {/* Overlay for readability (Man Utd style) */}
           <div className="absolute inset-0 bg-black/55" />
           <div className="absolute inset-0 bg-gradient-to-r from-black/55 via-black/25 to-black/55" />
 
-          {/* Content */}
           <div className="relative">
             <div className="container-ms py-14 md:py-20">
               <div className="flex flex-col items-center text-center">
@@ -222,24 +247,24 @@ export function HomeMatchesShowcase({
                 </div>
 
                 <div className="mt-4 inline-flex items-center justify-center px-5 py-2 border border-white/30 bg-black/30 rounded-sm">
-                  <span className="text-white font-extrabold text-sm tracking-widest uppercase">FT</span>
+                  <span className="text-white font-extrabold text-sm tracking-widest uppercase">
+                    FT
+                  </span>
                 </div>
 
-                {/* Score line: TEAM  LOGO  SCORE  LOGO  TEAM */}
                 <div className="mt-8 md:mt-10 flex items-center justify-center gap-4 md:gap-8 flex-wrap">
-                  {/* Home */}
                   <div className="flex items-center justify-end gap-3 min-w-0">
                     <span className="text-white font-extrabold uppercase tracking-tight text-3xl sm:text-4xl md:text-6xl truncate max-w-[42vw] sm:max-w-none">
-                      {pickTeamName(latestResult, "home")}
+                      {heroHomeTeam}
                     </span>
                     <TeamBadge
-                      name={pickTeamName(latestResult, "home")}
-                      logoUrl={pickLogo(latestResult, "home")}
+                      name={heroHomeTeam}
+                      logoUrl={heroLogos.homeLogo}
                       size="lg"
+                      dark
                     />
                   </div>
 
-                  {/* Score */}
                   <div className="flex items-center gap-3 md:gap-5">
                     <span className="text-white font-extrabold text-5xl sm:text-6xl md:text-7xl">
                       {latestResult.homeScore ?? "-"}
@@ -252,21 +277,22 @@ export function HomeMatchesShowcase({
                     </span>
                   </div>
 
-                  {/* Away */}
                   <div className="flex items-center gap-3 min-w-0">
                     <TeamBadge
-                      name={pickTeamName(latestResult, "away")}
-                      logoUrl={pickLogo(latestResult, "away")}
+                      name={heroAwayTeam}
+                      logoUrl={heroLogos.awayLogo}
                       size="lg"
+                      dark
                     />
                     <span className="text-white font-extrabold uppercase tracking-tight text-3xl sm:text-4xl md:text-6xl truncate max-w-[42vw] sm:max-w-none">
-                      {pickTeamName(latestResult, "away")}
+                      {heroAwayTeam}
                     </span>
                   </div>
                 </div>
 
                 <div className="mt-4 text-white/75 text-sm md:text-base">
-                  {fmtLongDate(pickKickoff(latestResult))}{latestResult.venue ? `, ${latestResult.venue}` : ""}
+                  {fmtLongDate(pickKickoff(latestResult))}
+                  {latestResult.venue ? `, ${latestResult.venue}` : ""}
                 </div>
 
                 <Link
@@ -281,7 +307,6 @@ export function HomeMatchesShowcase({
         </section>
       )}
 
-      {/* MATCHES rail (cards like your FixturesClient UI, but horizontal like Man Utd) */}
       {railItems.length > 0 && (
         <section className="bg-[#f3f3f3] border-t border-black/5">
           <div className="container-ms py-12 md:py-14">
@@ -298,7 +323,6 @@ export function HomeMatchesShowcase({
                 </Link>
               </div>
 
-              {/* Nav buttons */}
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => scrollByCards("left")}
@@ -341,7 +365,7 @@ export function HomeMatchesShowcase({
   );
 }
 
-/* ── Match Card (same UX rules as FixturesClient, but boxed like Man Utd rail) ── */
+/* ── Match Card ── */
 function MatchCard({
   match,
   ticketsUrl,
@@ -351,19 +375,15 @@ function MatchCard({
   ticketsUrl: string;
   fixturesPageHref: string;
 }) {
-  const homeTeam = pickTeamName(match, "home");
-  const awayTeam = pickTeamName(match, "away");
+  const homeTeam = pickHomeTeamName(match);
+  const awayTeam = pickAwayTeamName(match);
   const league = pickLeague(match);
   const dateStr = pickKickoff(match);
-
-  const homeLogo = pickLogo(match, "home");
-  const awayLogo = pickLogo(match, "away");
-
+  const { homeLogo, awayLogo } = getMatchLogos(match);
   const played = isResultMatch(match);
 
   return (
     <div className="snap-start w-[300px] sm:w-[320px] bg-white rounded-xl border border-black/10 shadow-[0_10px_24px_rgba(0,0,0,0.08)] overflow-hidden flex-shrink-0">
-      {/* Competition header */}
       <div className="px-5 pt-5 pb-3 text-center">
         <div className="text-[12px] font-extrabold text-[#2b2b2b] tracking-wide">
           {league}
@@ -374,7 +394,6 @@ function MatchCard({
         </div>
       </div>
 
-      {/* Score/time row */}
       <div className="px-5 pb-4">
         <div className="flex items-center justify-center gap-3">
           <TeamBadge name={homeTeam} logoUrl={homeLogo} size="lg" />
@@ -405,7 +424,6 @@ function MatchCard({
         </div>
       </div>
 
-      {/* CTA */}
       <div className="px-5 pb-6 flex justify-center">
         {played ? (
           <Link
