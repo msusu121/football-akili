@@ -11,6 +11,8 @@ type Nullable<T> = T | null | undefined;
 
 type MediaLike = {
   path?: string | null;
+  publicUrl?: string | null;
+  url?: string | null;
 } & Record<string, unknown>;
 
 type SponsorInput = {
@@ -52,6 +54,7 @@ type MatchInput = {
   isHome?: boolean | null;
   opponent?: string | null;
   ticketEvent?: Nullable<TicketEventLike>;
+  opponentLogo?: Nullable<MediaLike>;
 };
 
 type LeagueTableRow = {
@@ -87,6 +90,9 @@ type MappedMatch = {
   status: string | null;
   homeScore: number | null;
   awayScore: number | null;
+  isHome: boolean;
+  opponent: string | null;
+  opponentLogoUrl: string | null;
   homeTeamName: string;
   awayTeamName: string;
   homeTeamLogo: string | null;
@@ -104,10 +110,6 @@ function pad2(n: number): string {
  *
  * Prisma/JS reads it as a Date object.
  * We preserve the same clock fields and explicitly attach +03:00.
- *
- * Example:
- *   DB naive 2025-12-02 12:00:00
- *   -> 2025-12-02T12:00:00+03:00
  */
 function dbNaiveDateToNairobiIso(value: Nullable<Date | string>): string | null {
   if (!value) return null;
@@ -155,6 +157,17 @@ function mediaUrl(path: Nullable<string>): string | null {
   return base ? `${base}/${path}` : path;
 }
 
+function opponentLogoUrl(asset: Nullable<MediaLike>): string | null {
+  if (!asset) return null;
+  if (typeof asset.publicUrl === "string" && asset.publicUrl.trim()) {
+    return asset.publicUrl.trim();
+  }
+  if (typeof asset.url === "string" && asset.url.trim()) {
+    return asset.url.trim();
+  }
+  return mediaUrl(asset.path ?? null);
+}
+
 function mapSponsors(items: Nullable<readonly SponsorInput[]>): Array<{
   name: string | null;
   url: string | null;
@@ -195,9 +208,11 @@ function mapSettings(s: Nullable<SettingsInput>): MappedSettings | null {
 
 function mapMatch(m: MatchInput, clubName: string, clubLogoUrl: string | null): MappedMatch {
   const isHome = Boolean(m.isHome);
+  const opponent = m.opponent || "Opponent";
+  const oppLogoUrl = opponentLogoUrl(m.opponentLogo);
 
-  const homeTeamName = isHome ? clubName : m.opponent || "Opponent";
-  const awayTeamName = isHome ? m.opponent || "Opponent" : clubName;
+  const homeTeamName = isHome ? clubName : opponent;
+  const awayTeamName = isHome ? opponent : clubName;
 
   const homeTeamLogo = isHome ? clubLogoUrl : null;
   const awayTeamLogo = isHome ? null : clubLogoUrl;
@@ -211,6 +226,9 @@ function mapMatch(m: MatchInput, clubName: string, clubLogoUrl: string | null): 
     status: m.status ?? null,
     homeScore: m.homeScore ?? null,
     awayScore: m.awayScore ?? null,
+    isHome,
+    opponent,
+    opponentLogoUrl: oppLogoUrl,
     homeTeamName,
     awayTeamName,
     homeTeamLogo,
@@ -381,21 +399,21 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
     const clubName = settings?.clubName || "Mombasa United";
     const clubLogoUrl = settings?.headerLogo?.url || null;
 
-    // ✅ DB stores naive Nairobi wall time → comparisons must use "naive Nairobi now"
     const dbNow = nowForNaiveNairobiDb();
 
-    // ✅ pull upcoming + results
     const [upcoming, results] = await Promise.all([
       prisma.match.findMany({
         where: {
           ...seasonWhere,
           kickoffAt: { gte: dbNow },
-          // ✅ don't use null/"" here; Prisma enum/string non-null will break
           status: { not: "FT" },
         },
         orderBy: { kickoffAt: "asc" },
         take: 120,
-        include: { ticketEvent: true },
+        include: {
+          ticketEvent: true,
+          opponentLogo: true,
+        },
       }),
       prisma.match.findMany({
         where: {
@@ -404,11 +422,13 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
         },
         orderBy: { kickoffAt: "desc" },
         take: 120,
-        include: { ticketEvent: true },
+        include: {
+          ticketEvent: true,
+          opponentLogo: true,
+        },
       }),
     ]);
 
-    // ✅ League table
     let leagueTable: LeagueTableRow[] = [];
     try {
       const snap = await prisma.leagueTableSnapshot.findFirst({
@@ -436,14 +456,10 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
       leagueTable = [];
     }
 
-    // ─────────────────────────────────────────────────────────────
-    // ✅ MATCHDAY FIXTURE: LIVE → inferred-live → next upcoming
-    // ─────────────────────────────────────────────────────────────
     const LIVE_STATUSES = ["LIVE", "IN_PROGRESS"];
     const FINISHED_STATUSES = ["FT", "FULL_TIME", "COMPLETED"];
     const INACTIVE_STATUSES = ["POSTPONED", "CANCELLED", "CANCELED", "ABANDONED", "SUSPENDED"];
 
-    // 1) Prefer explicit LIVE (cap 24h)
     const liveSince = new Date(dbNow.getTime() - 24 * 60 * 60 * 1000);
 
     const liveMatch = await prisma.match.findFirst({
@@ -453,11 +469,13 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
         status: { in: LIVE_STATUSES as any },
       },
       orderBy: { kickoffAt: "desc" },
-      include: { ticketEvent: true },
+      include: {
+        ticketEvent: true,
+        opponentLogo: true,
+      },
     });
 
-    // 2) Infer live by time (even if status is still SCHEDULED)
-    const INFER_LIVE_MINUTES = 135; // must match frontend
+    const INFER_LIVE_MINUTES = 135;
     const inferSince = new Date(dbNow.getTime() - INFER_LIVE_MINUTES * 60 * 1000);
 
     const inferredLiveMatch =
@@ -466,14 +484,15 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
         where: {
           ...seasonWhere,
           kickoffAt: { gte: inferSince, lte: dbNow },
-          // ✅ allow SCHEDULED / any active status; exclude only finished/inactive
           status: { notIn: [...FINISHED_STATUSES, ...INACTIVE_STATUSES] as any },
         },
         orderBy: { kickoffAt: "desc" },
-        include: { ticketEvent: true },
+        include: {
+          ticketEvent: true,
+          opponentLogo: true,
+        },
       }));
 
-    // 3) Else fallback to next upcoming
     const matchdayRaw = inferredLiveMatch || upcoming[0] || null;
 
     const upcomingFixtures = upcoming.map((m) => mapMatch(m, clubName, clubLogoUrl));
@@ -481,16 +500,13 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
 
     const next = upcomingFixtures[0] || null;
 
-    // ✅ Countdown uses epoch ms; DO NOT subtract 3 hours here
     const countdownSeconds =
       next?.kickoff != null
         ? Math.max(0, Math.floor((new Date(next.kickoff).getTime() - Date.now()) / 1000))
         : null;
 
-    // ✅ This is what your homepage expects
     const matchdayFixture = matchdayRaw ? mapMatch(matchdayRaw, clubName, clubLogoUrl) : null;
 
-    // ✅ optional quick logs
     console.log("[fixtures] dbNow:", dbNow.toISOString());
     console.log("[fixtures] liveMatch:", liveMatch?.id, liveMatch?.kickoffAt, liveMatch?.status);
     console.log(
@@ -505,20 +521,17 @@ publicRouter.get("/fixtures", async (req: Request, res: Response, next: NextFunc
       settings,
       socials: mapSocials(socialsRaw),
       sponsors: mapSponsors(sponsorsRaw),
-
       upcomingFixtures,
       results: pastResults,
       leagueTable,
-
       nextFixture: next,
-      matchdayFixture, // ✅ IMPORTANT
+      matchdayFixture,
       countdownSeconds,
     });
   } catch (e) {
     next(e);
   }
 });
-
 
 // ===============================
 // PUBLIC ADS
@@ -547,7 +560,6 @@ publicRouter.get("/ads", async (req, res, next) => {
       take: 50,
     });
 
-    // Robust public URL builder (MinIO/S3 or local /media)
     const publicMediaBase =
       process.env.S3_PUBLIC_BASE_URL ||
       process.env.PUBLIC_MEDIA_BASE_URL ||
@@ -573,7 +585,6 @@ publicRouter.get("/ads", async (req, res, next) => {
       sort: a.sort,
     }));
 
-    // group for convenience
     const grouped = items.reduce((acc: any, it: any) => {
       acc[it.placement] = acc[it.placement] || [];
       acc[it.placement].push(it);

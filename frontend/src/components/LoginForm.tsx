@@ -493,20 +493,20 @@ export default function LoginForm({ logoUrl, clubName }: LoginFormProps) {
         </div>
       </div>
 
-      {/* ── Dev credentials hint ── */}
-      {process.env.NODE_ENV === "development" && (
-        <div className="mt-4 rounded-xl bg-neutral-100 border border-neutral-200/60 p-4">
-          <p className="text-xs font-bold text-neutral-600 uppercase tracking-wider mb-1.5">
-            Dev Credentials
-          </p>
-          <p className="text-xs text-neutral-500">
-            Email: <span className="font-mono font-semibold text-neutral-700">admin@club.local</span>
-          </p>
-          <p className="text-xs text-neutral-500">
-            Password: <span className="font-mono font-semibold text-neutral-700">Admin@123</span>
-          </p>
-        </div>
-      )}
+      
+<div className="mt-4 rounded-xl border border-neutral-200/60 bg-neutral-100 p-4 text-center">
+  <a
+    href="https://akilimatic.com"
+    target="_blank"
+    rel="noopener noreferrer"
+    className="text-xs font-semibold tracking-wide text-neutral-600 transition-colors hover:text-neutral-900"
+  >
+    Powered by <span className="font-bold text-neutral-800">Akilimatic</span>
+  </a>
+</div>
+
+
+      
     </div>
   );
 }
