@@ -39,9 +39,19 @@ function pickTeamName(x: any, side: "home" | "away") {
 }
 
 function pickLogo(x: any, side: "home" | "away") {
-  if (side === "home")
-    return x?.homeTeam?.logo?.url || x?.homeTeamLogo || null;
-  return x?.awayTeam?.logo?.url || x?.awayTeamLogo || null;
+  const clubHomeLogo = resolveAssetUrl(x?.homeTeam?.logo?.url || x?.homeTeamLogo || "");
+  const clubAwayLogo = resolveAssetUrl(x?.awayTeam?.logo?.url || x?.awayTeamLogo || "");
+  const opponentLogo = pickOpponentLogo(x);
+
+  if (typeof x?.isHome === "boolean") {
+    if (side === "home") {
+      return x.isHome ? clubHomeLogo || null : opponentLogo || clubHomeLogo || null;
+    }
+    return x.isHome ? opponentLogo || clubAwayLogo || null : clubAwayLogo || null;
+  }
+
+  if (side === "home") return clubHomeLogo || null;
+  return clubAwayLogo || null;
 }
 
 function pickLeague(x: any) {
