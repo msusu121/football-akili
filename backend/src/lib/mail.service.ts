@@ -1,4 +1,4 @@
-import { sendMail, type SmtpBlock } from "../utils/mailService";
+import { sendMail, type SmtpBlock } from "../utils/mailService.js";
 
 const APP_NAME = process.env.APP_NAME || "Mombasa United FC";
 const WEB_URL = (process.env.WEB_URL || "").replace(/\/+$/, "");
