@@ -89,6 +89,7 @@ async function addPoints(
   });
 }
 
+
 async function activateMembershipOrder(orderId: string) {
   const order = await prisma.order.findUnique({
     where: { id: orderId },
@@ -98,6 +99,7 @@ async function activateMembershipOrder(orderId: string) {
 
   const meta = safeJson(order.metadata) || {};
   const tier = PaidMembershipTierSchema.parse(meta.tier);
+
   const fullName = String(meta.fullName || "");
   const email = String(meta.email || "");
   const phone = String(meta.phone || "");
@@ -122,7 +124,12 @@ async function activateMembershipOrder(orderId: string) {
   }
 
   const now = new Date();
-  const until = new Date(now.getTime() + (plan.durationDays || 365) * 24 * 60 * 60 * 1000);
+  const start =
+    existingUser.membershipUntil && existingUser.membershipUntil > now
+      ? existingUser.membershipUntil
+      : now;
+
+  const until = new Date(start.getTime() + (plan.durationDays || 365) * 24 * 60 * 60 * 1000);
   const memberNumber = existingUser.memberNumber || makeMemberNumber();
 
   await prisma.$transaction(async (tx) => {
@@ -134,7 +141,7 @@ async function activateMembershipOrder(orderId: string) {
         membership: "ACTIVE",
         membershipTier: tier,
         memberNumber,
-        memberSince: now,
+        memberSince: existingUser.memberSince || now,
         membershipUntil: until,
       },
     });
@@ -157,16 +164,29 @@ async function activateMembershipOrder(orderId: string) {
       },
     });
 
-    await addPoints(tx, {
-      userId: order.userId!,
-      points: pointsForTier(tier),
-      type: "MEMBERSHIP_SIGNUP",
-      description: `${tier} membership activated`,
-      referenceType: "ORDER",
-      referenceId: order.id,
+    const alreadyAwarded = await tx.loyaltyEntry.findFirst({
+      where: {
+        userId: order.userId!,
+        type: "MEMBERSHIP_SIGNUP",
+        referenceType: "ORDER",
+        referenceId: order.id,
+      },
     });
+
+    if (!alreadyAwarded) {
+      await addPoints(tx, {
+        userId: order.userId!,
+        points: pointsForTier(tier),
+        type: "MEMBERSHIP_SIGNUP",
+        description: `${tier} membership activated`,
+        referenceType: "ORDER",
+        referenceId: order.id,
+      });
+    }
   });
 }
+
+
 
 const MembershipCheckoutStkSchema = z.object({
   tier: PaidMembershipTierSchema,
@@ -196,38 +216,11 @@ paymentsRouter.post("/membership/checkout/stk", requireAuth, async (req, res, ne
       throw Object.assign(new Error("This route is only for paid membership plans"), { status: 400 });
     }
 
-    await prisma.user.update({
-      where: { id: req.user!.id },
-      data: {
-        name: body.fullName,
-        email: body.email,
-        membership: "PENDING",
-        membershipTier: body.tier,
-      },
-    });
-
-    await prisma.membershipProfile.upsert({
-      where: { userId: req.user!.id },
-      update: {
-        phone: body.phone,
-        city: body.city || null,
-        jerseySize: body.jerseySize || null,
-        nextOfKin: body.nextOfKin || null,
-      },
-      create: {
-        userId: req.user!.id,
-        phone: body.phone,
-        city: body.city || null,
-        jerseySize: body.jerseySize || null,
-        nextOfKin: body.nextOfKin || null,
-        qrToken: makeQrToken(),
-      },
-    });
-
     const order = await prisma.order.create({
       data: {
         userId: req.user!.id,
         type: "MEMBERSHIP",
+        status: "PENDING",
         currency: plan.currency || currency,
         total: plan.price,
         metadata: JSON.stringify({
@@ -288,118 +281,6 @@ paymentsRouter.post("/membership/checkout/stk", requireAuth, async (req, res, ne
 });
 
 
-
-
-
-
-paymentsRouter.post("/membership/checkout/stk", requireAuth, async (req, res, next) => {
-  try {
-    const body = MembershipCheckoutStkSchema.parse(req.body);
-    const currency = process.env.CURRENCY || "KES";
-    const phone = normalizePhone(body.phone);
-
-    const plan = await prisma.membershipPlan.findUnique({
-      where: { tier: body.tier },
-    });
-
-    if (!plan || !plan.isActive) {
-      throw Object.assign(new Error("Membership plan not found"), { status: 404 });
-    }
-
-    if (plan.price <= 0) {
-      throw Object.assign(new Error("This route is only for paid membership plans"), { status: 400 });
-    }
-
-    await prisma.user.update({
-      where: { id: req.user!.id },
-      data: {
-        name: body.fullName,
-        email: body.email,
-        membership: "PENDING",
-        membershipTier: body.tier,
-      },
-    });
-
-    await prisma.membershipProfile.upsert({
-      where: { userId: req.user!.id },
-      update: {
-        phone: body.phone,
-        city: body.city || null,
-        jerseySize: body.jerseySize || null,
-        nextOfKin: body.nextOfKin || null,
-      },
-      create: {
-        userId: req.user!.id,
-        phone: body.phone,
-        city: body.city || null,
-        jerseySize: body.jerseySize || null,
-        nextOfKin: body.nextOfKin || null,
-        qrToken: makeQrToken(),
-      },
-    });
-
-    const order = await prisma.order.create({
-      data: {
-        userId: req.user!.id,
-        type: "MEMBERSHIP",
-        currency: plan.currency || currency,
-        total: plan.price,
-        metadata: JSON.stringify({
-          tier: body.tier,
-          fullName: body.fullName,
-          phone: body.phone,
-          email: body.email,
-          city: body.city || null,
-          jerseySize: body.jerseySize || null,
-          nextOfKin: body.nextOfKin || null,
-        }),
-      },
-    });
-
-    const tx = await prisma.paymentTransaction.create({
-      data: {
-        provider: "MPESA",
-        amount: plan.price,
-        currency: plan.currency || currency,
-        status: "PENDING",
-        orderId: order.id,
-        userId: req.user!.id,
-      },
-    });
-
-    const secret = process.env.MPESA_CALLBACK_SECRET || "";
-    const base = process.env.PUBLIC_BASE_URL!;
-    const callbackUrl = `${base}/api/payments/membership/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
-
-    const accountRef = `MEM-${order.id.slice(-10)}`;
-
-    const stk = await stkPush({
-      amount: plan.price,
-      phone,
-      accountReference: accountRef,
-      transactionDesc: `${body.tier} membership`,
-      callbackUrl,
-    });
-
-    await prisma.paymentTransaction.update({
-      where: { id: tx.id },
-      data: { reference: stk.CheckoutRequestID },
-    });
-
-    res.json({
-      orderId: order.id,
-      transactionId: tx.id,
-      checkoutRequestId: stk.CheckoutRequestID,
-      merchantRequestId: stk.MerchantRequestID,
-      amount: plan.price,
-      currency: plan.currency || currency,
-      customerMessage: stk.CustomerMessage,
-      tier: body.tier,
-    });
-  } catch (e) {
-    next(e);
-  }
-});
 
 const ShopCheckoutSchema = z.object({
   items: z
@@ -928,6 +809,86 @@ paymentsRouter.post("/mpesa/callback/stk", async (req, res) => {
   } catch (err: any) {
     // Always 200 to stop Mpesa retries; log for you to inspect
     logger.error("mpesa callback handler failed", err?.message ?? err);
+    return res.json({ ok: true });
+  }
+});
+
+paymentsRouter.post("/membership/callback/stk", async (req, res) => {
+  try {
+    const expected = process.env.MPESA_CALLBACK_SECRET || "";
+    if (expected && req.query.s !== expected) {
+      return res.status(401).json({ ok: false });
+    }
+
+    const cb = req.body?.Body?.stkCallback;
+    const checkoutRequestId = cb?.CheckoutRequestID as string | undefined;
+    const resultCode = cb?.ResultCode as number | undefined;
+
+    if (!checkoutRequestId) return res.json({ ok: true });
+
+    const tx = await prisma.paymentTransaction.findFirst({
+      where: { reference: checkoutRequestId },
+    });
+
+    if (!tx) return res.json({ ok: true });
+
+    if (tx.status === "SUCCESS" || tx.status === "FAILED") {
+      return res.json({ ok: true });
+    }
+
+    const order = tx.orderId
+      ? await prisma.order.findUnique({ where: { id: tx.orderId } })
+      : null;
+
+    if (!order || order.type !== "MEMBERSHIP") {
+      return res.json({ ok: true });
+    }
+
+    const isSuccess = Number(resultCode) === 0;
+
+    const metaItems = cb?.CallbackMetadata?.Item || [];
+    const metaMap = new Map<string, any>();
+    for (const it of metaItems) {
+      if (it?.Name) metaMap.set(it.Name, it.Value);
+    }
+
+    await prisma.paymentTransaction.update({
+      where: { id: tx.id },
+      data: { status: isSuccess ? "SUCCESS" : "FAILED" },
+    });
+
+    if (!isSuccess) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "CANCELLED" },
+      });
+      return res.json({ ok: true });
+    }
+
+    const raw = safeJson(order.metadata) || {};
+    const nextMeta = {
+      ...raw,
+      mpesa: {
+        receipt: metaMap.get("MpesaReceiptNumber"),
+        phone: metaMap.get("PhoneNumber"),
+        amount: metaMap.get("Amount"),
+        checkoutRequestId,
+      },
+    };
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        status: "PAID",
+        metadata: JSON.stringify(nextMeta),
+      },
+    });
+
+    await activateMembershipOrder(order.id);
+
+    return res.json({ ok: true });
+  } catch (err: any) {
+    logger.error("membership callback failed", err?.message ?? err);
     return res.json({ ok: true });
   }
 });
