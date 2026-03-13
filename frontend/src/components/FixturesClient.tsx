@@ -209,11 +209,6 @@ export function FixturesClient({ data }: FixturesClientProps) {
                           const isMombasa = (row.teamName || row.team || "")
                             .toLowerCase()
                             .includes("mombasa");
-
-                          const teamLogo = resolveAssetUrl(
-                            row.logo?.url || row.logoUrl || ""
-                          );
-
                           return (
                             <tr
                               key={row.id || i}
@@ -224,55 +219,36 @@ export function FixturesClient({ data }: FixturesClientProps) {
                               <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm text-gray-500">
                                 {row.position || i + 1}
                               </td>
-
                               <td className="py-2.5 sm:py-3 px-2 sm:px-3">
-                                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-                                  <div className="flex w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden">
-                                    {teamLogo ? (
+                                <div className="flex items-center gap-2 sm:gap-3">
+                                  <div className="hidden sm:flex w-7 h-7 rounded-full bg-gray-100 items-center justify-center flex-shrink-0">
+                                    {row.logo?.url || row.logoUrl ? (
                                       <img
-                                        src={teamLogo}
+                                        src={resolveAssetUrl(row.logo?.url || row.logoUrl)}
                                         alt={row.teamName || row.team}
-                                        className="w-4 h-4 sm:w-5 sm:h-5 object-contain"
+                                        className="w-5 h-5 object-contain"
                                       />
                                     ) : (
-                                      <span className="text-[8px] sm:text-[9px] font-bold text-gray-400">
-                                        {(row.teamName || row.team || "")
-                                          .substring(0, 2)
-                                          .toUpperCase()}
+                                      <span className="text-[9px] font-bold text-gray-400">
+                                        {(row.teamName || row.team || "").substring(0, 2).toUpperCase()}
                                       </span>
                                     )}
                                   </div>
-
                                   <span
                                     className={`text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none ${
-                                      isMombasa
-                                        ? "text-[#2563eb] font-extrabold"
-                                        : "text-gray-800"
+                                      isMombasa ? "text-[#2563eb] font-extrabold" : "text-gray-800"
                                     }`}
                                   >
                                     {row.teamName || row.team}
                                   </span>
                                 </div>
                               </td>
-
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
-                                {row.played ?? row.p ?? "-"}
-                              </td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
-                                {row.won ?? row.w ?? "-"}
-                              </td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
-                                {row.drawn ?? row.d ?? "-"}
-                              </td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
-                                {row.lost ?? row.l ?? "-"}
-                              </td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
-                                {row.goalDifference ?? row.gd ?? "-"}
-                              </td>
-                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm font-extrabold">
-                                {row.points ?? row.pts ?? "-"}
-                              </td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.played ?? row.p ?? "-"}</td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.won ?? row.w ?? "-"}</td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.drawn ?? row.d ?? "-"}</td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.lost ?? row.l ?? "-"}</td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">{row.goalDifference ?? row.gd ?? "-"}</td>
+                              <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm font-extrabold">{row.points ?? row.pts ?? "-"}</td>
                             </tr>
                           );
                         })}
@@ -345,18 +321,8 @@ function FixtureCard({
           </div>
 
           <button className="flex-shrink-0 ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
@@ -419,18 +385,8 @@ function ResultCard({ result }: { result: any }) {
           </div>
 
           <button className="flex-shrink-0 ml-2 sm:ml-4 text-gray-400 hover:text-gray-600 transition-colors">
-            <svg
-              className="w-5 h-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M19 9l-7 7-7-7"
-              />
+            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
             </svg>
           </button>
         </div>
@@ -451,23 +407,13 @@ function TeamBadge({
 }) {
   const dim =
     size === "lg"
-      ? "flex w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10"
-      : "flex w-6 h-6 sm:w-6 sm:h-6 md:w-8 md:h-8";
-
-  const imgDim =
-    size === "lg"
-      ? "w-5 h-5 sm:w-6 sm:h-6 md:w-8 md:h-8"
-      : "w-4 h-4 sm:w-4 sm:h-4 md:w-5 md:h-5";
-
-  const textSize =
-    size === "lg"
-      ? "text-[8px] sm:text-[9px] md:text-[10px]"
-      : "text-[8px] md:text-[9px]";
+      ? "hidden sm:flex w-8 h-8 md:w-10 md:h-10"
+      : "hidden sm:flex w-6 h-6 md:w-8 md:h-8";
+  const imgDim = size === "lg" ? "w-6 h-6 md:w-8 md:h-8" : "w-4 h-4 md:w-5 md:h-5";
+  const textSize = size === "lg" ? "text-[9px] md:text-[10px]" : "text-[8px] md:text-[9px]";
 
   return (
-    <div
-      className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden`}
-    >
+    <div className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0`}>
       {logoUrl ? (
         <img src={logoUrl} alt={name} className={`${imgDim} object-contain`} />
       ) : (
