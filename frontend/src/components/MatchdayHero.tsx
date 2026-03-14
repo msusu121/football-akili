@@ -1,7 +1,26 @@
+"use client";
+
 import Link from "next/link";
 import { MatchClock } from "@/components/MatchClock";
 
 const NAIROBI_TZ = "Africa/Nairobi";
+
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
+}
 
 function parseKickoffMs(raw?: string | null) {
   if (!raw) return NaN;
@@ -35,10 +54,34 @@ function pickTeamName(x: any, side: "home" | "away") {
     : x?.awayTeam?.name || x?.awayTeamName || x?.away || "TBD";
 }
 
-function pickLogo(x: any, side: "home" | "away") {
-  return side === "home"
-    ? x?.homeTeam?.logo?.url || x?.homeTeamLogo || null
-    : x?.awayTeam?.logo?.url || x?.awayTeamLogo || null;
+function getOpponentLogoUrl(x: any) {
+  return resolveAssetUrl(
+    x?.opponentLogoUrl ||
+      x?.opponentLogo?.publicUrl ||
+      x?.opponentLogo?.url ||
+      x?.opponentLogo?.path ||
+      ""
+  );
+}
+
+function getMatchLogos(x: any) {
+  const isHome = Boolean(x?.isHome);
+
+  const clubLogoOnHomeSide = resolveAssetUrl(
+    x?.homeTeam?.logo?.url || x?.homeTeamLogo || ""
+  );
+  const clubLogoOnAwaySide = resolveAssetUrl(
+    x?.awayTeam?.logo?.url || x?.awayTeamLogo || ""
+  );
+  const opponentLogo = getOpponentLogoUrl(x);
+
+  const homeLogo = isHome ? clubLogoOnHomeSide : opponentLogo;
+  const awayLogo = isHome ? opponentLogo : clubLogoOnAwaySide;
+
+  return {
+    homeLogo: homeLogo || null,
+    awayLogo: awayLogo || null,
+  };
 }
 
 function pickLeague(x: any) {
@@ -49,14 +92,24 @@ function pickKickoff(x: any) {
   return x?.kickoff || x?.date || x?.scheduledAt || null;
 }
 
-function TeamBadge({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
+function TeamBadge({
+  name,
+  logoUrl,
+}: {
+  name: string;
+  logoUrl?: string | null;
+}) {
   return (
-    <div className="hidden sm:flex w-9 h-9 md:w-12 md:h-12 rounded-full bg-white/15 items-center justify-center flex-shrink-0">
+    <div className="flex w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full bg-white/15 backdrop-blur-[2px] border border-white/15 items-center justify-center flex-shrink-0 overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.22)]">
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt={name} className="w-7 h-7 md:w-9 md:h-9 object-contain" />
+        <img
+          src={logoUrl}
+          alt={name}
+          className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 object-contain"
+        />
       ) : (
-        <span className="text-[10px] md:text-[11px] font-extrabold text-white/60">
+        <span className="text-[10px] sm:text-[11px] md:text-[12px] font-extrabold text-white/70">
           {String(name || "").substring(0, 2).toUpperCase()}
         </span>
       )}
@@ -77,10 +130,10 @@ export function MatchdayHero({
 
   const homeTeam = pickTeamName(fixture, "home");
   const awayTeam = pickTeamName(fixture, "away");
-  const homeLogo = pickLogo(fixture, "home");
-  const awayLogo = pickLogo(fixture, "away");
+  const { homeLogo, awayLogo } = getMatchLogos(fixture);
   const league = pickLeague(fixture);
   const kickoff = pickKickoff(fixture);
+  const resolvedBg = resolveAssetUrl(bgImageUrl);
 
   const kickoffMs = kickoff ? parseKickoffMs(String(kickoff)) : NaN;
   const nowMs = Date.now();
@@ -108,7 +161,11 @@ export function MatchdayHero({
       : "/fixtures?tab=results";
 
   const ctaLabel =
-    inferred === "PRE" ? "" : inferred === "LIVE" ? "MATCH CENTRE" : "MATCH REPORT";
+    inferred === "PRE"
+      ? "TICKET INFO"
+      : inferred === "LIVE"
+      ? "MATCH CENTRE"
+      : "MATCH REPORT";
 
   const nameCls = [
     "text-white font-extrabold uppercase",
@@ -138,7 +195,7 @@ export function MatchdayHero({
     <section className="relative w-full overflow-hidden">
       <div className="absolute inset-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={bgImageUrl} alt="" className="w-full h-full object-cover" />
+        <img src={resolvedBg} alt="" className="w-full h-full object-cover" />
       </div>
 
       <div className="absolute inset-0 bg-black/55" />
@@ -157,15 +214,15 @@ export function MatchdayHero({
               </span>
             </div>
 
-            <div className="mt-6 sm:mt-8 md:mt-10 w-full max-w-[1100px]">
+            <div className="mt-6 sm:mt-8 md:mt-10 w-full max-w-[1180px]">
               <div
-                className="grid items-center gap-2.5 sm:gap-6 md:gap-8"
+                className="grid items-center gap-3 sm:gap-6 md:gap-8"
                 style={{
-                  gridTemplateColumns: "minmax(0,1fr) minmax(92px,130px) minmax(0,1fr)",
+                  gridTemplateColumns: "minmax(0,1fr) minmax(100px,150px) minmax(0,1fr)",
                 }}
               >
                 <div className="min-w-0 text-right">
-                  <div className="flex items-center justify-end gap-2 sm:gap-3">
+                  <div className="flex items-center justify-end gap-2.5 sm:gap-3 md:gap-4">
                     <div className={nameCls}>{homeTeam}</div>
                     <TeamBadge name={homeTeam} logoUrl={homeLogo} />
                   </div>
@@ -174,7 +231,7 @@ export function MatchdayHero({
                 <div className="flex justify-center">{clockNode}</div>
 
                 <div className="min-w-0 text-left">
-                  <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2.5 sm:gap-3 md:gap-4">
                     <TeamBadge name={awayTeam} logoUrl={awayLogo} />
                     <div className={nameCls}>{awayTeam}</div>
                   </div>
