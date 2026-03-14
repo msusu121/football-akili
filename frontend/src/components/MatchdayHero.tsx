@@ -100,19 +100,51 @@ function TeamBadge({
   logoUrl?: string | null;
 }) {
   return (
-    <div className="flex w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full bg-white/15 backdrop-blur-[2px] border border-white/15 items-center justify-center flex-shrink-0 overflow-hidden shadow-[0_8px_24px_rgba(0,0,0,0.22)]">
+    <div className="flex w-12 h-12 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 rounded-full bg-white/18 backdrop-blur-[3px] border border-white/20 items-center justify-center flex-shrink-0 overflow-hidden shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={logoUrl}
           alt={name}
-          className="w-7 h-7 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-12 lg:h-12 object-contain"
+          className="w-8 h-8 sm:w-8 sm:h-8 md:w-11 md:h-11 lg:w-14 lg:h-14 object-contain"
         />
       ) : (
-        <span className="text-[10px] sm:text-[11px] md:text-[12px] font-extrabold text-white/70">
+        <span className="text-[10px] sm:text-[10px] md:text-[12px] lg:text-[14px] font-extrabold text-white/75">
           {String(name || "").substring(0, 2).toUpperCase()}
         </span>
       )}
+    </div>
+  );
+}
+
+function TeamBlock({
+  side,
+  name,
+  logoUrl,
+  nameCls,
+}: {
+  side: "home" | "away";
+  name: string;
+  logoUrl?: string | null;
+  nameCls: string;
+}) {
+  if (side === "home") {
+    return (
+      <div className="min-w-0 text-center sm:text-right">
+        <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-3 md:gap-4">
+          <TeamBadge name={name} logoUrl={logoUrl} />
+          <div className={nameCls}>{name}</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-w-0 text-center sm:text-left">
+      <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:gap-3 md:gap-4">
+        <TeamBadge name={name} logoUrl={logoUrl} />
+        <div className={nameCls}>{name}</div>
+      </div>
     </div>
   );
 }
@@ -169,16 +201,13 @@ export function MatchdayHero({
 
   const nameCls = [
     "text-white font-extrabold uppercase",
-    "tracking-[-0.015em]",
-    "leading-[1.08]",
-    "py-0.5",
+    "tracking-[-0.02em]",
+    "leading-[1.02]",
     "whitespace-normal",
     "break-words",
-    "text-[clamp(0.95rem,3.0vw,3.4rem)]",
-    "sm:leading-[1.02]",
-    "sm:py-1",
-    "sm:line-clamp-2",
     "text-balance",
+    "text-[clamp(0.95rem,4vw,3.8rem)]",
+    "max-w-[11ch] sm:max-w-none",
   ].join(" ");
 
   const clockNode = kickoff ? (
@@ -218,24 +247,24 @@ export function MatchdayHero({
               <div
                 className="grid items-center gap-3 sm:gap-6 md:gap-8"
                 style={{
-                  gridTemplateColumns: "minmax(0,1fr) minmax(100px,150px) minmax(0,1fr)",
+                  gridTemplateColumns: "minmax(0,1fr) minmax(104px,170px) minmax(0,1fr)",
                 }}
               >
-                <div className="min-w-0 text-right">
-                  <div className="flex items-center justify-end gap-2.5 sm:gap-3 md:gap-4">
-                    <div className={nameCls}>{homeTeam}</div>
-                    <TeamBadge name={homeTeam} logoUrl={homeLogo} />
-                  </div>
-                </div>
+                <TeamBlock
+                  side="home"
+                  name={homeTeam}
+                  logoUrl={homeLogo}
+                  nameCls={nameCls}
+                />
 
                 <div className="flex justify-center">{clockNode}</div>
 
-                <div className="min-w-0 text-left">
-                  <div className="flex items-center gap-2.5 sm:gap-3 md:gap-4">
-                    <TeamBadge name={awayTeam} logoUrl={awayLogo} />
-                    <div className={nameCls}>{awayTeam}</div>
-                  </div>
-                </div>
+                <TeamBlock
+                  side="away"
+                  name={awayTeam}
+                  logoUrl={awayLogo}
+                  nameCls={nameCls}
+                />
               </div>
 
               <div className="mt-4 sm:mt-6 h-px w-full bg-white/10" />
