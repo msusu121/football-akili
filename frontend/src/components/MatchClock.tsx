@@ -39,28 +39,19 @@ export function MatchClock({
   liveWindowMinutes?: number;
 }) {
   const kickoffMs = useMemo(() => parseKickoffMs(kickoffISO), [kickoffISO]);
-  const [now, setNow] = useState(() => Date.now());
+  const [now, setNow] = useState<number | null>(null);
 
   useEffect(() => {
-    const t = window.setInterval(() => setNow(Date.now()), 1000);
+    setNow(Date.now());
+
+    const t = window.setInterval(() => {
+      setNow(Date.now());
+    }, 1000);
+
     return () => window.clearInterval(t);
   }, []);
 
   const statusNorm = String(status || "").toUpperCase();
-
-  const mode: Mode = useMemo(() => {
-    if (statusNorm === "FT" || statusNorm === "FULL_TIME") return "FT";
-    if (statusNorm === "LIVE" || statusNorm === "IN_PROGRESS") return "LIVE";
-
-    if (!Number.isFinite(kickoffMs)) return "FT";
-
-    if (now < kickoffMs) return "COUNTDOWN";
-
-    const liveEnd = kickoffMs + liveWindowMinutes * 60 * 1000;
-    if (now >= kickoffMs && now <= liveEnd) return "LIVE";
-
-    return "FT";
-  }, [statusNorm, now, kickoffMs, liveWindowMinutes]);
 
   const pillBase =
     "inline-flex items-center gap-2 bg-black/35 border border-white/25 rounded-sm " +
@@ -76,12 +67,59 @@ export function MatchClock({
     );
   }
 
+  // Prevent hydration mismatch: render stable placeholder first
+  if (now === null) {
+    if (statusNorm === "FT" || statusNorm === "FULL_TIME") {
+      return (
+        <div className={pillBase}>
+          <span className="text-white font-extrabold text-[11px] sm:text-[12px] tracking-[0.18em] uppercase">
+            FT
+          </span>
+        </div>
+      );
+    }
+
+    if (statusNorm === "LIVE" || statusNorm === "IN_PROGRESS") {
+      return (
+        <div className={pillBase}>
+          <span className="inline-flex items-center gap-2 text-white font-extrabold text-[11px] sm:text-[12px] tracking-[0.18em] uppercase">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full rounded-full bg-red-500 opacity-75 animate-ping" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-red-500" />
+            </span>
+            LIVE
+          </span>
+        </div>
+      );
+    }
+
+    return (
+      <div className={pillBase}>
+        <span className="text-white font-extrabold text-[11px] sm:text-[13px] tracking-[0.12em] tabular-nums">
+          --:--:--
+        </span>
+      </div>
+    );
+  }
+
+  let mode: Mode = "FT";
+
+  if (statusNorm === "FT" || statusNorm === "FULL_TIME") {
+    mode = "FT";
+  } else if (statusNorm === "LIVE" || statusNorm === "IN_PROGRESS") {
+    mode = "LIVE";
+  } else if (now < kickoffMs) {
+    mode = "COUNTDOWN";
+  } else {
+    const liveEnd = kickoffMs + liveWindowMinutes * 60 * 1000;
+    mode = now >= kickoffMs && now <= liveEnd ? "LIVE" : "FT";
+  }
+
   if (mode === "COUNTDOWN") {
     const ms = kickoffMs - now;
 
     return (
       <div className={pillBase}>
-        
         <span className="text-white font-extrabold text-[11px] sm:text-[13px] tracking-[0.12em] tabular-nums">
           {formatCountdown(ms)}
         </span>
