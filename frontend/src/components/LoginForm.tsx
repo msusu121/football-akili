@@ -167,7 +167,7 @@ export default function LoginForm({ logoUrl, clubName }: LoginFormProps) {
   const { login, register } = useAuth();
   const router = useRouter();
   const sp = useSearchParams();
-  const next = sp.get("next") || "/";
+  const next = sp.get("next") || "/account";
 
   const [mode, setMode] = useState<AuthMode>("login");
   const [name, setName] = useState("");
