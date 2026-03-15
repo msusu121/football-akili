@@ -475,10 +475,63 @@ async function seedLeagueTable() {
   console.log(`[seed] league table: rows=${LEAGUE_TABLE.length} asOf=${TABLE_AS_OF.toISOString()}`);
 }
 
+async function seedTicketEvents() {
+  const upcomingHomeMatches = await prisma.match.findMany({
+    where: {
+      season: SEASON,
+      isHome: true,
+      kickoffAt: {
+        gte: new Date("2026-03-01T00:00:00+03:00"),
+      },
+    },
+    orderBy: { kickoffAt: "asc" },
+  });
+
+  let created = 0;
+  let skipped = 0;
+
+  for (const match of upcomingHomeMatches) {
+    const existing = await prisma.ticketEvent.findUnique({
+      where: { matchId: match.id },
+    });
+
+    if (existing) {
+      skipped++;
+      continue;
+    }
+
+    const salesOpenAt = new Date(match.kickoffAt.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const salesCloseAt = new Date(match.kickoffAt.getTime() - 30 * 60 * 1000);
+
+    await prisma.ticketEvent.create({
+      data: {
+        matchId: match.id,
+        title: `Mombasa United vs ${match.opponent}`,
+        salesOpenAt,
+        salesCloseAt,
+        currency: "KES",
+        isActive: true,
+        tiers: {
+          create: [
+            { name: "VIP", price: 1500, capacity: 200 },
+            { name: "Regular", price: 500, capacity: 1500 },
+            { name: "Terrace", price: 100, capacity: 2500 },
+          ],
+        },
+      },
+    });
+
+    created++;
+  }
+
+  console.log(`[seed] ticket events: created=${created} skipped=${skipped}`);
+}
 async function main() {
-  console.log("[seed] fixtures: start");
-  await seedMatches();
-  await seedLeagueTable();
+  //console.log("[seed] fixtures: start");
+  //await seedMatches();
+  //await seedLeagueTable();
+  console.log("[seed] fixtures: seeding ticket events for upcoming home matches...");
+  await seedTicketEvents();
   console.log("[seed] fixtures: done");
 }
 

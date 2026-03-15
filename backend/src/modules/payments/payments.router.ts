@@ -934,3 +934,247 @@ paymentsRouter.get("/membership/tx/status/:checkoutRequestId", async (req, res, 
     next(e);
   }
 });
+
+
+const TicketCheckoutStkSchema = z.object({
+  eventId: z.string().min(1),
+  tierId: z.string().min(1),
+  qty: z.number().int().min(1).max(20),
+  phone: z.string().min(8),
+});
+
+paymentsRouter.post("/tickets/checkout/stk", requireAuth, async (req, res, next) => {
+  try {
+    const body = TicketCheckoutStkSchema.parse(req.body);
+    const phone = normalizePhone(body.phone);
+
+    const event = await prisma.ticketEvent.findUnique({
+      where: { id: body.eventId },
+      include: { tiers: true, match: true },
+    });
+
+    if (!event || !event.isActive) {
+      throw Object.assign(new Error("Event not found"), { status: 404 });
+    }
+
+    const now = new Date();
+    if (now < event.salesOpenAt || now > event.salesCloseAt) {
+      throw Object.assign(new Error("Ticket sales closed"), { status: 400 });
+    }
+
+    const tier = event.tiers.find((t) => t.id === body.tierId);
+    if (!tier) {
+      throw Object.assign(new Error("Tier not found"), { status: 404 });
+    }
+
+    if (tier.sold + body.qty > tier.capacity) {
+      throw Object.assign(new Error("Sold out"), { status: 409 });
+    }
+
+    const total = tier.price * body.qty;
+    const code = `T-${crypto.randomBytes(6).toString("hex").toUpperCase()}`;
+
+    const ticket = await prisma.ticket.create({
+      data: {
+        userId: req.user!.id,
+        eventId: event.id,
+        tierId: tier.id,
+        quantity: body.qty,
+        total,
+        status: "RESERVED",
+        code,
+      },
+    });
+
+    await prisma.ticketTier.update({
+      where: { id: tier.id },
+      data: { sold: { increment: body.qty } },
+    });
+
+    const order = await prisma.order.create({
+      data: {
+        userId: req.user!.id,
+        type: "TICKETS",
+        status: "PENDING",
+        currency: event.currency,
+        total,
+        metadata: JSON.stringify({
+          ticketId: ticket.id,
+          eventId: event.id,
+          tierId: tier.id,
+          qty: body.qty,
+          phone: body.phone,
+        }),
+      },
+    });
+
+    const tx = await prisma.paymentTransaction.create({
+      data: {
+        provider: "MPESA",
+        amount: total,
+        currency: event.currency,
+        status: "PENDING",
+        orderId: order.id,
+        ticketId: ticket.id,
+        userId: req.user!.id,
+      },
+    });
+
+    const secret = process.env.MPESA_CALLBACK_SECRET || "";
+    const base = process.env.PUBLIC_BASE_URL!;
+    const callbackUrl = `${base}/payments/tickets/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
+
+    const stk = await stkPush({
+      amount: total,
+      phone,
+      accountReference: `TKT-${order.id.slice(-10)}`,
+      transactionDesc: `${event.title} ticket`,
+      callbackUrl,
+    });
+
+    await prisma.paymentTransaction.update({
+      where: { id: tx.id },
+      data: { reference: stk.CheckoutRequestID },
+    });
+
+    res.json({
+      ticketId: ticket.id,
+      orderId: order.id,
+      transactionId: tx.id,
+      checkoutRequestId: stk.CheckoutRequestID,
+      merchantRequestId: stk.MerchantRequestID,
+      amount: total,
+      currency: event.currency,
+      customerMessage: stk.CustomerMessage,
+    });
+  } catch (e) {
+    next(e);
+  }
+});
+
+
+paymentsRouter.post("/tickets/callback/stk", async (req, res) => {
+  try {
+    const expected = process.env.MPESA_CALLBACK_SECRET || "";
+    if (expected && req.query.s !== expected) {
+      return res.status(401).json({ ok: false });
+    }
+
+    const cb = req.body?.Body?.stkCallback;
+    const checkoutRequestId = cb?.CheckoutRequestID as string | undefined;
+    const resultCode = cb?.ResultCode as number | undefined;
+
+    if (!checkoutRequestId) return res.json({ ok: true });
+
+    const tx = await prisma.paymentTransaction.findFirst({
+      where: { reference: checkoutRequestId },
+    });
+
+    if (!tx) return res.json({ ok: true });
+    if (tx.status === "SUCCESS" || tx.status === "FAILED") return res.json({ ok: true });
+
+    const isSuccess = Number(resultCode) === 0;
+
+    const order = tx.orderId
+      ? await prisma.order.findUnique({ where: { id: tx.orderId } })
+      : null;
+
+    const ticket = tx.ticketId
+      ? await prisma.ticket.findUnique({ where: { id: tx.ticketId } })
+      : null;
+
+    if (!order || order.type !== "TICKETS" || !ticket) {
+      return res.json({ ok: true });
+    }
+
+    const metaItems = cb?.CallbackMetadata?.Item || [];
+    const metaMap = new Map<string, any>();
+    for (const it of metaItems) {
+      if (it?.Name) metaMap.set(it.Name, it.Value);
+    }
+
+    await prisma.paymentTransaction.update({
+      where: { id: tx.id },
+      data: { status: isSuccess ? "SUCCESS" : "FAILED" },
+    });
+
+    if (!isSuccess) {
+      await prisma.order.update({
+        where: { id: order.id },
+        data: { status: "CANCELLED" },
+      });
+
+      await prisma.ticket.update({
+        where: { id: ticket.id },
+        data: { status: "CANCELLED" },
+      });
+
+      await prisma.ticketTier.update({
+        where: { id: ticket.tierId },
+        data: { sold: { decrement: ticket.quantity } },
+      });
+
+      return res.json({ ok: true });
+    }
+
+    const raw = safeJson(order.metadata) || {};
+    const nextMeta = {
+      ...raw,
+      mpesa: {
+        receipt: metaMap.get("MpesaReceiptNumber"),
+        phone: metaMap.get("PhoneNumber"),
+        amount: metaMap.get("Amount"),
+        checkoutRequestId,
+      },
+    };
+
+    const qr = await QRCode.toDataURL(
+      JSON.stringify({ code: ticket.code, ticketId: ticket.id }),
+      { margin: 1, width: 320 }
+    );
+
+    await prisma.order.update({
+      where: { id: order.id },
+      data: {
+        status: "PAID",
+        metadata: JSON.stringify(nextMeta),
+      },
+    });
+
+    await prisma.ticket.update({
+      where: { id: ticket.id },
+      data: {
+        status: "PAID",
+        qrDataUrl: qr,
+      },
+    });
+
+    return res.json({ ok: true });
+  } catch (err: any) {
+    logger.error("tickets callback failed", err?.message ?? err);
+    return res.json({ ok: true });
+  }
+});
+
+
+paymentsRouter.get("/tickets/tx/status/:checkoutRequestId", async (req, res, next) => {
+  try {
+    const checkoutRequestId = z.string().min(1).parse(req.params.checkoutRequestId);
+
+    const tx = await prisma.paymentTransaction.findFirst({
+      where: { reference: checkoutRequestId },
+    });
+
+    if (!tx) {
+      return res.status(404).json({ status: "NOT_FOUND" });
+    }
+
+    res.json({
+      status: tx.status,
+      orderId: tx.orderId,
+      ticketId: tx.ticketId,
+    });
+  } catch (e) {
+    next(e);
+  }
+});

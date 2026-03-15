@@ -12,6 +12,7 @@ type Section =
   | "overview"
   | "news"
   | "matches"
+  | "tickets"
   | "team"
   | "products"
   | "sponsors"
@@ -30,6 +31,7 @@ const SECTIONS: Array<{ key: Section; label: string; icon: string }> = [
   { key: "sponsors", label: "Sponsors", icon: "🤝" },
   { key: "media", label: "Media Library", icon: "🖼️" },
   { key: "highlights", label: "Highlights", icon: "🎬" },
+  { key: "tickets", label: "Tickets", icon: "🎟️" },
   { key: "ads", label: "Ads / Banners", icon: "📢" },
   { key: "faqs", label: "FAQs", icon: "❓" },
   { key: "settings", label: "Site Settings", icon: "⚙️" },
@@ -130,6 +132,7 @@ export default function AdminClient() {
         overview: "/admin/overview",
         news: "/admin/news",
         matches: "/admin/matches",
+        tickets: "/admin/tickets",
         team: "/admin/team",
         products: "/admin/products",
         sponsors: "/admin/sponsors",
@@ -317,6 +320,9 @@ export default function AdminClient() {
               {section === "settings" && (
                 <SettingsPanel token={token} data={data} onChange={load} />
               )}
+              {section === "tickets" && (
+  <TicketsPanel token={token} data={data} onChange={load} />
+)}
             </>
           )}
         </div>
@@ -352,6 +358,378 @@ function OverviewPanel({ data }: { data: any }) {
   );
 }
 
+
+function TicketsPanel({
+  token,
+  data,
+  onChange,
+}: {
+  token: string;
+  data: any;
+  onChange: () => void;
+}) {
+  const items = data?.items || [];
+  const matches = data?.matches || [];
+
+  const [saving, setSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const emptyDraft = () => ({
+    matchId: "",
+    title: "",
+    salesOpenAt: toDateTimeLocal(new Date().toISOString()),
+    salesCloseAt: "",
+    currency: "KES",
+    isActive: true,
+    tiers: [
+      { name: "VIP", price: 1500, capacity: 200 },
+      { name: "Regular", price: 500, capacity: 1500 },
+      { name: "Terrace", price: 300, capacity: 2000 },
+    ],
+  });
+
+  const [draft, setDraft] = useState<any>(emptyDraft());
+
+  const resetForm = () => {
+    setDraft(emptyDraft());
+    setEditingId(null);
+  };
+
+  const selectedMatch = useMemo(
+    () => matches.find((m: any) => m.id === draft.matchId) || null,
+    [matches, draft.matchId]
+  );
+
+  const onMatchSelect = (matchId: string) => {
+    const m = matches.find((x: any) => x.id === matchId);
+    if (!m) {
+      setDraft((d: any) => ({ ...d, matchId }));
+      return;
+    }
+
+    const kickoff = m.kickoffAt ? new Date(m.kickoffAt) : null;
+    const salesCloseAt = kickoff
+      ? new Date(kickoff.getTime() - 30 * 60 * 1000)
+      : null;
+    const salesOpenAt = kickoff
+      ? new Date(kickoff.getTime() - 14 * 24 * 60 * 60 * 1000)
+      : null;
+
+    setDraft((d: any) => ({
+      ...d,
+      matchId,
+      title: d.title || `Mombasa United vs ${m.opponent}`,
+      salesOpenAt: d.salesOpenAt || (salesOpenAt ? toDateTimeLocal(salesOpenAt.toISOString()) : ""),
+      salesCloseAt: d.salesCloseAt || (salesCloseAt ? toDateTimeLocal(salesCloseAt.toISOString()) : ""),
+    }));
+  };
+
+  const setTierField = (idx: number, key: "name" | "price" | "capacity", value: any) => {
+    setDraft((d: any) => ({
+      ...d,
+      tiers: d.tiers.map((t: any, i: number) =>
+        i === idx ? { ...t, [key]: value } : t
+      ),
+    }));
+  };
+
+  const addTier = () => {
+    setDraft((d: any) => ({
+      ...d,
+      tiers: [...d.tiers, { name: "", price: 0, capacity: 100 }],
+    }));
+  };
+
+  const removeTier = (idx: number) => {
+    setDraft((d: any) => ({
+      ...d,
+      tiers: d.tiers.filter((_: any, i: number) => i !== idx),
+    }));
+  };
+
+  const create = async () => {
+    try {
+      setSaving(true);
+
+      await apiJson("/admin/tickets", {
+        method: "POST",
+        token,
+        body: {
+          matchId: draft.matchId,
+          title: draft.title,
+          salesOpenAt: toIsoOrNull(draft.salesOpenAt),
+          salesCloseAt: toIsoOrNull(draft.salesCloseAt),
+          currency: draft.currency || "KES",
+          isActive: !!draft.isActive,
+          tiers: draft.tiers.map((t: any) => ({
+            name: t.name,
+            price: Number(t.price) || 0,
+            capacity: Number(t.capacity) || 0,
+          })),
+        },
+      });
+
+      resetForm();
+      onChange();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to create ticket event");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const update = async () => {
+    if (!editingId) return;
+
+    try {
+      setSaving(true);
+
+      await apiJson(`/admin/tickets/${editingId}`, {
+        method: "PUT",
+        token,
+        body: {
+          matchId: draft.matchId,
+          title: draft.title,
+          salesOpenAt: toIsoOrNull(draft.salesOpenAt),
+          salesCloseAt: toIsoOrNull(draft.salesCloseAt),
+          currency: draft.currency || "KES",
+          isActive: !!draft.isActive,
+          tiers: draft.tiers.map((t: any) => ({
+            name: t.name,
+            price: Number(t.price) || 0,
+            capacity: Number(t.capacity) || 0,
+          })),
+        },
+      });
+
+      resetForm();
+      onChange();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to update ticket event");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const startEdit = (e: any) => {
+    setEditingId(e.id);
+    setDraft({
+      matchId: e.matchId || e.match?.id || "",
+      title: e.title || "",
+      salesOpenAt: toDateTimeLocal(e.salesOpenAt),
+      salesCloseAt: toDateTimeLocal(e.salesCloseAt),
+      currency: e.currency || "KES",
+      isActive: !!e.isActive,
+      tiers:
+        (e.tiers || []).map((t: any) => ({
+          id: t.id,
+          name: t.name,
+          price: t.price,
+          capacity: t.capacity,
+          sold: t.sold,
+        })) || [],
+    });
+  };
+
+  const del = async (id: string) => {
+    if (!confirm("Delete ticket event?")) return;
+    await apiJson(`/admin/tickets/${id}`, { method: "DELETE", token });
+    if (editingId === id) resetForm();
+    onChange();
+  };
+
+  return (
+    <div className="grid gap-6">
+      <div className={cardCls}>
+        <h3 className="text-sm font-semibold text-foreground">
+          {editingId ? "Edit ticket event" : "Create ticket event"}
+        </h3>
+
+        <div className="mt-4 grid gap-3 sm:grid-cols-2">
+          <select
+            className={inputCls + " sm:col-span-2"}
+            value={draft.matchId}
+            onChange={(e) => onMatchSelect(e.target.value)}
+          >
+            <option value="">Select match</option>
+            {matches.map((m: any) => (
+              <option key={m.id} value={m.id}>
+                {new Date(m.kickoffAt).toLocaleDateString()} • {m.isHome ? "HOME" : "AWAY"} vs {m.opponent}
+              </option>
+            ))}
+          </select>
+
+          <input
+            className={inputCls + " sm:col-span-2"}
+            placeholder="Ticket event title"
+            value={draft.title}
+            onChange={(e) => setDraft((d: any) => ({ ...d, title: e.target.value }))}
+          />
+
+          <input
+            type="datetime-local"
+            className={inputCls}
+            value={draft.salesOpenAt}
+            onChange={(e) => setDraft((d: any) => ({ ...d, salesOpenAt: e.target.value }))}
+          />
+
+          <input
+            type="datetime-local"
+            className={inputCls}
+            value={draft.salesCloseAt}
+            onChange={(e) => setDraft((d: any) => ({ ...d, salesCloseAt: e.target.value }))}
+          />
+
+          <input
+            className={inputCls}
+            placeholder="Currency"
+            value={draft.currency}
+            onChange={(e) => setDraft((d: any) => ({ ...d, currency: e.target.value }))}
+          />
+
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={draft.isActive}
+              onChange={(e) => setDraft((d: any) => ({ ...d, isActive: e.target.checked }))}
+            />
+            Active
+          </label>
+        </div>
+
+        {selectedMatch ? (
+          <div className="mt-4 rounded-xl border border-border bg-muted/40 p-4">
+            <p className="text-sm font-semibold text-foreground">
+              Selected match
+            </p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {selectedMatch.isHome ? "HOME" : "AWAY"} vs {selectedMatch.opponent} •{" "}
+              {new Date(selectedMatch.kickoffAt).toLocaleString()} •{" "}
+              {selectedMatch.venue || "Venue TBA"}
+            </p>
+          </div>
+        ) : null}
+
+        <div className="mt-5 rounded-xl border border-border bg-muted/30 p-4">
+          <div className="flex items-center justify-between">
+            <p className="text-sm font-semibold text-foreground">Ticket tiers</p>
+            <button type="button" onClick={addTier} className={btnOutline}>
+              Add tier
+            </button>
+          </div>
+
+          <div className="mt-4 grid gap-3">
+            {draft.tiers.map((t: any, idx: number) => (
+              <div
+                key={idx}
+                className="grid gap-3 rounded-xl border border-border bg-card p-3 sm:grid-cols-[1.3fr_1fr_1fr_auto]"
+              >
+                <input
+                  className={inputCls}
+                  placeholder="Tier name"
+                  value={t.name}
+                  onChange={(e) => setTierField(idx, "name", e.target.value)}
+                />
+                <input
+                  type="number"
+                  className={inputCls}
+                  placeholder="Price"
+                  value={t.price}
+                  onChange={(e) => setTierField(idx, "price", Number(e.target.value) || 0)}
+                />
+                <input
+                  type="number"
+                  className={inputCls}
+                  placeholder="Capacity"
+                  value={t.capacity}
+                  onChange={(e) => setTierField(idx, "capacity", Number(e.target.value) || 0)}
+                />
+                <button
+                  type="button"
+                  onClick={() => removeTier(idx)}
+                  className={btnDanger}
+                  disabled={draft.tiers.length === 1}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-5 flex flex-wrap gap-2">
+          {editingId ? (
+            <>
+              <button onClick={update} className={btnPrimary} disabled={saving}>
+                {saving ? "Saving…" : "Update"}
+              </button>
+              <button onClick={resetForm} className={btnOutline}>
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button onClick={create} className={btnPrimary} disabled={saving}>
+              {saving ? "Saving…" : "Create"}
+            </button>
+          )}
+        </div>
+      </div>
+
+      <div className="grid gap-3">
+        {items.map((e: any) => (
+          <div key={e.id} className={cardCls + " flex flex-col gap-3"}>
+            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-foreground">
+                  {e.title}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {e.match?.isHome ? "HOME" : "AWAY"} vs {e.match?.opponent} •{" "}
+                  {e.match?.kickoffAt
+                    ? new Date(e.match.kickoffAt).toLocaleString()
+                    : "No kickoff"}{" "}
+                  • {e.match?.venue || "Venue TBA"}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Sales: {new Date(e.salesOpenAt).toLocaleString()} →{" "}
+                  {new Date(e.salesCloseAt).toLocaleString()} • {e.currency} •{" "}
+                  {e.isActive ? "Active" : "Hidden"}
+                </p>
+                <p className="text-xs text-brand mt-1">Public: /tickets/{e.id}</p>
+              </div>
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => startEdit(e)} className={btnOutline}>
+                  Edit
+                </button>
+                <button onClick={() => del(e.id)} className={btnDanger}>
+                  Delete
+                </button>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {(e.tiers || []).map((t: any) => (
+                <span
+                  key={t.id}
+                  className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-foreground"
+                >
+                  {t.name}: {t.price} {e.currency} • cap {t.capacity} • sold {t.sold}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+
+        {!items.length && (
+          <p className="text-sm text-muted-foreground">No ticket events yet.</p>
+        )}
+      </div>
+    </div>
+  );
+}
 /* ═══════════════════════════════════════════════════════════
    NEWS
    ═══════════════════════════════════════════════════════════ */

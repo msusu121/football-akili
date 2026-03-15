@@ -304,6 +304,7 @@ function FixtureCard({
 
   const homeLogo = isHome ? clubLogoOnHomeSide : opponentLogo;
   const awayLogo = isHome ? opponentLogo : clubLogoOnAwaySide;
+  
 
   return (
     <div className="bg-white">

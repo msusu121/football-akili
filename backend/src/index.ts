@@ -19,6 +19,7 @@ import { ticketsRouter } from "./modules/tickets/tickets.router.js";
 import { paymentsRouter } from "./modules/payments/payments.router.js";
 import { adminRouter } from "./modules/admin/admin.router.js";
 import { membershipRouter } from "./modules/membership/membership.router.js";   
+import { adminTicketsRouter } from "./modules/admin/admin.tickets.router.js"; 
 
 dotenv.config();
 
@@ -68,6 +69,7 @@ app.use("/matches", matchesRouter);
 app.use("/shop", shopRouter);
 app.use("/uploads", uploadsRouter);
 app.use("/tickets", ticketsRouter);
+app.use("/admin/tickets", adminTicketsRouter);
 app.use(express.json({ limit: "2mb" }));
 app.use("/payments", paymentsRouter);
 app.use("/admin", adminRouter);

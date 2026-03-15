@@ -40,6 +40,11 @@ type SettingsInput = {
 
 type TicketEventLike = {
   id: string;
+   isActive?: boolean | null;
+  salesOpenAt?: Date | string | null;
+  salesCloseAt?: Date | string | null;
+  
+
 };
 
 type MatchInput = {
@@ -98,6 +103,11 @@ type MappedMatch = {
   homeTeamLogo: string | null;
   awayTeamLogo: string | null;
   ticketEventId: string | null;
+  ticketUrl: string | null;
+  hasTickets: boolean;
+  ticketSalesOpenAt: string | null;
+  ticketSalesCloseAt: string | null;  
+
 };
 
 function pad2(n: number): string {
@@ -217,6 +227,8 @@ function mapMatch(m: MatchInput, clubName: string, clubLogoUrl: string | null): 
   const homeTeamLogo = isHome ? clubLogoUrl : null;
   const awayTeamLogo = isHome ? null : clubLogoUrl;
 
+  const ticketEventId = m.ticketEvent?.id ?? null;
+
   return {
     id: m.id,
     kickoff: dbNaiveDateToNairobiIso(m.kickoffAt ?? null),
@@ -234,6 +246,10 @@ function mapMatch(m: MatchInput, clubName: string, clubLogoUrl: string | null): 
     homeTeamLogo,
     awayTeamLogo,
     ticketEventId: m.ticketEvent?.id ?? null,
+    ticketUrl: ticketEventId ? `/tickets/${ticketEventId}` : null,
+    hasTickets: !!ticketEventId,
+    ticketSalesOpenAt: dbNaiveDateToNairobiIso(m.ticketEvent?.salesOpenAt ?? null),
+    ticketSalesCloseAt: dbNaiveDateToNairobiIso(m.ticketEvent?.salesCloseAt ?? null),
   };
 }
 
@@ -291,17 +307,27 @@ publicRouter.get("/home", async (_req: Request, res: Response, next: NextFunctio
     });
 
     const nextMatchRaw = await prisma.match.findFirst({
-      where: { kickoffAt: { gt: dbNow } },
-      orderBy: { kickoffAt: "asc" },
-    });
+  where: { kickoffAt: { gt: dbNow } },
+  orderBy: { kickoffAt: "asc" },
+  include: {
+    ticketEvent: {
+      select: {
+        id: true,
+        isActive: true,
+        salesOpenAt: true,
+        salesCloseAt: true,
+      },
+    },
+    opponentLogo: true,
+  },
+});
 
-    const nextMatch =
-      nextMatchRaw != null
-        ? {
-            ...nextMatchRaw,
-            kickoffAt: dbNaiveDateToNairobiIso(nextMatchRaw.kickoffAt),
-          }
-        : null;
+    const clubName = settings?.clubName || "Mombasa United";
+const clubLogoUrl = settings?.headerLogo ? mediaUrl(settings.headerLogo.path ?? null) : null;
+
+const nextMatch = nextMatchRaw
+  ? mapMatch(nextMatchRaw, clubName, clubLogoUrl)
+  : null;
 
     res.json({
       settings: settings

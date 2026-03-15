@@ -20,52 +20,87 @@ export default function TicketsClient() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-3xl text-center">
-      <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-ink">Featured Events</h1>
+    <div className="mx-auto max-w-5xl">
+      <div className="text-center">
+        <h1 className="text-4xl md:text-5xl font-extrabold tracking-tight text-ink">
+          Featured Events
+        </h1>
+        <p className="mt-3 text-base text-muted">
+          Get your tickets for upcoming Mombasa United matches.
+        </p>
+      </div>
 
-      {loading ? <div className="mt-6 text-sm text-muted">Loading events…</div> : null}
-      {error ? <div className="mt-6 text-sm text-red-600">{error}</div> : null}
+      {loading ? <div className="mt-6 text-sm text-muted text-center">Loading events…</div> : null}
+      {error ? <div className="mt-6 text-sm text-red-600 text-center">{error}</div> : null}
 
       {!loading && !items.length ? (
-        <>
-          <div className="mt-4 text-base text-muted">No matches scheduled yet</div>
-          <div className="mt-10 flex items-center justify-center gap-4">
+        <div className="mt-12 text-center">
+          <div className="text-base text-muted">No featured ticket events yet.</div>
+          <div className="mt-8 flex items-center justify-center gap-4">
             <Link
               href="/tickets"
               className="px-8 py-3 rounded-xl border border-line bg-white hover:bg-black/5 transition text-ink font-semibold"
             >
-              Check All Events
+              Refresh Tickets
             </Link>
             {token ? (
-              <Link href="/account#tickets" className="text-sm text-muted hover:text-ink">My tickets →</Link>
+              <Link href="/account#tickets" className="text-sm text-muted hover:text-ink">
+                My tickets →
+              </Link>
             ) : (
-              <Link href="/login?next=/tickets" className="text-sm text-muted hover:text-ink">Log in →</Link>
+              <Link href="/login?next=/tickets" className="text-sm text-muted hover:text-ink">
+                Log in →
+              </Link>
             )}
           </div>
-        </>
+        </div>
       ) : null}
 
       {!!items.length ? (
-        <div className="mt-10 grid gap-4 text-left md:grid-cols-2">
+        <div className="mt-10 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
           {items.map((e) => (
             <Link
               key={e.id}
-              href={`/tickets/${e.id}`}
+              href={e.ticketUrl || `/tickets/${e.id}`}
               className="rounded-2xl border border-line bg-white hover:bg-black/5 transition p-5"
             >
-              <div className="text-xs text-muted">{new Date(e.match?.kickoffAt || e.salesOpenAt).toDateString()}</div>
-              <div className="mt-1 font-semibold line-clamp-1 text-ink">
-                {e.match?.isHome ? "HOME" : "AWAY"} vs {e.match?.opponent || "TBA"}
+              <div className="text-xs text-muted">
+                {new Date(e.match?.kickoffAt || e.salesOpenAt).toDateString()}
               </div>
-              <div className="mt-1 text-sm text-muted line-clamp-1">{e.match?.venue || "Venue TBA"}</div>
+
+              <div className="mt-3 flex items-center gap-3">
+                {e.match?.opponentLogoUrl ? (
+                  <img
+                    src={e.match.opponentLogoUrl}
+                    alt={e.match?.opponent || "Opponent"}
+                    className="h-12 w-12 rounded-full object-contain bg-black/5 p-1"
+                  />
+                ) : (
+                  <div className="h-12 w-12 rounded-full bg-black/5" />
+                )}
+
+                <div className="min-w-0">
+                  <div className="font-semibold line-clamp-1 text-ink">
+                    {e.match?.isHome ? "HOME" : "AWAY"} vs {e.match?.opponent || "TBA"}
+                  </div>
+                  <div className="mt-1 text-sm text-muted line-clamp-1">
+                    {e.match?.venue || "Venue TBA"}
+                  </div>
+                </div>
+              </div>
+
               <div className="mt-4 flex flex-wrap gap-2">
                 {(e.tiers || []).slice(0, 3).map((t: any) => (
-                  <span key={t.id} className="text-xs rounded-full border border-line bg-black/5 px-3 py-1 text-ink">
+                  <span
+                    key={t.id}
+                    className="text-xs rounded-full border border-line bg-black/5 px-3 py-1 text-ink"
+                  >
                     {t.name}: {t.price} {e.currency}
                   </span>
                 ))}
               </div>
-              <div className="mt-4 text-sm text-brand font-semibold">Buy tickets →</div>
+
+              <div className="mt-5 text-sm text-brand font-semibold">Buy tickets →</div>
             </Link>
           ))}
         </div>

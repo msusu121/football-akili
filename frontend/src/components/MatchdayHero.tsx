@@ -186,11 +186,11 @@ export function MatchdayHero({
       : "POST";
 
   const ctaHref =
-    inferred === "PRE"
-      ? ticketsUrl || "/tickets"
-      : inferred === "LIVE"
-      ? "/fixtures?tab=fixtures"
-      : "/fixtures?tab=results";
+  inferred === "PRE"
+    ? ticketsUrl || "/tickets"
+    : inferred === "LIVE"
+    ? "/fixtures?tab=fixtures"
+    : "/fixtures?tab=results";
 
   const ctaLabel =
     inferred === "PRE"
