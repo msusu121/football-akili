@@ -13,6 +13,7 @@ type Section =
   | "news"
   | "matches"
   | "tickets"
+  | "loyalty"
   | "team"
   | "products"
   | "sponsors"
@@ -32,6 +33,7 @@ const SECTIONS: Array<{ key: Section; label: string; icon: string }> = [
   { key: "media", label: "Media Library", icon: "🖼️" },
   { key: "highlights", label: "Highlights", icon: "🎬" },
   { key: "tickets", label: "Tickets", icon: "🎟️" },
+  { key: "loyalty", label: "Loyalty", icon: "🏆" },
   { key: "ads", label: "Ads / Banners", icon: "📢" },
   { key: "faqs", label: "FAQs", icon: "❓" },
   { key: "settings", label: "Site Settings", icon: "⚙️" },
@@ -133,6 +135,7 @@ export default function AdminClient() {
         news: "/admin/news",
         matches: "/admin/matches",
         tickets: "/admin/tickets",
+        loyalty: "/admin/loyalty",
         team: "/admin/team",
         products: "/admin/products",
         sponsors: "/admin/sponsors",
@@ -323,6 +326,9 @@ export default function AdminClient() {
               {section === "tickets" && (
   <TicketsPanel token={token} data={data} onChange={load} />
 )}
+              {section === "loyalty" && (   
+                <LoyaltyPanel token={token} data={data} onChange={load} />
+              )}
             </>
           )}
         </div>
@@ -344,6 +350,7 @@ function OverviewPanel({ data }: { data: any }) {
     { k: "sponsors", label: "Sponsors", icon: "🤝" },
     { k: "media", label: "Media", icon: "🖼️" },
     { k: "tickets", label: "Ticket Events", icon: "🎟️" },
+    { k: "loyalty", label: "Loyalty", icon: "🏆" },
   ];
   return (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
@@ -726,6 +733,584 @@ function TicketsPanel({
         {!items.length && (
           <p className="text-sm text-muted-foreground">No ticket events yet.</p>
         )}
+      </div>
+    </div>
+  );
+}
+
+function LoyaltyPanel({
+  token,
+  data,
+  onChange,
+}: {
+  token: string;
+  data: any;
+  onChange: () => void;
+}) {
+  const members = data?.members || [];
+  const rewards = data?.rewards || [];
+  const plans = data?.plans || [];
+  const payments = data?.membershipPayments || [];
+  const counts = data?.counts || {};
+
+  const [savingMember, setSavingMember] = useState(false);
+  const [savingReward, setSavingReward] = useState(false);
+  const [adjustingPoints, setAdjustingPoints] = useState(false);
+  const [markingPaidId, setMarkingPaidId] = useState<string | null>(null);
+
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
+  const [editingRewardId, setEditingRewardId] = useState<string | null>(null);
+
+  const emptyMemberDraft = {
+    name: "",
+    email: "",
+    membership: "NONE",
+    membershipTier: "BASIC",
+    memberNumber: "",
+    memberSince: "",
+    membershipUntil: "",
+    phone: "",
+    city: "",
+    jerseySize: "",
+    nextOfKin: "",
+  };
+
+  const emptyRewardDraft = {
+    title: "",
+    description: "",
+    pointsCost: 100,
+    sort: 0,
+    isActive: true,
+  };
+
+  const [memberDraft, setMemberDraft] = useState<any>(emptyMemberDraft);
+  const [rewardDraft, setRewardDraft] = useState<any>(emptyRewardDraft);
+  const [pointsDraft, setPointsDraft] = useState({
+    points: 0,
+    description: "",
+  });
+
+  const resetMemberForm = () => {
+    setEditingMemberId(null);
+    setMemberDraft(emptyMemberDraft);
+    setPointsDraft({ points: 0, description: "" });
+  };
+
+  const resetRewardForm = () => {
+    setEditingRewardId(null);
+    setRewardDraft(emptyRewardDraft);
+  };
+
+  const startEditMember = (m: any) => {
+    setEditingMemberId(m.id);
+    setMemberDraft({
+      name: m.name || "",
+      email: m.email || "",
+      membership: m.membership || "NONE",
+      membershipTier: m.membershipTier || "BASIC",
+      memberNumber: m.memberNumber || "",
+      memberSince: toDateTimeLocal(m.memberSince),
+      membershipUntil: toDateTimeLocal(m.membershipUntil),
+      phone: m.profile?.phone || "",
+      city: m.profile?.city || "",
+      jerseySize: m.profile?.jerseySize || "",
+      nextOfKin: m.profile?.nextOfKin || "",
+    });
+    setPointsDraft({ points: 0, description: "" });
+  };
+
+  const saveMember = async () => {
+    if (!editingMemberId) return;
+    try {
+      setSavingMember(true);
+      await apiJson(`/admin/loyalty/members/${editingMemberId}`, {
+        method: "PUT",
+        token,
+        body: {
+          ...memberDraft,
+          memberSince: toIsoOrNull(memberDraft.memberSince),
+          membershipUntil: toIsoOrNull(memberDraft.membershipUntil),
+        },
+      });
+      resetMemberForm();
+      onChange();
+    } catch (err: any) {
+      alert(err?.message || "Failed to update member");
+    } finally {
+      setSavingMember(false);
+    }
+  };
+
+  const submitPointsAdjustment = async () => {
+    if (!editingMemberId) return;
+    if (!pointsDraft.points) {
+      alert("Enter points value");
+      return;
+    }
+
+    try {
+      setAdjustingPoints(true);
+      await apiJson(`/admin/loyalty/members/${editingMemberId}/points`, {
+        method: "POST",
+        token,
+        body: {
+          points: Number(pointsDraft.points),
+          description: pointsDraft.description || "Admin adjustment",
+        },
+      });
+      setPointsDraft({ points: 0, description: "" });
+      onChange();
+    } catch (err: any) {
+      alert(err?.message || "Failed to adjust points");
+    } finally {
+      setAdjustingPoints(false);
+    }
+  };
+
+  const startEditReward = (r: any) => {
+    setEditingRewardId(r.id);
+    setRewardDraft({
+      title: r.title || "",
+      description: r.description || "",
+      pointsCost: r.pointsCost || 0,
+      sort: r.sort || 0,
+      isActive: !!r.isActive,
+    });
+  };
+
+  const saveReward = async () => {
+    try {
+      setSavingReward(true);
+
+      if (editingRewardId) {
+        await apiJson(`/admin/loyalty/rewards/${editingRewardId}`, {
+          method: "PUT",
+          token,
+          body: {
+            ...rewardDraft,
+            pointsCost: Number(rewardDraft.pointsCost) || 0,
+            sort: Number(rewardDraft.sort) || 0,
+          },
+        });
+      } else {
+        await apiJson(`/admin/loyalty/rewards`, {
+          method: "POST",
+          token,
+          body: {
+            ...rewardDraft,
+            pointsCost: Number(rewardDraft.pointsCost) || 0,
+            sort: Number(rewardDraft.sort) || 0,
+          },
+        });
+      }
+
+      resetRewardForm();
+      onChange();
+    } catch (err: any) {
+      alert(err?.message || "Failed to save reward");
+    } finally {
+      setSavingReward(false);
+    }
+  };
+
+  const hideReward = async (id: string) => {
+    if (!confirm("Hide this reward?")) return;
+    await apiJson(`/admin/loyalty/rewards/${id}`, {
+      method: "DELETE",
+      token,
+    });
+    if (editingRewardId === id) resetRewardForm();
+    onChange();
+  };
+
+  const markPaymentPaid = async (transactionId: string) => {
+    if (!confirm("Mark this membership payment as paid and activate member?")) return;
+
+    try {
+      setMarkingPaidId(transactionId);
+      await apiJson(`/admin/loyalty/payments/${transactionId}/mark-paid`, {
+        method: "POST",
+        token,
+      });
+      onChange();
+    } catch (err: any) {
+      alert(err?.message || "Failed to mark payment paid");
+    } finally {
+      setMarkingPaidId(null);
+    }
+  };
+
+  return (
+    <div className="grid gap-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className={cardCls}>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Members</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{counts.members ?? members.length}</p>
+        </div>
+        <div className={cardCls}>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Active</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{counts.activeMembers ?? 0}</p>
+        </div>
+        <div className={cardCls}>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Rewards</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">{counts.rewards ?? rewards.length}</p>
+        </div>
+        <div className={cardCls}>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground">Pending Payments</p>
+          <p className="mt-2 text-2xl font-bold text-foreground">
+            {counts.pendingMembershipPayments ?? 0}
+          </p>
+        </div>
+      </div>
+
+      <div className={cardCls}>
+        <h3 className="text-sm font-semibold text-foreground">Paid membership plans</h3>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {plans.map((p: any) => (
+            <span
+              key={p.id}
+              className="rounded-full border border-border bg-muted/40 px-3 py-1 text-xs text-foreground"
+            >
+              {p.name} • {p.price} {p.currency} • {p.durationDays} days
+            </span>
+          ))}
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1.1fr_1.4fr]">
+        <div className={cardCls}>
+          <h3 className="text-sm font-semibold text-foreground">
+            {editingRewardId ? "Edit reward" : "Create reward"}
+          </h3>
+
+          <div className="mt-4 grid gap-3">
+            <input
+              className={inputCls}
+              placeholder="Reward title"
+              value={rewardDraft.title}
+              onChange={(e) => setRewardDraft((d: any) => ({ ...d, title: e.target.value }))}
+            />
+            <textarea
+              className={inputCls + " min-h-[90px] resize-y"}
+              placeholder="Description"
+              value={rewardDraft.description}
+              onChange={(e) => setRewardDraft((d: any) => ({ ...d, description: e.target.value }))}
+            />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <input
+                type="number"
+                className={inputCls}
+                placeholder="Points cost"
+                value={rewardDraft.pointsCost}
+                onChange={(e) =>
+                  setRewardDraft((d: any) => ({ ...d, pointsCost: Number(e.target.value) || 0 }))
+                }
+              />
+              <input
+                type="number"
+                className={inputCls}
+                placeholder="Sort"
+                value={rewardDraft.sort}
+                onChange={(e) =>
+                  setRewardDraft((d: any) => ({ ...d, sort: Number(e.target.value) || 0 }))
+                }
+              />
+            </div>
+
+            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+              <input
+                type="checkbox"
+                checked={rewardDraft.isActive}
+                onChange={(e) =>
+                  setRewardDraft((d: any) => ({ ...d, isActive: e.target.checked }))
+                }
+              />
+              Active
+            </label>
+          </div>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button onClick={saveReward} className={btnPrimary} disabled={savingReward}>
+              {savingReward ? "Saving…" : editingRewardId ? "Update" : "Create"}
+            </button>
+            {editingRewardId ? (
+              <button onClick={resetRewardForm} className={btnOutline}>
+                Cancel
+              </button>
+            ) : null}
+          </div>
+        </div>
+
+        <div className={cardCls}>
+          <h3 className="text-sm font-semibold text-foreground">Rewards</h3>
+          <div className="mt-4 grid gap-3">
+            {rewards.map((r: any) => (
+              <div
+                key={r.id}
+                className="rounded-xl border border-border bg-background p-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">{r.title}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {r.pointsCost} pts • sort {r.sort} • {r.isActive ? "Active" : "Hidden"}
+                  </p>
+                  {r.description ? (
+                    <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{r.description}</p>
+                  ) : null}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  <button onClick={() => startEditReward(r)} className={btnOutline}>
+                    Edit
+                  </button>
+                  <button onClick={() => hideReward(r.id)} className={btnDanger}>
+                    Hide
+                  </button>
+                </div>
+              </div>
+            ))}
+            {!rewards.length ? (
+              <p className="text-sm text-muted-foreground">No rewards yet.</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_1.35fr]">
+        <div className={cardCls}>
+          <h3 className="text-sm font-semibold text-foreground">
+            {editingMemberId ? "Edit member" : "Select member from list"}
+          </h3>
+
+          {editingMemberId ? (
+            <>
+              <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                <input
+                  className={inputCls}
+                  placeholder="Name"
+                  value={memberDraft.name}
+                  onChange={(e) => setMemberDraft((d: any) => ({ ...d, name: e.target.value }))}
+                />
+                <input
+                  className={inputCls}
+                  placeholder="Email"
+                  value={memberDraft.email}
+                  onChange={(e) => setMemberDraft((d: any) => ({ ...d, email: e.target.value }))}
+                />
+                <select
+                  className={inputCls}
+                  value={memberDraft.membership}
+                  onChange={(e) =>
+                    setMemberDraft((d: any) => ({ ...d, membership: e.target.value }))
+                  }
+                >
+                  <option value="NONE">NONE</option>
+                  <option value="PENDING">PENDING</option>
+                  <option value="ACTIVE">ACTIVE</option>
+                  <option value="EXPIRED">EXPIRED</option>
+                </select>
+                <select
+                  className={inputCls}
+                  value={memberDraft.membershipTier}
+                  onChange={(e) =>
+                    setMemberDraft((d: any) => ({ ...d, membershipTier: e.target.value }))
+                  }
+                >
+                  <option value="BASIC">BASIC</option>
+                  <option value="BRONZE">BRONZE</option>
+                  <option value="SILVER">SILVER</option>
+                  <option value="GOLD">GOLD</option>
+                  <option value="PLATINUM">PLATINUM</option>
+                  <option value="DIAMOND">DIAMOND</option>
+                </select>
+                <input
+                  className={inputCls}
+                  placeholder="Member number"
+                  value={memberDraft.memberNumber}
+                  onChange={(e) =>
+                    setMemberDraft((d: any) => ({ ...d, memberNumber: e.target.value }))
+                  }
+                />
+                <input
+                  type="datetime-local"
+                  className={inputCls}
+                  value={memberDraft.memberSince}
+                  onChange={(e) =>
+                    setMemberDraft((d: any) => ({ ...d, memberSince: e.target.value }))
+                  }
+                />
+                <input
+                  type="datetime-local"
+                  className={inputCls}
+                  value={memberDraft.membershipUntil}
+                  onChange={(e) =>
+                    setMemberDraft((d: any) => ({ ...d, membershipUntil: e.target.value }))
+                  }
+                />
+                <input
+                  className={inputCls}
+                  placeholder="Phone"
+                  value={memberDraft.phone}
+                  onChange={(e) => setMemberDraft((d: any) => ({ ...d, phone: e.target.value }))}
+                />
+                <input
+                  className={inputCls}
+                  placeholder="City"
+                  value={memberDraft.city}
+                  onChange={(e) => setMemberDraft((d: any) => ({ ...d, city: e.target.value }))}
+                />
+                <input
+                  className={inputCls}
+                  placeholder="Jersey size"
+                  value={memberDraft.jerseySize}
+                  onChange={(e) =>
+                    setMemberDraft((d: any) => ({ ...d, jerseySize: e.target.value }))
+                  }
+                />
+                <input
+                  className={inputCls + " sm:col-span-2"}
+                  placeholder="Next of kin"
+                  value={memberDraft.nextOfKin}
+                  onChange={(e) =>
+                    setMemberDraft((d: any) => ({ ...d, nextOfKin: e.target.value }))
+                  }
+                />
+              </div>
+
+              <div className="mt-4 flex flex-wrap gap-2">
+                <button onClick={saveMember} className={btnPrimary} disabled={savingMember}>
+                  {savingMember ? "Saving…" : "Save member"}
+                </button>
+                <button onClick={resetMemberForm} className={btnOutline}>
+                  Cancel
+                </button>
+              </div>
+
+              <div className="mt-6 rounded-xl border border-border bg-muted/30 p-4">
+                <p className="text-sm font-semibold text-foreground">Manual points adjustment</p>
+                <div className="mt-3 grid gap-3 sm:grid-cols-[160px_1fr]">
+                  <input
+                    type="number"
+                    className={inputCls}
+                    placeholder="+/- points"
+                    value={pointsDraft.points}
+                    onChange={(e) =>
+                      setPointsDraft((d) => ({ ...d, points: Number(e.target.value) || 0 }))
+                    }
+                  />
+                  <input
+                    className={inputCls}
+                    placeholder="Reason / note"
+                    value={pointsDraft.description}
+                    onChange={(e) =>
+                      setPointsDraft((d) => ({ ...d, description: e.target.value }))
+                    }
+                  />
+                </div>
+                <button
+                  onClick={submitPointsAdjustment}
+                  className={btnPrimary + " mt-4"}
+                  disabled={adjustingPoints}
+                >
+                  {adjustingPoints ? "Updating…" : "Apply points"}
+                </button>
+              </div>
+            </>
+          ) : (
+            <p className="mt-4 text-sm text-muted-foreground">
+              Pick a member from the right side to edit membership details or adjust points.
+            </p>
+          )}
+        </div>
+
+        <div className={cardCls}>
+          <h3 className="text-sm font-semibold text-foreground">Members</h3>
+          <div className="mt-4 grid gap-3">
+            {members.map((m: any) => (
+              <div
+                key={m.id}
+                className="rounded-xl border border-border bg-background p-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"
+              >
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    {m.name || "Unnamed member"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {m.email} • {m.membership} • {m.membershipTier}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    #{m.memberNumber || "—"} • until{" "}
+                    {m.membershipUntil ? new Date(m.membershipUntil).toLocaleDateString() : "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Points: {m.loyaltyWallet?.balancePoints ?? 0} • earned{" "}
+                    {m.loyaltyWallet?.lifetimeEarned ?? 0} • redeemed{" "}
+                    {m.loyaltyWallet?.lifetimeRedeemed ?? 0}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Phone: {m.profile?.phone || "—"} • City: {m.profile?.city || "—"}
+                  </p>
+                </div>
+
+                <button onClick={() => startEditMember(m)} className={btnOutline}>
+                  Edit
+                </button>
+              </div>
+            ))}
+
+            {!members.length ? (
+              <p className="text-sm text-muted-foreground">No membership members yet.</p>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      <div className={cardCls}>
+        <h3 className="text-sm font-semibold text-foreground">Membership payments / checkouts</h3>
+
+        <div className="mt-4 grid gap-3">
+          {payments.map((p: any) => (
+            <div
+              key={p.orderId}
+              className="rounded-xl border border-border bg-background p-4 flex flex-col gap-3"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    {p.member?.name || "Unknown member"} • {p.requestedTier || "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {p.member?.email || "—"} • {p.paidPhone || p.member?.phone || "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Order: {p.orderStatus} • Tx: {p.transactionStatus || "—"} • Amount: {p.amount}{" "}
+                    {p.currency}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 break-all">
+                    Ref: {p.reference || "—"} • Receipt: {p.mpesaReceipt || "—"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 break-all">
+                    CheckoutRequestID: {p.checkoutRequestId || "—"}
+                  </p>
+                </div>
+
+                {p.transactionId && p.transactionStatus === "PENDING" ? (
+                  <button
+                    onClick={() => markPaymentPaid(p.transactionId)}
+                    className={btnPrimary}
+                    disabled={markingPaidId === p.transactionId}
+                  >
+                    {markingPaidId === p.transactionId ? "Processing…" : "Mark paid + activate"}
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ))}
+
+          {!payments.length ? (
+            <p className="text-sm text-muted-foreground">No membership payments yet.</p>
+          ) : null}
+        </div>
       </div>
     </div>
   );

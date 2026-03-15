@@ -20,6 +20,7 @@ import { paymentsRouter } from "./modules/payments/payments.router.js";
 import { adminRouter } from "./modules/admin/admin.router.js";
 import { membershipRouter } from "./modules/membership/membership.router.js";   
 import { adminTicketsRouter } from "./modules/admin/admin.tickets.router.js"; 
+import { adminLoyaltyRouter } from "./modules/admin/admin.loyalty.router.js";
 
 dotenv.config();
 
@@ -74,7 +75,7 @@ app.use(express.json({ limit: "2mb" }));
 app.use("/payments", paymentsRouter);
 app.use("/admin", adminRouter);
 app.use("/membership", membershipRouter);
-
+app.use("/admin/loyalty", adminLoyaltyRouter);
 app.use(errorHandler);
 
 const port = Number(process.env.PORT || 4000);
