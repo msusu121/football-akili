@@ -820,7 +820,7 @@ paymentsRouter.post("/membership/callback/stk", async (req, res) => {
     if (expected && req.query.s !== expected) {
       return res.status(401).json({ ok: false });
     }
-
+    console.log("Membership callback received", { body: req.body });  
     const cb = req.body?.Body?.stkCallback;
     const checkoutRequestId = cb?.CheckoutRequestID as string | undefined;
     const resultCode = cb?.ResultCode as number | undefined;
