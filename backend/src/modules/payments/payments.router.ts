@@ -259,6 +259,7 @@ paymentsRouter.post("/membership/checkout/stk", requireAuth, async (req, res, ne
       transactionDesc: `${body.tier} membership`,
       callbackUrl,
     });
+    console.log("STK Push initiated", { checkoutRequestId: stk.CheckoutRequestID, merchantRequestId: stk.MerchantRequestID });
 
     await prisma.paymentTransaction.update({
       where: { id: tx.id },
