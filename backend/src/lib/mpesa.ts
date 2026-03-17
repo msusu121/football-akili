@@ -81,7 +81,15 @@ export function normalizePhone(input: string): string {
  * - PAYBILL: TransactionType = CustomerPayBillOnline
  * - TILL:    TransactionType = CustomerBuyGoodsOnline :contentReference[oaicite:1]{index=1}
  */
+
 export async function stkPush(args: StkPushArgs): Promise<StkPushResp> {
+  console.log("[mpesa][stkpush] initiating", {
+    baseUrl: mpesaBaseUrl(),
+    amount: args.amount,    phone: args.phone,
+    accountReference: args.accountReference,
+    transactionDesc: args.transactionDesc,
+  });
+
   const endpoint = `${mpesaBaseUrl()}/mpesa/stkpush/v1/processrequest`;
 
   const shortcode = (process.env.MPESA_EXPRESS_SHORTCODE || process.env.MPESA_SHORTCODE || "").trim();
@@ -150,6 +158,12 @@ export async function stkPush(args: StkPushArgs): Promise<StkPushResp> {
     (err as any).request = redactPayload(payload);
     throw err;
   }
+
+  console.log("[mpesa][stkpush] success", { 
+    baseUrl: mpesaBaseUrl(),
+    response: data,
+    request: redactPayload(payload),
+  });   
 
   return data as StkPushResp;
 }
