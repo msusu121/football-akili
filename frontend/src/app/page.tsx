@@ -12,9 +12,11 @@ export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
 import { unstable_noStore as noStore } from "next/cache";
+import Image from "next/image";
+import Link from "next/link";
+
 import { SiteShell } from "@/components/SiteShell";
 import { apiGet } from "@/lib/api";
-import Link from "next/link";
 import { HomeShopSection } from "@/components/HomeShopSection";
 import { HighlightsSection } from "@/components/HighlightsSection";
 import { HeroHighlightRotator } from "@/components/HeroHighlightRotator";
@@ -25,6 +27,10 @@ import { MatchdayHero } from "@/components/MatchdayHero";
 import { BreakingStoryHero } from "@/components/BreakingStoryHero";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
 
 /* ── helpers ── */
 function timeAgo(d?: string | null) {
@@ -38,9 +44,23 @@ function timeAgo(d?: string | null) {
   return `${days}d ago`;
 }
 
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return `https:${url}`;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
+}
+
 async function getMembershipPlans() {
   try {
-    const res = await fetch(`${API}/membership/plans`, { next: { revalidate: 3600 } });
+    const res = await fetch(`${API}/membership/plans`, {
+      next: { revalidate: 3600 },
+    });
     if (!res.ok) return [];
     const json = await res.json();
     return json.plans || [];
@@ -57,7 +77,7 @@ const tierMeta: Record<string, { color: string; bg: string }> = {
 };
 
 export default async function HomePage() {
-  // ✅ prevents cached "now" + cached fixtures from keeping old hero
+  // prevents cached "now" + cached fixtures from keeping old hero
   noStore();
 
   const [home, plans, fixData] = await Promise.all([
@@ -66,12 +86,8 @@ export default async function HomePage() {
     apiGet<any>("/public/fixtures"),
   ]);
 
- 
   const featured = home.featured;
   const latestNews = (home.latestNews || []) as any[];
-
-  // Safe even if fewer than requested
-  const todayNews = latestNews.slice(0, 6);
   const moreNews = latestNews.slice(6, 10);
 
   const highlights = (home.highlights || []) as any[];
@@ -85,7 +101,8 @@ export default async function HomePage() {
   const nowMs = Date.now();
 
   // Prefer matchdayFixture from backend (live/inferred/next), else nextFixture, else first upcoming
-  const nextFixture = fixData.matchdayFixture || fixData.nextFixture || fixtures[0] || null;
+  const nextFixture =
+    fixData.matchdayFixture || fixData.nextFixture || fixtures[0] || null;
 
   const kickoffISO = nextFixture?.kickoff ? String(nextFixture.kickoff) : null;
   const kickoffMs = kickoffISO ? new Date(kickoffISO).getTime() : null;
@@ -106,7 +123,8 @@ export default async function HomePage() {
     nowMs >= kickoffMs &&
     nowMs <= kickoffMs + MATCHDAY_LIVE_MINUTES * 60 * 1000;
 
-  const statusSaysLive = statusNorm === "LIVE" || statusNorm === "IN_PROGRESS";
+  const statusSaysLive =
+    statusNorm === "LIVE" || statusNorm === "IN_PROGRESS";
   const statusSaysFT = statusNorm === "FT" || statusNorm === "FULL_TIME";
 
   const isMatchday =
@@ -119,37 +137,27 @@ export default async function HomePage() {
       ? latestNews.find((n: any) => {
           const t = n?.publishedAt ? new Date(n.publishedAt).getTime() : null;
           if (!t) return false;
-          return nowMs - t <= BREAKING_MINUTES * 60 * 1000 && !!n?.heroMedia?.url;
+          return (
+            nowMs - t <= BREAKING_MINUTES * 60 * 1000 && !!n?.heroMedia?.url
+          );
         }) || null
       : null;
 
   const matchdayBg =
-    featured?.heroMedia?.url ||
-    home.settings?.heroMedia?.url ||
+    resolveAssetUrl(featured?.heroMedia?.url) ||
+    resolveAssetUrl(home.settings?.heroMedia?.url) ||
     "/home/matchday-default.jpg";
 
-    console.log("nowMs:", nowMs, new Date(nowMs).toISOString());
-console.log("pickedFixture:", nextFixture?.id);
-console.log("pickedKickoffISO:", kickoffISO);
-console.log("pickedKickoffMs:", kickoffMs, kickoffMs ? new Date(kickoffMs).toISOString() : null);
-console.log("statusNorm:", statusNorm);
-
-const hoursToKO = kickoffMs ? (kickoffMs - nowMs) / 36e5 : null;
-console.log("hoursToKO:", hoursToKO);
-
-console.log("MATCHDAY_PRE_HOURS:", MATCHDAY_PRE_HOURS);
-console.log("preWindowOk:", preWindowOk);
-console.log("liveWindowOk:", liveWindowOk);
-console.log("statusSaysLive:", statusSaysLive);
-console.log("statusSaysFT:", statusSaysFT);
-console.log("isMatchday:", isMatchday);
-
-console.log("fixData.matchdayFixture:", fixData?.matchdayFixture?.id, fixData?.matchdayFixture?.kickoff, fixData?.matchdayFixture?.status);
-console.log("fixData.nextFixture:", fixData?.nextFixture?.id, fixData?.nextFixture?.kickoff, fixData?.nextFixture?.status);
-console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?.[0]?.status);
+  const membershipImageUrl = resolveAssetUrl(
+    home.settings?.homeMembershipImage?.url
+  );
 
   return (
-    <SiteShell settings={home.settings} socials={home.socials} sponsors={home.sponsors}>
+    <SiteShell
+      settings={home.settings}
+      socials={home.socials}
+      sponsors={home.sponsors}
+    >
       <div className="homepage-bg relative min-h-screen">
         <div className="relative z-10">
           {/* HERO SLOT */}
@@ -197,7 +205,7 @@ console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?
           {moreNews.length > 0 && (
             <section className="bg-white border-t border-line">
               <div className="container-ms py-12 md:py-16">
-                <div className="flex items-center justify-between mb-8">
+                <div className="mb-8 flex items-center justify-between">
                   <h2 className="h-serif text-2xl md:text-3xl font-extrabold text-ink tracking-tight uppercase">
                     In Case You Missed It
                   </h2>
@@ -209,42 +217,50 @@ console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?
                   </Link>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                  {moreNews.map((article: any, i: number) => (
-                    <Link
-                      key={article.slug || i}
-                      href={`/news/${article.slug}`}
-                      className="group block bg-white rounded-xl border border-line overflow-hidden card-lift"
-                    >
-                      <div className="aspect-[16/10] bg-ink/5 overflow-hidden">
-                        {article.heroMedia?.url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={article.heroMedia.url}
-                            alt={article.title}
-                            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
-                          />
-                        ) : (
-                          <div className="w-full h-full bg-gradient-to-br from-ink to-ink-light flex items-center justify-center">
-                            <span className="text-3xl font-extrabold text-white/5 select-none">
-                              MU
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      <div className="p-4">
-                        <h3 className="font-extrabold text-ink text-sm leading-snug line-clamp-2 group-hover:text-ink-light transition-colors">
-                          {article.title}
-                        </h3>
-                        <div className="mt-2 flex items-center gap-2 text-[10px] text-muted">
-                          <span>{timeAgo(article.publishedAt)}</span>
-                          {article.category && (
-                            <span className="text-brand font-bold uppercase">{article.category}</span>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                  {moreNews.map((article: any, i: number) => {
+                    const articleImage = resolveAssetUrl(article.heroMedia?.url);
+
+                    return (
+                      <Link
+                        key={article.slug || i}
+                        href={`/news/${article.slug}`}
+                        className="group block overflow-hidden rounded-xl border border-line bg-white card-lift"
+                      >
+                        <div className="relative aspect-[16/10] overflow-hidden bg-ink/5">
+                          {articleImage ? (
+                            <Image
+                              src={articleImage}
+                              alt={article.title || "News image"}
+                              fill
+                              sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw"
+                              className="object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-ink to-ink-light">
+                              <span className="select-none text-3xl font-extrabold text-white/5">
+                                MU
+                              </span>
+                            </div>
                           )}
                         </div>
-                      </div>
-                    </Link>
-                  ))}
+
+                        <div className="p-4">
+                          <h3 className="text-sm font-extrabold leading-snug text-ink line-clamp-2 transition-colors group-hover:text-ink-light">
+                            {article.title}
+                          </h3>
+                          <div className="mt-2 flex items-center gap-2 text-[10px] text-muted">
+                            <span>{timeAgo(article.publishedAt)}</span>
+                            {article.category && (
+                              <span className="font-bold uppercase text-brand">
+                                {article.category}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             </section>
@@ -267,32 +283,34 @@ console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?
           <section className="bg-white">
             <div className="container-ms pb-20 pt-8">
               <div className="overflow-hidden rounded-2xl border border-line shadow-soft">
-                <div className="relative h-[140px] md:h-[160px] bg-ink">
-                  {home.settings?.homeMembershipImage?.url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={home.settings.homeMembershipImage.url}
+                <div className="relative h-[140px] bg-ink md:h-[160px]">
+                  {membershipImageUrl ? (
+                    <Image
+                      src={membershipImageUrl}
                       alt="Membership"
-                      className="absolute inset-0 w-full h-full object-cover opacity-60"
+                      fill
+                      sizes="100vw"
+                      className="object-cover opacity-60"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink-light to-ink" />
                   )}
+
                   <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-black/60" />
 
-                  <div className="relative h-full flex items-center justify-between px-6 md:px-10">
+                  <div className="relative flex h-full items-center justify-between px-6 md:px-10">
                     <div className="text-white">
                       <div className="text-[11px] font-extrabold tracking-[0.25em] text-brand">
                         FOREVER {home.settings?.clubName || "MOMBASA UNITED"}
                       </div>
-                      <div className="mt-2 h-serif text-3xl md:text-4xl font-extrabold text-white">
+                      <div className="mt-2 h-serif text-3xl font-extrabold text-white md:text-4xl">
                         2025/26 <span className="text-brand">MEMBERSHIP</span>
                       </div>
                     </div>
 
                     <Link
                       href={home.settings?.membershipUrl || "/membership"}
-                      className="inline-flex items-center gap-2 bg-brand text-ink font-extrabold px-8 py-4 rounded-lg hover:bg-brand-dark transition-colors shadow-glow"
+                      className="inline-flex items-center gap-2 rounded-lg bg-brand px-8 py-4 font-extrabold text-ink shadow-glow transition-colors hover:bg-brand-dark"
                     >
                       BUY NOW <span className="text-lg">›</span>
                     </Link>
@@ -306,45 +324,59 @@ console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?
                 <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
                   {plans.map((plan: any) => {
                     const meta = tierMeta[plan.tier] || tierMeta.BASIC;
-                    const benefits: string[] = Array.isArray(plan.benefits) ? plan.benefits : [];
+                    const benefits: string[] = Array.isArray(plan.benefits)
+                      ? plan.benefits
+                      : [];
 
                     return (
                       <div
                         key={plan.id}
-                        className="relative rounded-2xl border border-line bg-white p-6 card-lift group"
-                        style={{ borderTopColor: meta.color, borderTopWidth: "3px" }}
+                        className="group relative rounded-2xl border border-line bg-white p-6 card-lift"
+                        style={{
+                          borderTopColor: meta.color,
+                          borderTopWidth: "3px",
+                        }}
                       >
                         {plan.tier === "GOLD" && (
-                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-[10px] font-extrabold tracking-widest uppercase text-ink bg-brand shadow-glow">
+                          <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full bg-brand px-4 py-1 text-[10px] font-extrabold uppercase tracking-widest text-ink shadow-glow">
                             Most Popular
                           </div>
                         )}
 
                         <div className="mt-1">
                           <span
-                            className="inline-block text-[10px] font-extrabold tracking-[0.2em] uppercase px-2 py-0.5 rounded"
+                            className="inline-block rounded px-2 py-0.5 text-[10px] font-extrabold uppercase tracking-[0.2em]"
                             style={{ color: meta.color, background: meta.bg }}
                           >
                             {plan.tier}
                           </span>
                         </div>
 
-                        <h3 className="mt-3 text-xl font-extrabold text-ink">{plan.name}</h3>
+                        <h3 className="mt-3 text-xl font-extrabold text-ink">
+                          {plan.name}
+                        </h3>
 
                         <div className="mt-3 flex items-baseline gap-1.5">
                           <span className="text-3xl font-extrabold text-ink">
-                            {plan.price === 0 ? "FREE" : `KES ${plan.price.toLocaleString()}`}
+                            {plan.price === 0
+                              ? "FREE"
+                              : `KES ${plan.price.toLocaleString()}`}
                           </span>
-                          <span className="text-xs text-muted">{plan.price === 0 ? "" : "/season"}</span>
+                          <span className="text-xs text-muted">
+                            {plan.price === 0 ? "" : "/season"}
+                          </span>
                         </div>
 
                         <div className="mt-4 h-px bg-line" />
 
                         <ul className="mt-4 space-y-2.5">
                           {benefits.slice(0, 5).map((b: string) => (
-                            <li key={b} className="flex items-start gap-2.5 text-sm text-ink/75">
+                            <li
+                              key={b}
+                              className="flex items-start gap-2.5 text-sm text-ink/75"
+                            >
                               <span
-                                className="mt-0.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-white text-[9px]"
+                                className="mt-0.5 inline-flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full text-[9px] text-white"
                                 style={{ backgroundColor: meta.color }}
                               >
                                 ✓
@@ -356,7 +388,7 @@ console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?
 
                         <Link
                           href={home.settings?.membershipUrl || "/membership"}
-                          className="mt-6 block w-full text-center text-[11px] font-extrabold tracking-[0.12em] uppercase py-3 rounded-lg border-2 transition-all group-hover:shadow-card"
+                          className="mt-6 block w-full rounded-lg border-2 py-3 text-center text-[11px] font-extrabold uppercase tracking-[0.12em] transition-all group-hover:shadow-card"
                           style={{ borderColor: meta.color, color: meta.color }}
                         >
                           {plan.price === 0 ? "Register Free" : "Join Now"}
