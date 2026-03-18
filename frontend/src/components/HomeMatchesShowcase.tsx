@@ -132,10 +132,12 @@ function RotatingBackground({
   return (
     <div className="absolute inset-0">
       {safe.map((src, i) => (
-        <img
-          key={src}
+        <Image
+          key={`${src}-${i}`}
           src={src}
           alt=""
+          fill
+          sizes="100vw"
           className={[
             "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
             i === idx ? "opacity-100" : "opacity-0",

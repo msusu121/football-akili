@@ -85,6 +85,7 @@ export function HomeShopSection() {
                   <Image
                     src={kit.image}
                     alt={`Mombasa United ${kit.label} Kit`}
+                    fill
                     className="w-full h-full object-contain drop-shadow-[0_18px_40px_rgba(0,0,0,.18)] group-hover:scale-[1.03] transition-transform duration-500"
                   />
                 </div>
