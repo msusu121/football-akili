@@ -72,11 +72,12 @@ export default function TicketsClient() {
               <div className="mt-3 flex items-center gap-3">
                 {e.match?.opponentLogoUrl ? (
                   <Image
-                    src={e.match.opponentLogoUrl}
-                    fill
-                    alt={e.match?.opponent || "Opponent"}
-                    className="h-12 w-12 rounded-full object-contain bg-black/5 p-1"
-                  />
+  src={e.match.opponentLogoUrl}
+  width={48}
+  height={48}
+  alt={e.match?.opponent || "Opponent"}
+  className="rounded-full object-contain bg-black/5 p-1"
+/>
                 ) : (
                   <div className="h-12 w-12 rounded-full bg-black/5" />
                 )}
