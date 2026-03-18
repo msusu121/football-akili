@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
+import Image from "next/image";
 
 type Product = {
   id: string;
@@ -112,7 +113,7 @@ export default function ShopProductClient({ slug }: { slug: string }) {
         <div className="rounded-3xl border border-line bg-black/30 overflow-hidden">
           {product.heroUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.heroUrl} alt={product.title} className="w-full h-full object-cover" />
+            <Image src={product.heroUrl} alt={product.title} fill className="w-full h-full object-cover" />
           ) : null}
         </div>
 

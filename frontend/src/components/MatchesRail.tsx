@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
+import Image from "next/image";
 const ASSET_BASE =
   process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
@@ -106,9 +106,10 @@ function TeamBadge({
   return (
     <div className="hidden sm:flex w-8 h-8 md:w-10 md:h-10 rounded-full bg-gray-100 items-center justify-center flex-shrink-0">
       {logoUrl ? (
-        <img
+        <Image
           src={logoUrl}
           alt={name}
+          fill
           className="w-6 h-6 md:w-8 md:h-8 object-contain"
         />
       ) : (

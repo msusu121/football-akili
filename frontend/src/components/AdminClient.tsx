@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { apiJson, apiUpload } from "@/lib/apiClient";
 import Link from "next/link";
+import Image from "next/image";
 
 const MEDIA_BASE =
   (process.env.NEXT_PUBLIC_MEDIA_BASE_URL || "https://mombasaunited.com/club-media").replace(/\/+$/g, "");
@@ -1705,9 +1706,10 @@ function MatchesPanel({ token, data, onChange }: any) {
             opponentLogoId: {draft.opponentLogoId || "—"}
           </p>
           {logoPreview && (
-            <img
+            <Image
               src={logoPreview}
               alt="opponent logo"
+              fill
               className="mt-3 h-16 w-16 rounded-lg object-contain bg-muted"
             />
           )}
@@ -1745,9 +1747,10 @@ function MatchesPanel({ token, data, onChange }: any) {
             >
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 {preview ? (
-                  <img
+                  <Image
                     src={preview}
                     alt={m.opponent}
+                    fill
                     className="h-10 w-10 rounded-lg object-contain bg-muted shrink-0"
                   />
                 ) : (
@@ -1931,7 +1934,7 @@ function TeamPanel({ token, data, onChange }: any) {
           {uploadingPortrait && <p className="mt-2 text-xs text-muted-foreground animate-pulse">Uploading…</p>}
           <p className="mt-2 text-xs text-muted-foreground break-all">portraitId: {draft.portraitId || "—"}</p>
           {portraitPreview && (
-            <img src={portraitPreview} alt="portrait" className="mt-3 h-20 w-20 rounded-xl object-cover bg-muted" />
+            <Image src={portraitPreview} alt="portrait" className="mt-3 h-20 w-20 rounded-xl object-cover bg-muted" fill />
           )}
         </div>
 
@@ -1959,7 +1962,7 @@ function TeamPanel({ token, data, onChange }: any) {
           <div key={m.id} className={cardCls + " flex flex-col sm:flex-row gap-3"}>
             <div className="flex items-start gap-3 flex-1 min-w-0">
               {m.portraitUrl ? (
-                <img src={m.portraitUrl} alt={m.fullName} className="h-12 w-12 rounded-xl object-cover bg-muted shrink-0" />
+                <Image src={m.portraitUrl} alt={m.fullName} className="h-12 w-12 rounded-xl object-cover bg-muted shrink-0" fill />
               ) : (
                 <div className="h-12 w-12 rounded-xl bg-muted shrink-0" />
               )}
@@ -2130,7 +2133,7 @@ function ProductsPanel({ token, data, onChange }: any) {
           {uploadingHero && <p className="mt-2 text-xs text-muted-foreground animate-pulse">Uploading…</p>}
           <p className="mt-2 text-xs text-muted-foreground break-all">heroMediaId: {draft.heroMediaId || "—"}</p>
           {heroPreview && (
-            <img src={heroPreview} alt="hero" className="mt-3 h-20 w-20 rounded-xl object-cover bg-muted" />
+            <Image src={heroPreview} alt="hero" className="mt-3 h-20 w-20 rounded-xl object-cover bg-muted" fill />
           )}
         </div>
 
@@ -2163,7 +2166,7 @@ function ProductsPanel({ token, data, onChange }: any) {
             <div key={p.id} className={cardCls + " flex flex-col sm:flex-row gap-3"}>
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 {preview ? (
-                  <img src={preview} alt={p.title} className="h-12 w-12 rounded-xl object-cover bg-muted shrink-0" />
+                  <Image src={preview} alt={p.title} className="h-12 w-12 rounded-xl object-cover bg-muted shrink-0" fill />
                 ) : (
                   <div className="h-12 w-12 rounded-xl bg-muted shrink-0" />
                 )}
@@ -2344,10 +2347,11 @@ function MediaPanel({ token, data, onChange }: any) {
           return (
             <div key={m.id} className={cardCls + " flex flex-col gap-2"}>
               {isImage ? (
-                <img
+                <Image
                   src={url}
                   alt={m.title || m.path}
                   className="w-full h-28 object-cover rounded-lg bg-muted"
+                  fill
                 />
               ) : (
                 <div className="w-full h-28 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">
@@ -2573,10 +2577,11 @@ function HighlightsPanel({ token, data, onChange }: any) {
           {thumbPreview ? (
             <div className="mt-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Image
                 src={thumbPreview}
                 alt="Thumbnail preview"
                 className="h-24 w-auto rounded-lg object-cover border border-input"
+                fill
               />
             </div>
           ) : null}
@@ -2649,9 +2654,10 @@ function HighlightsPanel({ token, data, onChange }: any) {
               <div className="flex items-start gap-3 flex-1 min-w-0">
                 {tPreview ? (
                   /* eslint-disable-next-line @next/next/no-img-element */
-                  <img
+                  <Image
                     src={tPreview}
                     alt={h.title || "Thumbnail"}
+                    fill
                     className="h-16 w-24 rounded-lg object-cover border border-input flex-shrink-0"
                   />
                 ) : (

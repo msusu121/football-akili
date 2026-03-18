@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 
 /* helpers */
 function timeAgo(d?: string | null) {
@@ -23,7 +24,7 @@ export function BreakingStoryHero({ story }: { story: any }) {
       <div className="absolute inset-0">
         {bg ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={bg} alt="" className="w-full h-full object-cover" />
+          <Image src={bg} alt="" className="w-full h-full object-cover" />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-ink via-ink-light to-ink" />
         )}

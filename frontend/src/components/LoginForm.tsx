@@ -10,7 +10,7 @@ import { useMemo, useState, useEffect } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import Link from "next/link";
-
+import Image from "next/image";
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
 const ASSET_BASE =
   process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
@@ -322,9 +322,10 @@ export default function LoginForm({ logoUrl, clubName }: LoginFormProps) {
         {/* ── Logo + Club ── */}
         <div className="flex flex-col items-center mb-8">
           {resolvedLogo ? (
-            <img
+            <Image
   src={resolvedLogo}
   alt={displayName}
+  fill
   className="h-36 w-36 rounded-2xl object-contain mb-4"
   onError={(e) => {
     (e.currentTarget as HTMLImageElement).style.display = "none";

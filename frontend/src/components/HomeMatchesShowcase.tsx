@@ -182,7 +182,7 @@ function TeamBadge({
       }`}
     >
       {logoUrl ? (
-        <img src={logoUrl} alt={name} className={`${imgDim} object-contain`} />
+        <Image src={logoUrl} alt={name} className={`${imgDim} object-contain`} fill />
       ) : (
         <span
           className={`${textSize} font-extrabold ${

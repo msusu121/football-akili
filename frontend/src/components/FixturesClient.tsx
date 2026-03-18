@@ -2,6 +2,7 @@
 
 import { useState, useMemo } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 
 interface FixturesClientProps {
   data: any;
@@ -226,9 +227,10 @@ export function FixturesClient({ data }: FixturesClientProps) {
                                 <div className="flex items-center gap-2 sm:gap-3">
                                   <div className="hidden sm:flex w-7 h-7 rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden">
                                     {row.logo?.url || row.logoUrl ? (
-                                      <img
+                                      <Image
                                         src={resolveAssetUrl(row.logo?.url || row.logoUrl)}
                                         alt={row.teamName || row.team}
+                                        fill
                                         className="w-5 h-5 object-contain"
                                       />
                                     ) : (
@@ -465,7 +467,7 @@ function TeamBadge({
       className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden`}
     >
       {logoUrl ? (
-        <img src={logoUrl} alt={name} className={`${imgDim} object-contain`} />
+        <Image src={logoUrl} alt={name} className={`${imgDim} object-contain`} fill />
       ) : (
         <span className={`${textSize} font-extrabold text-gray-400`}>
           {name.substring(0, 2).toUpperCase()}

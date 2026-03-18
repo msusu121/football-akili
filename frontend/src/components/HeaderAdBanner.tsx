@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
+import Image from "next/image";
 
 type HeaderAdItem = {
   id: string;
@@ -145,9 +146,10 @@ export function HeaderAdBanner({
                 >
                   <div className="absolute inset-0 flex items-center justify-center bg-[#ececec] p-2 md:p-3">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
+                    <Image
                       src={active.imageUrl || ""}
                       alt={active.title || "Partner promotion"}
+                      fill
                       className="h-full w-full object-contain object-center"
                     />
                   </div>
@@ -155,9 +157,10 @@ export function HeaderAdBanner({
               ) : (
                 <div className="absolute inset-0 flex items-center justify-center bg-[#ececec] p-2 md:p-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={active?.imageUrl || ""}
                     alt={active?.title || "Partner promotion"}
+                    fill
                     className="h-full w-full object-contain object-center"
                   />
                 </div>

@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { MatchClock } from "@/components/MatchClock";
+import Image from "next/image";
 
 const NAIROBI_TZ = "Africa/Nairobi";
 
@@ -103,9 +104,10 @@ function TeamBadge({
     <div className="flex w-12 h-12 sm:w-12 sm:h-12 md:w-16 md:h-16 lg:w-20 lg:h-20 rounded-full bg-white/18 backdrop-blur-[3px] border border-white/20 items-center justify-center flex-shrink-0 overflow-hidden shadow-[0_10px_28px_rgba(0,0,0,0.28)]">
       {logoUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
+        <Image
           src={logoUrl}
           alt={name}
+          fill
           className="w-8 h-8 sm:w-8 sm:h-8 md:w-11 md:h-11 lg:w-14 lg:h-14 object-contain"
         />
       ) : (
@@ -224,7 +226,7 @@ export function MatchdayHero({
     <section className="relative w-full overflow-hidden">
       <div className="absolute inset-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={resolvedBg} alt="" className="w-full h-full object-cover" />
+        <Image src={resolvedBg} alt=""  fill className="w-full h-full object-cover" />
       </div>
 
       <div className="absolute inset-0 bg-black/55" />

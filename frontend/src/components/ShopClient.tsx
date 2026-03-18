@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
+import Image from "next/image";
 
 const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpeg";
 const jerseyAway = "https://mombasaunited.com/club-media/shop/jersey-away.jpeg";
@@ -367,9 +368,10 @@ export default function ShopClient() {
                 <div className="relative aspect-[4/5] bg-[#f0f2f8] overflow-hidden flex items-center justify-center p-6">
                   {kit.heroUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={kit.heroUrl}
                       alt={kit.title}
+                      fill
                       className="w-full h-full object-contain drop-shadow-[0_12px_30px_rgba(0,0,0,.15)]"
                     />
                   ) : (

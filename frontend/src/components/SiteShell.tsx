@@ -9,6 +9,7 @@ import React, {
   useState,
   ReactNode,
 } from "react";
+import Image from "next/image";
 
 const ASSET_BASE =
   process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
@@ -431,10 +432,11 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
       <picture>
         <source media="(max-width: 767px)" srcSet={mobileSrc} />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
+        <Image
           src={desktopSrc}
           alt={activeAd.title || headline}
           className="muTakeoverImg"
+          fill
           loading="eager"
           decoding="async"
           draggable={false}
@@ -1139,9 +1141,10 @@ export function SiteShell({
                   In partnership with
                 </span>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <Image
                   src={partnerLogo}
                   alt={partnerName}
+                  fill
                   className="h-8 w-auto object-contain opacity-80 transition-opacity hover:opacity-100"
                   onError={(e) => {
                     (e.currentTarget as HTMLImageElement).style.display = "none";

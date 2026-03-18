@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { apiJson } from "@/lib/apiClient";
 import { useAuth } from "@/lib/auth";
+import Image from "next/image";
 
 export default function TicketsClient() {
   const { token } = useAuth();
@@ -70,8 +71,9 @@ export default function TicketsClient() {
 
               <div className="mt-3 flex items-center gap-3">
                 {e.match?.opponentLogoUrl ? (
-                  <img
+                  <Image
                     src={e.match.opponentLogoUrl}
+                    fill
                     alt={e.match?.opponent || "Opponent"}
                     className="h-12 w-12 rounded-full object-contain bg-black/5 p-1"
                   />

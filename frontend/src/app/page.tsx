@@ -23,6 +23,7 @@ import { MatchesRail } from "@/components/MatchesRail";
 import { TodayOnClubSection } from "@/components/TodayOnClubSection";
 import { MatchdayHero } from "@/components/MatchdayHero";
 import { BreakingStoryHero } from "@/components/BreakingStoryHero";
+import Image from "next/image";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -219,9 +220,10 @@ console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?
                       <div className="aspect-[16/10] bg-ink/5 overflow-hidden">
                         {article.heroMedia?.url ? (
                           // eslint-disable-next-line @next/next/no-img-element
-                          <img
+                          <Image
                             src={article.heroMedia.url}
                             alt={article.title}
+                            fill
                             className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
                           />
                         ) : (
@@ -270,9 +272,10 @@ console.log("fixtures[0]:", fixtures?.[0]?.id, fixtures?.[0]?.kickoff, fixtures?
                 <div className="relative h-[140px] md:h-[160px] bg-ink">
                   {home.settings?.homeMembershipImage?.url ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img
+                    <Image
                       src={home.settings.homeMembershipImage.url}
                       alt="Membership"
+                      fill
                       className="absolute inset-0 w-full h-full object-cover opacity-60"
                     />
                   ) : (

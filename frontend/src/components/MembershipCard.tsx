@@ -2,6 +2,7 @@
 
 import { useRef, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import Image from "next/image";
 
 interface MembershipCardProps {
   tier: "basic" | "bronze" | "silver" | "gold" | "platinum" | "diamond";
@@ -115,11 +116,12 @@ export default function MembershipCard({
             </div>
           </div>
 
-          <img
+          <Image
             src={qrSrc}
             alt="Member QR Code"
             className="w-16 h-16 rounded-lg"
             crossOrigin="anonymous"
+            fill
           />
         </div>
 

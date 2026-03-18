@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { apiJson } from "@/lib/apiClient";
 import MembershipCard from "@/components/MembershipCard";
+import Image from "next/image";
 
 const API = process.env.NEXT_PUBLIC_API_URL || "http://localhost:4000";
 
@@ -330,8 +331,9 @@ export default function AccountClient() {
                     </div>
                   </div>
                   {t.qrDataUrl ? (
-                    <img
+                    <Image
                       src={t.qrDataUrl}
+                      fill
                       alt="QR"
                       className="h-24 w-24 rounded-xl border border-line bg-white"
                     />

@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { apiJson } from "@/lib/apiClient";
+import Image from "next/image";
+
 
 type SizeGroup = "ADULT" | "KIDS";
 
@@ -578,7 +580,7 @@ export default function ShopPageClient() {
                 <div className="aspect-[4/3] bg-black/30">
                   {p.heroUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={p.heroUrl} alt={p.title} className="w-full h-full object-cover" />
+                    <Image src={p.heroUrl} alt={p.title} fill className="w-full h-full object-cover" />
                   ) : null}
                 </div>
               </Link>
@@ -780,7 +782,7 @@ function PickerContent(props: {
         <div className="w-24 h-24 rounded-2xl bg-black/10 overflow-hidden shrink-0">
           {product.heroUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={product.heroUrl} alt={product.title} className="w-full h-full object-cover" />
+            <Image src={product.heroUrl} alt={product.title} fill className="w-full h-full object-cover" />
           ) : null}
         </div>
         <div className="min-w-0">

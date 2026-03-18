@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { Facebook, Instagram, Twitter, Youtube } from "lucide-react";
+import Image from "next/image";
 
 // Replica-style shell for the tickets subdomain UI (clean white canvas, minimal nav)
 export default function TicketsShell({
@@ -26,9 +27,10 @@ export default function TicketsShell({
           <Link href="/" className="flex items-center gap-3">
             {settings?.headerLogo?.url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <Image
                 src={settings.headerLogo.url}
                 alt={settings?.clubName || "Club"}
+                fill
                 className="h-10 w-10 object-contain"
               />
             ) : (
