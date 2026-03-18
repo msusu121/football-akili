@@ -1,5 +1,4 @@
 import Link from "next/link";
-import Image from "next/image";
 
 /* helpers */
 function timeAgo(d?: string | null) {
@@ -44,7 +43,8 @@ function ImgOrFallback({
   className: string;
 }) {
   if (src) {
-    return <Image src={src} alt={alt || ""} fill className={className} />;
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={src} alt={alt || ""} className={className} />;
   }
   return (
     <div className={`${className} flex items-center justify-center bg-ink/10`}>
