@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import Image from "next/image";
 
@@ -20,6 +20,11 @@ type Props = {
   rotateMs?: number;
 };
 
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
 function safeSessionGet(k: string) {
   try {
     return sessionStorage.getItem(k);
@@ -34,6 +39,49 @@ function safeSessionSet(k: string, v: string) {
   } catch {}
 }
 
+function resolveImageUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return `https:${url}`;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
+}
+
+function BannerImage({
+  src,
+  alt,
+}: {
+  src?: string | null;
+  alt: string;
+}) {
+  const resolved = resolveImageUrl(src);
+
+  if (!resolved) {
+    return (
+      <div className="absolute inset-0 flex items-center justify-center bg-[#ececec]">
+        <span className="select-none text-sm font-extrabold tracking-[0.2em] text-black/30">
+          MOMBASA UNITED
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={resolved}
+      alt={alt}
+      fill
+      sizes="100vw"
+      className="object-contain object-center"
+      priority
+    />
+  );
+}
+
 export function HeaderAdBanner({
   items,
   brandIntroText = "MOMBASA BORN & BRED",
@@ -45,22 +93,29 @@ export function HeaderAdBanner({
   const hasAds = Array.isArray(items) && items.length > 0;
 
   const introKey = "mu_header_intro_seen";
-  const shouldShowIntro = useMemo(() => {
-    if (!brandIntroText) return false;
-    if (!brandIntroOncePerSession) return true;
-    return safeSessionGet(introKey) !== "1";
-  }, [brandIntroText, brandIntroOncePerSession]);
-
-  const [phase, setPhase] = useState<"INTRO" | "ADS">(
-    shouldShowIntro ? "INTRO" : "ADS"
-  );
-  const [idx, setIdx] = useState(0);
   const intervalRef = useRef<number | null>(null);
+
+  const [phase, setPhase] = useState<"BOOT" | "INTRO" | "ADS">("BOOT");
+  const [idx, setIdx] = useState(0);
+
+  useEffect(() => {
+    const shouldShowIntro =
+      !!brandIntroText &&
+      (!brandIntroOncePerSession || safeSessionGet(introKey) !== "1");
+
+    if (shouldShowIntro) {
+      setPhase("INTRO");
+    } else {
+      setPhase("ADS");
+    }
+  }, [brandIntroText, brandIntroOncePerSession]);
 
   useEffect(() => {
     if (phase !== "INTRO") return;
 
-    if (brandIntroOncePerSession) safeSessionSet(introKey, "1");
+    if (brandIntroOncePerSession) {
+      safeSessionSet(introKey, "1");
+    }
 
     if (reduceMotion) {
       setPhase("ADS");
@@ -72,7 +127,7 @@ export function HeaderAdBanner({
   }, [phase, brandIntroMs, brandIntroOncePerSession, reduceMotion]);
 
   useEffect(() => {
-    if (phase !== "ADS" || !hasAds) return;
+    if (phase !== "ADS" || !hasAds || items.length <= 1) return;
 
     if (intervalRef.current) window.clearInterval(intervalRef.current);
 
@@ -86,11 +141,27 @@ export function HeaderAdBanner({
     };
   }, [phase, hasAds, items.length, rotateMs]);
 
+  useEffect(() => {
+    return () => {
+      if (intervalRef.current) window.clearInterval(intervalRef.current);
+    };
+  }, []);
+
   const active = phase === "ADS" && hasAds ? items[idx] : null;
 
   const enter = reduceMotion ? { opacity: 1 } : { opacity: 0, y: 10 };
   const center = { opacity: 1, y: 0 };
   const exit = reduceMotion ? { opacity: 0 } : { opacity: 0, y: -10 };
+
+  if (phase === "BOOT") {
+    return (
+      <div className="relative w-full overflow-hidden border-b border-black/10 bg-[#ececec]">
+        <div className="relative h-[clamp(170px,52vw,250px)] md:h-[92px] xl:h-[104px] 2xl:h-[112px]">
+          <div className="absolute inset-0 bg-[#ececec]" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="relative w-full overflow-hidden border-b border-black/10 bg-[#ececec]">
@@ -113,14 +184,18 @@ export function HeaderAdBanner({
 
               <div className="mt-2 flex flex-wrap items-baseline justify-center gap-2 sm:gap-3">
                 <span className="bg-[linear-gradient(90deg,#7c3aed_0%,#2563eb_55%,#ef4444_100%)] bg-clip-text text-[clamp(2.2rem,8vw,6.5rem)] font-black leading-none tracking-[-0.06em] text-transparent">
-                  BORN
+                  {brandIntroText.includes("&") ? "BORN" : brandIntroText}
                 </span>
-                <span className="text-[clamp(1.6rem,5vw,4rem)] font-black leading-none text-blue-600">
-                  &amp;
-                </span>
-                <span className="text-[clamp(2.2rem,8vw,6.5rem)] font-black leading-none tracking-[-0.06em] text-red-500">
-                  BRED
-                </span>
+                {brandIntroText.includes("&") && (
+                  <>
+                    <span className="text-[clamp(1.6rem,5vw,4rem)] font-black leading-none text-blue-600">
+                      &amp;
+                    </span>
+                    <span className="text-[clamp(2.2rem,8vw,6.5rem)] font-black leading-none tracking-[-0.06em] text-red-500">
+                      BRED
+                    </span>
+                  </>
+                )}
               </div>
 
               <div className="mt-3 h-[3px] w-24 rounded-full bg-brand sm:w-32" />
@@ -144,31 +219,34 @@ export function HeaderAdBanner({
                   className="block h-full w-full"
                   aria-label={active.title || "Partner promotion"}
                 >
-                  <div className="absolute inset-0 flex items-center justify-center bg-[#ececec] p-2 md:p-3">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <Image
-                      src={active.imageUrl || ""}
-                      alt={active.title || "Partner promotion"}
-                      fill
-                      className="h-full w-full object-contain object-center"
-                    />
+                  <div className="absolute inset-0 p-2 md:p-3">
+                    <div className="relative h-full w-full">
+                      <BannerImage
+                        src={active.imageUrl}
+                        alt={active.title || "Partner promotion"}
+                      />
+                    </div>
                   </div>
                 </a>
               ) : (
-                <div className="absolute inset-0 flex items-center justify-center bg-[#ececec] p-2 md:p-3">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <Image
-                    src={active?.imageUrl || ""}
-                    alt={active?.title || "Partner promotion"}
-                    fill
-                    className="h-full w-full object-contain object-center"
-                  />
+                <div className="absolute inset-0 p-2 md:p-3">
+                  <div className="relative h-full w-full">
+                    <BannerImage
+                      src={active?.imageUrl}
+                      alt={active?.title || "Partner promotion"}
+                    />
+                  </div>
                 </div>
               )}
 
-              {hasAds && !reduceMotion ? (
+              {hasAds && !reduceMotion && items.length > 1 ? (
                 <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-black/10">
-                  <div className="h-full bg-brand animate-[muAdProgress_8s_linear_infinite]" />
+                  <div
+                    className="h-full bg-brand"
+                    style={{
+                      animation: `muAdProgress ${rotateMs}ms linear infinite`,
+                    }}
+                  />
                 </div>
               ) : null}
             </div>
