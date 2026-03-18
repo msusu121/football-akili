@@ -275,7 +275,7 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
       ].filter(Boolean);
 
       sources.forEach((src) => {
-        const img = new Image();
+        const img = new window.Image();
         img.src = src;
       });
     });
