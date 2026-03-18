@@ -11,6 +11,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
+import Image from "next/image";
 
 /* helpers */
 function fmtLongDate(d?: string | null) {
@@ -60,15 +61,17 @@ function RotatingBackground({ images, intervalMs = 6500 }: { images: string[]; i
     <div className="absolute inset-0">
       {safe.map((src, i) => (
         // eslint-disable-next-line @next/next/no-img-element
-        <img
-          key={src}
-          src={src}
+        <Image
+          key={`${src}-${i}`} // in case same image appears multiple times
+          src={src} 
           alt=""
+          fill
+          sizes="100vw"   
           className={[
-            "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
+            "absolute inset-0 object-cover transition-opacity duration-700",
             i === idx ? "opacity-100" : "opacity-0",
           ].join(" ")}
-        />
+        />  
       ))}
     </div>
   );

@@ -1,21 +1,34 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
   images: {
+    formats: ['image/avif', 'image/webp'], // ✅ enable modern formats
+
     remotePatterns: [
-      { 
-        protocol: 'http', 
-        hostname: 'localhost', 
-        port: '9000', 
-        pathname: '/**' 
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '9000',
+        pathname: '/**',
       },
-      { 
-        protocol: 'https', 
-        hostname: '**' // This allows ALL https images (be careful in production!)
-      }
-    ]
+
+      // 🔥 your production MinIO / CDN domain (REPLACE THIS)
+      {
+        protocol: 'https',
+        hostname: 'your-minio-domain.com',
+        pathname: '/**',
+      },
+
+      // optional: your API domain if it serves images
+      {
+        protocol: 'https',
+        hostname: 'apifootball.akilimatic.com',
+        //pathname: '/**',
+      },
+    ],
   },
-  // This must be INSIDE the nextConfig object
+
   experimental: {
     allowedDevOrigins: [
       "http://165.232.102.141",
