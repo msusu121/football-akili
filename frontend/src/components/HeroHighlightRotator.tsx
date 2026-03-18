@@ -2,8 +2,6 @@
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useState } from "react";
-import Image from "next/image";
-
 
 function timeAgo(d?: string | null) {
   if (!d) return "";
@@ -128,14 +126,12 @@ export function HeroHighlightRotator({
 
           return (
             // eslint-disable-next-line @next/next/no-img-element
-           <Image
-              key={src}        // your existing src
-              src={src}        // e.g., /club-media/highlight1.avif
+            <img
+              key={`${src}-${i}`}
+              src={src}
               alt=""
-              fill
-              sizes="100vw"
               className={[
-                "absolute inset-0 object-cover transition-opacity duration-700",
+                "absolute inset-0 w-full h-full object-cover transition-opacity duration-700",
                 isActive ? "opacity-100" : "opacity-0",
               ].join(" ")}
             />
