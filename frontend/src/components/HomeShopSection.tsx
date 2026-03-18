@@ -11,9 +11,10 @@
 
 "use client";
 
+import { i } from "framer-motion/client";
 import Link from "next/link";
 import { useState } from "react";
-
+import Image from "next/image";
 const jerseyHome = "https://mombasaunited.com/club-media/shop/jersey-home.jpeg";
 const jerseyAway = "https://mombasaunited.com/club-media/shop/jersey-away.jpeg";
 const jerseyThird = "https://mombasaunited.com/club-media/shop/jersey-third.jpeg";
@@ -81,7 +82,7 @@ export function HomeShopSection() {
                 {/* Jersey image */}
                 <div className="relative aspect-[3/4] flex items-center justify-center p-6">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
+                  <Image
                     src={kit.image}
                     alt={`Mombasa United ${kit.label} Kit`}
                     className="w-full h-full object-contain drop-shadow-[0_18px_40px_rgba(0,0,0,.18)] group-hover:scale-[1.03] transition-transform duration-500"

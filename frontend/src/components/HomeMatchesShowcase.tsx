@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import React, { useEffect, useMemo, useRef, useState } from "react";
-
+import Image from "next/image";
 const ASSET_BASE =
   process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
