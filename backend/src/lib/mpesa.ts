@@ -93,7 +93,7 @@ export async function stkPush(args: StkPushArgs): Promise<StkPushResp> {
   const endpoint = `${mpesaBaseUrl()}/mpesa/stkpush/v1/processrequest`;
 
   const shortcode = (process.env.MPESA_EXPRESS_SHORTCODE || process.env.MPESA_SHORTCODE || "").trim();
-  const partyb = (process.env.MPESA_EXPRESS_PARTYB || process.env.MPESA_PARTYB || "").trim() || shortcode;
+  const partyb = (process.env.MPESA_PARTYB || "").trim();
   const passkey = (process.env.MPESA_EXPRESS_PASSKEY || process.env.MPESA_PASSKEY || "").trim();
 
   // Default to TILL unless overridden
@@ -115,6 +115,16 @@ export async function stkPush(args: StkPushArgs): Promise<StkPushResp> {
   // keep short to avoid field limits
   const accountRef = String(args.accountReference || "").slice(0, 12);
   const desc = String(args.transactionDesc || "").slice(0, 60);
+  console.log("[mpesa][stkpush] payload prepared", {
+    baseUrl: mpesaBaseUrl(),
+    shortcode,    
+    transactionType,
+    amount,
+    phone,
+    partyb,
+    accountRef,
+    desc,
+  });
 
   const payload = {
     BusinessShortCode: shortcode,
