@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useSearchParams } from "next/navigation";
 import Image from "next/image";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 
 interface FixturesClientProps {
   data: any;
@@ -54,24 +54,63 @@ function monthKey(d?: string | null) {
 
 type TabType = "fixtures" | "results" | "tables";
 
+function isTabType(value: string | null): value is TabType {
+  return value === "fixtures" || value === "results" || value === "tables";
+}
+
+function LogoOrFallback({
+  src,
+  alt,
+  sizes,
+  fallbackText,
+  imageClassName = "object-contain p-1",
+  fallbackTextClassName = "text-[9px] font-extrabold text-gray-400",
+}: {
+  src?: string;
+  alt: string;
+  sizes: string;
+  fallbackText: string;
+  imageClassName?: string;
+  fallbackTextClassName?: string;
+}) {
+  if (src) {
+    return (
+      <Image
+        src={src}
+        alt={alt}
+        fill
+        sizes={sizes}
+        className={imageClassName}
+      />
+    );
+  }
+
+  return <span className={fallbackTextClassName}>{fallbackText}</span>;
+}
+
 export function FixturesClient({ data }: FixturesClientProps) {
   const searchParams = useSearchParams();
-  const initialTab = (searchParams.get("tab") as TabType) || "fixtures";
-  const [activeTab, setActiveTab] = useState<TabType>(initialTab);
+  const [activeTab, setActiveTab] = useState<TabType>("fixtures");
+
+  useEffect(() => {
+    const tab = searchParams.get("tab");
+    if (isTabType(tab)) setActiveTab(tab);
+  }, [searchParams]);
 
   const fixtures = useMemo(
     () => (data.upcomingFixtures || data.fixtures || []) as any[],
     [data]
   );
+
   const results = useMemo(
     () => (data.results || data.pastResults || []) as any[],
     [data]
   );
+
   const table = useMemo(
     () => (data.leagueTable || data.table || []) as any[],
     [data]
   );
-  const ticketsUrl = data.settings?.ticketsUrl || "/tickets";
 
   function groupByMonth(items: any[]) {
     const groups: Record<string, any[]> = {};
@@ -137,11 +176,7 @@ export function FixturesClient({ data }: FixturesClientProps) {
                     </h2>
                     <div className="divide-y divide-gray-100">
                       {items.map((fix: any, i: number) => (
-                        <FixtureCard
-                          key={fix.id || i}
-                          fix={fix}
-                          ticketsUrl={ticketsUrl}
-                        />
+                        <FixtureCard key={fix.id || i} fix={fix} />
                       ))}
                     </div>
                   </div>
@@ -213,6 +248,9 @@ export function FixturesClient({ data }: FixturesClientProps) {
                             .toLowerCase()
                             .includes("mombasa");
 
+                          const teamName = row.teamName || row.team || "Team";
+                          const teamLogo = resolveAssetUrl(row.logo?.url || row.logoUrl);
+
                           return (
                             <tr
                               key={row.id || i}
@@ -223,24 +261,20 @@ export function FixturesClient({ data }: FixturesClientProps) {
                               <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm text-gray-500">
                                 {row.position || i + 1}
                               </td>
+
                               <td className="py-2.5 sm:py-3 px-2 sm:px-3">
                                 <div className="flex items-center gap-2 sm:gap-3">
-                                  <div className="hidden sm:flex w-7 h-7 rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden">
-                                    {row.logo?.url || row.logoUrl ? (
-                                      <Image
-                                        src={resolveAssetUrl(row.logo?.url || row.logoUrl)}
-                                        alt={row.teamName || row.team}
-                                        fill
-                                        className="w-5 h-5 object-contain"
-                                      />
-                                    ) : (
-                                      <span className="text-[9px] font-bold text-gray-400">
-                                        {(row.teamName || row.team || "")
-                                          .substring(0, 2)
-                                          .toUpperCase()}
-                                      </span>
-                                    )}
+                                  <div className="hidden sm:flex relative w-7 h-7 rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden">
+                                    <LogoOrFallback
+                                      src={teamLogo}
+                                      alt={teamName}
+                                      sizes="28px"
+                                      fallbackText={teamName.substring(0, 2).toUpperCase()}
+                                      imageClassName="object-contain p-1"
+                                      fallbackTextClassName="text-[9px] font-bold text-gray-400"
+                                    />
                                   </div>
+
                                   <span
                                     className={`text-xs sm:text-sm truncate max-w-[120px] sm:max-w-none ${
                                       isMombasa
@@ -248,10 +282,11 @@ export function FixturesClient({ data }: FixturesClientProps) {
                                         : "text-gray-800"
                                     }`}
                                   >
-                                    {row.teamName || row.team}
+                                    {teamName}
                                   </span>
                                 </div>
                               </td>
+
                               <td className="py-2.5 sm:py-3 px-2 sm:px-3 text-center text-xs sm:text-sm">
                                 {row.played ?? row.p ?? "-"}
                               </td>
@@ -287,13 +322,7 @@ export function FixturesClient({ data }: FixturesClientProps) {
 }
 
 /* ── Fixture Card ── */
-function FixtureCard({
-  fix,
-  ticketsUrl,
-}: {
-  fix: any;
-  ticketsUrl: string;
-}) {
+function FixtureCard({ fix }: { fix: any }) {
   const homeTeam = fix.homeTeamName || "TBD";
   const awayTeam = fix.awayTeamName || "TBD";
   const league = fix.competitionName || fix.league || "League";
@@ -306,7 +335,6 @@ function FixtureCard({
 
   const homeLogo = isHome ? clubLogoOnHomeSide : opponentLogo;
   const awayLogo = isHome ? opponentLogo : clubLogoOnAwaySide;
-  
 
   return (
     <div className="bg-white">
@@ -447,15 +475,15 @@ function TeamBadge({
   logoUrl?: string;
   size?: "sm" | "lg";
 }) {
-  const dim =
+  const wrapDim =
     size === "lg"
-      ? "hidden sm:flex w-8 h-8 lg:w-14 lg:h-14"
-      : "hidden sm:flex w-6 h-6 lg:w-10 lg:h-10";
+      ? "hidden sm:flex relative w-8 h-8 lg:w-14 lg:h-14"
+      : "hidden sm:flex relative w-6 h-6 lg:w-10 lg:h-10";
 
-  const imgDim =
+  const imageSizes =
     size === "lg"
-      ? "w-6 h-6 lg:w-11 lg:h-11"
-      : "w-4 h-4 lg:w-8 lg:h-8";
+      ? "(max-width: 1023px) 32px, 56px"
+      : "(max-width: 1023px) 24px, 40px";
 
   const textSize =
     size === "lg"
@@ -464,15 +492,16 @@ function TeamBadge({
 
   return (
     <div
-      className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden`}
+      className={`${wrapDim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden`}
     >
-      {logoUrl ? (
-        <Image src={logoUrl} alt={name} className={`${imgDim} object-contain`}  />
-      ) : (
-        <span className={`${textSize} font-extrabold text-gray-400`}>
-          {name.substring(0, 2).toUpperCase()}
-        </span>
-      )}
+      <LogoOrFallback
+        src={logoUrl}
+        alt={name}
+        sizes={imageSizes}
+        fallbackText={name.substring(0, 2).toUpperCase()}
+        imageClassName="object-contain p-1"
+        fallbackTextClassName={`${textSize} font-extrabold text-gray-400`}
+      />
     </div>
   );
 }
