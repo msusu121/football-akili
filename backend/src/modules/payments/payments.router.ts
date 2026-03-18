@@ -459,7 +459,7 @@ paymentsRouter.post("/shop/checkout/stk", async (req, res, next) => {
 
     const secret = process.env.MPESA_CALLBACK_SECRET || "";
     const base = process.env.PUBLIC_BASE_URL!;
-    const callbackUrl = `${base}/api/payments/mpesa/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
+    const callbackUrl = `${base}/payments/mpesa/callback/stk${secret ? `?s=${encodeURIComponent(secret)}` : ""}`;
 
     const accountRef = `SHOP-${order.id.slice(-10)}`;
 
