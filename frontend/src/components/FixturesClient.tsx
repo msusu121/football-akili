@@ -467,7 +467,7 @@ function TeamBadge({
       className={`${dim} rounded-full bg-gray-100 items-center justify-center flex-shrink-0 overflow-hidden`}
     >
       {logoUrl ? (
-        <Image src={logoUrl} alt={name} className={`${imgDim} object-contain`} fill />
+        <Image src={logoUrl} alt={name} className={`${imgDim} object-contain`}  />
       ) : (
         <span className={`${textSize} font-extrabold text-gray-400`}>
           {name.substring(0, 2).toUpperCase()}
