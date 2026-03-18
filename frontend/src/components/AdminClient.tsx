@@ -2499,8 +2499,9 @@ function MediaPanel({ token, data, onChange }: any) {
                 <Image
                   src={url}
                   alt={m.title || m.path}
-                  className="w-full h-28 object-cover rounded-lg bg-muted"
                   fill
+                  className="w-full h-28 object-cover rounded-lg bg-muted"
+                  
                 />
               ) : (
                 <div className="w-full h-28 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">
