@@ -1451,6 +1451,9 @@ function NewsPanel({
 /* ═══════════════════════════════════════════════════════════
    MATCHES
    ═══════════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════════
+   MATCHES
+   ═══════════════════════════════════════════════════════════ */
 function MatchesPanel({ token, data, onChange }: any) {
   const items = data?.items || [];
   const [saving, setSaving] = useState(false);
@@ -1609,13 +1612,17 @@ function MatchesPanel({ token, data, onChange }: any) {
           <input
             className={inputCls}
             value={draft.competition}
-            onChange={(e) => setDraft((d: any) => ({ ...d, competition: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, competition: e.target.value }))
+            }
             placeholder="competition"
           />
           <select
             className={inputCls}
             value={draft.matchType}
-            onChange={(e) => setDraft((d: any) => ({ ...d, matchType: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, matchType: e.target.value }))
+            }
           >
             <option value="LEAGUE">LEAGUE</option>
             <option value="CUP">CUP</option>
@@ -1624,45 +1631,59 @@ function MatchesPanel({ token, data, onChange }: any) {
           <input
             className={inputCls}
             value={draft.season}
-            onChange={(e) => setDraft((d: any) => ({ ...d, season: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, season: e.target.value }))
+            }
             placeholder="season"
           />
           <input
             type="datetime-local"
             className={inputCls}
             value={draft.kickoffAt}
-            onChange={(e) => setDraft((d: any) => ({ ...d, kickoffAt: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, kickoffAt: e.target.value }))
+            }
           />
           <input
             className={inputCls}
             value={draft.venue}
-            onChange={(e) => setDraft((d: any) => ({ ...d, venue: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, venue: e.target.value }))
+            }
             placeholder="venue"
           />
           <input
             className={inputCls}
             value={draft.opponent}
-            onChange={(e) => setDraft((d: any) => ({ ...d, opponent: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, opponent: e.target.value }))
+            }
             placeholder="opponent"
           />
           <input
             type="number"
             className={inputCls}
             value={draft.homeScore}
-            onChange={(e) => setDraft((d: any) => ({ ...d, homeScore: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, homeScore: e.target.value }))
+            }
             placeholder="home score"
           />
           <input
             type="number"
             className={inputCls}
             value={draft.awayScore}
-            onChange={(e) => setDraft((d: any) => ({ ...d, awayScore: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, awayScore: e.target.value }))
+            }
             placeholder="away score"
           />
           <select
             className={inputCls}
             value={draft.status}
-            onChange={(e) => setDraft((d: any) => ({ ...d, status: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, status: e.target.value }))
+            }
           >
             <option value="SCHEDULED">SCHEDULED</option>
             <option value="LIVE">LIVE</option>
@@ -1674,7 +1695,9 @@ function MatchesPanel({ token, data, onChange }: any) {
             <input
               type="checkbox"
               checked={draft.isHome}
-              onChange={(e) => setDraft((d: any) => ({ ...d, isHome: e.target.checked }))}
+              onChange={(e) =>
+                setDraft((d: any) => ({ ...d, isHome: e.target.checked }))
+              }
             />
             Home match
           </label>
@@ -1687,6 +1710,7 @@ function MatchesPanel({ token, data, onChange }: any) {
             Upload logo, register in media, saves as{" "}
             <span className="font-mono">opponentLogoId</span>.
           </p>
+
           <div className="mt-3">
             <input
               type="file"
@@ -1699,19 +1723,27 @@ function MatchesPanel({ token, data, onChange }: any) {
               }}
             />
           </div>
+
           {uploadingLogo && (
-            <p className="mt-2 text-xs text-muted-foreground animate-pulse">Uploading…</p>
+            <p className="mt-2 animate-pulse text-xs text-muted-foreground">
+              Uploading…
+            </p>
           )}
-          <p className="mt-2 text-xs text-muted-foreground break-all">
+
+          <p className="mt-2 break-all text-xs text-muted-foreground">
             opponentLogoId: {draft.opponentLogoId || "—"}
           </p>
+
           {logoPreview && (
-            <Image
-              src={logoPreview}
-              alt="opponent logo"
-              fill
-              className="mt-3 h-16 w-16 rounded-lg object-contain bg-muted"
-            />
+            <div className="relative mt-3 h-16 w-16 overflow-hidden rounded-lg bg-muted">
+              <Image
+                src={logoPreview}
+                alt="opponent logo"
+                fill
+                sizes="64px"
+                className="object-contain"
+              />
+            </div>
           )}
         </div>
 
@@ -1740,41 +1772,47 @@ function MatchesPanel({ token, data, onChange }: any) {
             m.opponentLogoUrl ||
             m?.opponentLogo?.publicUrl ||
             (m?.opponentLogo?.path ? mediaUrlFromKey(m.opponentLogo.path) : null);
+
           return (
             <div
               key={m.id}
-              className={cardCls + " flex flex-col sm:flex-row gap-3"}
+              className={cardCls + " flex flex-col gap-3 sm:flex-row"}
             >
-              <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 {preview ? (
-                  <Image
-                    src={preview}
-                    alt={m.opponent}
-                    fill
-                    className="h-10 w-10 rounded-lg object-contain bg-muted shrink-0"
-                  />
+                  <div className="relative h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-muted">
+                    <Image
+                      src={preview}
+                      alt={m.opponent || "opponent"}
+                      fill
+                      sizes="40px"
+                      className="object-contain"
+                    />
+                  </div>
                 ) : (
-                  <div className="h-10 w-10 rounded-lg bg-muted shrink-0" />
+                  <div className="h-10 w-10 shrink-0 rounded-lg bg-muted" />
                 )}
+
                 <div className="min-w-0">
                   <p className="text-sm font-semibold text-foreground">
                     {m.isHome ? "HOME" : "AWAY"} vs {m.opponent}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {m.kickoffAt
                       ? new Date(m.kickoffAt).toLocaleString()
                       : "No kickoff date"}{" "}
                     • {m.competition} • {m.matchType || "—"} • {m.season}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
+                  <p className="mt-0.5 text-xs text-muted-foreground">
                     {m.venue || "Venue TBA"} • {m.status || "SCHEDULED"}
                   </p>
-                  <p className="text-xs text-foreground/60 mt-0.5">
+                  <p className="mt-0.5 text-xs text-foreground/60">
                     Score: {m.homeScore ?? "-"} : {m.awayScore ?? "-"}
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
+
+              <div className="flex shrink-0 items-center gap-2">
                 <button onClick={() => startEdit(m)} className={btnOutline}>
                   Edit
                 </button>
@@ -1785,6 +1823,7 @@ function MatchesPanel({ token, data, onChange }: any) {
             </div>
           );
         })}
+
         {!items.length && (
           <p className="text-sm text-muted-foreground">No matches yet.</p>
         )}
