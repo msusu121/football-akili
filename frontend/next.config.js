@@ -1,21 +1,28 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
+
   images: {
+    unoptimized: true, // ⚠️ disables Next.js image optimization completely
     remotePatterns: [
-      { 
-        protocol: 'http', 
-        hostname: 'localhost', 
-        port: '9000', 
-        pathname: '/**' 
+      {
+        protocol: 'https',
+        hostname: 'mombasaunited.com',
+        pathname: '/club-media/**', // only your MinIO bucket path
       },
-      { 
-        protocol: 'https', 
-        hostname: '**' // This allows ALL https images (be careful in production!)
-      }
-    ]
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+        port: '9000',
+        pathname: '/**', // for dev
+      },
+      {
+        protocol: 'https',
+        hostname: 'apifootball.akilimatic.com',
+      },
+    ],
   },
-  // This must be INSIDE the nextConfig object
+
   experimental: {
     allowedDevOrigins: [
       "http://165.232.102.141",
