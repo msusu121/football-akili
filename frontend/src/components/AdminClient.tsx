@@ -2057,7 +2057,13 @@ function ProductsPanel({ token, data, onChange }: any) {
   const uploadHeroImage = async (file: File) => {
     try {
       setUploadingHero(true);
-      const created = await uploadAndRegisterMedia(token, file, "products", "IMAGE", file.name);
+      const created = await uploadAndRegisterMedia(
+        token,
+        file,
+        "products",
+        "IMAGE",
+        file.name
+      );
       setDraft((d: any) => ({ ...d, heroMediaId: created.media.id }));
       setHeroPreview(created.publicUrl);
     } catch (err: any) {
@@ -2131,6 +2137,7 @@ function ProductsPanel({ token, data, onChange }: any) {
       isActive: !!p.isActive,
       heroMediaId: p.heroMediaId || "",
     });
+
     setHeroPreview(
       p?.heroMedia?.publicUrl ||
         (p?.heroMedia?.path ? mediaUrlFromKey(p.heroMedia.path) : "") ||
@@ -2151,28 +2158,105 @@ function ProductsPanel({ token, data, onChange }: any) {
         <h3 className="text-sm font-semibold text-foreground">
           {editingId ? "Edit product" : "Add product"}
         </h3>
+
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input className={inputCls} placeholder="slug" value={draft.slug} onChange={(e) => setDraft((d: any) => ({ ...d, slug: e.target.value }))} />
-          <input className={inputCls} placeholder="title" value={draft.title} onChange={(e) => setDraft((d: any) => ({ ...d, title: e.target.value }))} />
-          <input className={inputCls} placeholder="description" value={draft.description} onChange={(e) => setDraft((d: any) => ({ ...d, description: e.target.value }))} />
-          <input className={inputCls} placeholder="price" type="number" value={draft.price} onChange={(e) => setDraft((d: any) => ({ ...d, price: Number(e.target.value) || 0 }))} />
-          <input className={inputCls} placeholder="currency" value={draft.currency} onChange={(e) => setDraft((d: any) => ({ ...d, currency: e.target.value }))} />
+          <input
+            className={inputCls}
+            placeholder="slug"
+            value={draft.slug}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, slug: e.target.value }))
+            }
+          />
+          <input
+            className={inputCls}
+            placeholder="title"
+            value={draft.title}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, title: e.target.value }))
+            }
+          />
+          <input
+            className={inputCls}
+            placeholder="description"
+            value={draft.description}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, description: e.target.value }))
+            }
+          />
+          <input
+            className={inputCls}
+            placeholder="price"
+            type="number"
+            value={draft.price}
+            onChange={(e) =>
+              setDraft((d: any) => ({
+                ...d,
+                price: Number(e.target.value) || 0,
+              }))
+            }
+          />
+          <input
+            className={inputCls}
+            placeholder="currency"
+            value={draft.currency}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, currency: e.target.value }))
+            }
+          />
           <label className="flex items-center gap-2 text-sm text-muted-foreground sm:col-span-2">
-            <input type="checkbox" checked={draft.isActive} onChange={(e) => setDraft((d: any) => ({ ...d, isActive: e.target.checked }))} />
+            <input
+              type="checkbox"
+              checked={draft.isActive}
+              onChange={(e) =>
+                setDraft((d: any) => ({ ...d, isActive: e.target.checked }))
+              }
+            />
             Active
           </label>
         </div>
 
         <div className="mt-4 rounded-xl border border-border bg-muted/40 p-4">
-          <p className="text-sm font-semibold text-foreground">Hero product image</p>
-          <p className="mt-1 text-xs text-muted-foreground">Upload image, register in media, saves as heroMediaId.</p>
+          <p className="text-sm font-semibold text-foreground">
+            Hero product image
+          </p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Upload image, register in media, saves as heroMediaId.
+          </p>
+
           <div className="mt-3">
-            <input type="file" accept="image/*" disabled={uploadingHero} className="text-sm text-foreground/60" onChange={(e) => { const f = e.target.files?.[0]; if (f) uploadHeroImage(f); }} />
+            <input
+              type="file"
+              accept="image/*"
+              disabled={uploadingHero}
+              className="text-sm text-foreground/60"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) uploadHeroImage(f);
+              }}
+            />
           </div>
-          {uploadingHero && <p className="mt-2 text-xs text-muted-foreground animate-pulse">Uploading…</p>}
-          <p className="mt-2 text-xs text-muted-foreground break-all">heroMediaId: {draft.heroMediaId || "—"}</p>
+
+          {uploadingHero && (
+            <p className="mt-2 animate-pulse text-xs text-muted-foreground">
+              Uploading…
+            </p>
+          )}
+
+          <p className="mt-2 break-all text-xs text-muted-foreground">
+            heroMediaId: {draft.heroMediaId || "—"}
+          </p>
+
           {heroPreview && (
-            <Image src={heroPreview} alt="hero" className="mt-3 h-20 w-20 rounded-xl object-cover bg-muted" fill />
+            <div className="relative mt-3 h-20 w-20 overflow-hidden rounded-xl bg-muted">
+              <Image
+                src={heroPreview}
+                alt="hero"
+                fill
+                sizes="80px"
+                className="object-cover"
+              />
+            </div>
           )}
         </div>
 
@@ -2201,32 +2285,58 @@ function ProductsPanel({ token, data, onChange }: any) {
             (p?.heroMedia?.path
               ? `${MEDIA_BASE}/${String(p.heroMedia.path).replace(/^\/+/g, "")}`
               : null);
+
           return (
-            <div key={p.id} className={cardCls + " flex flex-col sm:flex-row gap-3"}>
-              <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div
+              key={p.id}
+              className={cardCls + " flex flex-col gap-3 sm:flex-row"}
+            >
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 {preview ? (
-                  <Image src={preview} alt={p.title} className="h-12 w-12 rounded-xl object-cover bg-muted shrink-0" fill />
+                  <div className="relative h-12 w-12 shrink-0 overflow-hidden rounded-xl bg-muted">
+                    <Image
+                      src={preview}
+                      alt={p.title || "product"}
+                      fill
+                      sizes="48px"
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
-                  <div className="h-12 w-12 rounded-xl bg-muted shrink-0" />
+                  <div className="h-12 w-12 shrink-0 rounded-xl bg-muted" />
                 )}
+
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{p.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    /{p.slug} • {p.price} {p.currency} • {p.isActive ? "Active" : "Hidden"}
+                  <p className="text-sm font-semibold text-foreground">
+                    {p.title}
+                  </p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    /{p.slug} • {p.price} {p.currency} •{" "}
+                    {p.isActive ? "Active" : "Hidden"}
                   </p>
                   {p.description && (
-                    <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{p.description}</p>
+                    <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
+                      {p.description}
+                    </p>
                   )}
                 </div>
               </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <button onClick={() => startEdit(p)} className={btnOutline}>Edit</button>
-                <button onClick={() => del(p.id)} className={btnDanger}>Delete</button>
+
+              <div className="flex shrink-0 items-center gap-2">
+                <button onClick={() => startEdit(p)} className={btnOutline}>
+                  Edit
+                </button>
+                <button onClick={() => del(p.id)} className={btnDanger}>
+                  Delete
+                </button>
               </div>
             </div>
           );
         })}
-        {!items.length && <p className="text-sm text-muted-foreground">No products yet.</p>}
+
+        {!items.length && (
+          <p className="text-sm text-muted-foreground">No products yet.</p>
+        )}
       </div>
     </div>
   );
