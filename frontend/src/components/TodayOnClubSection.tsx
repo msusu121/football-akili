@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 
 /* helpers */
@@ -5,7 +6,7 @@ function timeAgo(d?: string | null) {
   if (!d) return "";
   const diff = Date.now() - new Date(d).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 60) return `${mins}h` === "0h" ? `${mins}m` : `${mins}m`;
+  if (mins < 60) return `${mins}m`;
   const hrs = Math.floor(mins / 60);
   if (hrs < 24) return `${hrs}h`;
   const days = Math.floor(hrs / 24);
@@ -35,20 +36,35 @@ function ImgOrFallback({
   src,
   alt,
   fallbackText = "MU",
-  className,
+  imgClassName,
+  sizes,
+  quality = 70,
 }: {
   src?: string | null;
   alt?: string;
   fallbackText?: string;
-  className: string;
+  imgClassName?: string;
+  sizes: string;
+  quality?: number;
 }) {
-  if (src) {
-    // eslint-disable-next-line @next/next/no-img-element
-    return <img src={src} alt={alt || ""} className={className} />;
-  }
   return (
-    <div className={`${className} flex items-center justify-center bg-ink/10`}>
-      <span className="text-4xl font-extrabold text-ink/10 select-none">{fallbackText}</span>
+    <div className="relative h-full w-full">
+      {src ? (
+        <Image
+          src={src}
+          alt={alt || ""}
+          fill
+          sizes={sizes}
+          quality={quality}
+          className={imgClassName || "object-cover"}
+        />
+      ) : (
+        <div className="absolute inset-0 flex items-center justify-center bg-ink/10">
+          <span className="text-4xl font-extrabold text-ink/10 select-none">
+            {fallbackText}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
@@ -56,10 +72,11 @@ function ImgOrFallback({
 function MetaRow({ item }: { item: any }) {
   const t = timeAgo(item?.publishedAt);
   const label = (item?.category || "news").toString().toLowerCase();
+
   return (
     <div className="mt-4 flex items-center justify-between text-[11px] text-ink/45">
       <div className="flex items-center gap-2">
-        <span>{t ? `${t}` : ""}</span>
+        <span>{t ? t : ""}</span>
         <span className="text-ink/25">|</span>
         <span className="uppercase tracking-wide">{label}</span>
       </div>
@@ -98,7 +115,6 @@ export function TodayOnClubSection({
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            {/* MU-like small bar */}
             <div className="h-[3px] w-10 bg-brand rounded-full mb-3" />
             <h2 className="h-serif text-2xl md:text-3xl font-extrabold text-ink tracking-tight uppercase">
               {title}
@@ -113,13 +129,8 @@ export function TodayOnClubSection({
           </Link>
         </div>
 
-        {/* =========================
-            DESKTOP/TABLET (>= sm)
-            - Two big cards top row
-            - Grid of small cards below
-           ========================= */}
+        {/* DESKTOP/TABLET */}
         <div className="hidden sm:block">
-          {/* Top row: 2 big feature cards */}
           <div className="grid gap-6 lg:grid-cols-2">
             {primary.map((a: any, idx: number) => (
               <Link
@@ -128,16 +139,15 @@ export function TodayOnClubSection({
                 className="group rounded-2xl border border-line bg-white overflow-hidden shadow-soft hover:shadow-card transition"
               >
                 <div className="flex">
-                  {/* Image (left) */}
                   <div className="w-[52%] min-w-[280px] bg-ink/5">
                     <ImgOrFallback
                       src={a?.heroMedia?.url}
                       alt={a?.title}
-                      className="h-[320px] w-full object-cover group-hover:scale-[1.02] transition-transform duration-500"
+                      sizes="(max-width: 1023px) 100vw, 50vw"
+                      imgClassName="object-cover group-hover:scale-[1.02] transition-transform duration-500"
                     />
                   </div>
 
-                  {/* Text (right) */}
                   <div className="flex-1 p-6">
                     <h3 className="text-xl md:text-2xl font-extrabold text-ink uppercase leading-tight line-clamp-3">
                       {a.title}
@@ -154,7 +164,6 @@ export function TodayOnClubSection({
             ))}
           </div>
 
-          {/* Bottom row: small cards (grid like MU) */}
           {secondary.length > 0 && (
             <div className="mt-8 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {secondary.map((a: any, idx: number) => (
@@ -167,7 +176,8 @@ export function TodayOnClubSection({
                     <ImgOrFallback
                       src={a?.heroMedia?.url}
                       alt={a?.title}
-                      className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500"
+                      sizes="(max-width: 639px) 100vw, (max-width: 1023px) 50vw, 25vw"
+                      imgClassName="object-cover group-hover:scale-[1.03] transition-transform duration-500"
                     />
                   </div>
                   <div className="p-4">
@@ -187,14 +197,8 @@ export function TodayOnClubSection({
           )}
         </div>
 
-        {/* =========================
-            MOBILE (< sm)
-            - First big card stacked
-            - Second featured becomes compact row
-            - Rest list rows (thumb left)
-           ========================= */}
+        {/* MOBILE */}
         <div className="sm:hidden">
-          {/* First featured: big stacked */}
           {primary[0] && (
             <Link
               href={`/news/${primary[0].slug}`}
@@ -204,7 +208,8 @@ export function TodayOnClubSection({
                 <ImgOrFallback
                   src={primary[0]?.heroMedia?.url}
                   alt={primary[0]?.title}
-                  className="h-full w-full object-cover"
+                  sizes="100vw"
+                  imgClassName="object-cover"
                 />
               </div>
               <div className="p-4">
@@ -221,17 +226,17 @@ export function TodayOnClubSection({
             </Link>
           )}
 
-          {/* Second featured: compact row (like MU mobile) */}
           {primary[1] && (
             <Link
               href={`/news/${primary[1].slug}`}
               className="mt-4 flex gap-3 rounded-2xl overflow-hidden border border-line shadow-soft bg-white"
             >
-              <div className="w-24 h-20 bg-ink/5 shrink-0">
+              <div className="w-24 h-20 bg-ink/5 shrink-0 overflow-hidden">
                 <ImgOrFallback
                   src={primary[1]?.heroMedia?.url}
                   alt={primary[1]?.title}
-                  className="h-full w-full object-cover"
+                  sizes="96px"
+                  imgClassName="object-cover"
                 />
               </div>
               <div className="flex-1 min-w-0 p-3">
@@ -242,7 +247,9 @@ export function TodayOnClubSection({
                   <div className="flex items-center gap-2">
                     <span>{timeAgo(primary[1]?.publishedAt)}</span>
                     <span className="text-ink/25">|</span>
-                    <span className="uppercase tracking-wide">{(primary[1]?.category || "news").toString()}</span>
+                    <span className="uppercase tracking-wide">
+                      {(primary[1]?.category || "news").toString()}
+                    </span>
                   </div>
                   <span className="text-ink/35">
                     <ShareIcon />
@@ -252,7 +259,6 @@ export function TodayOnClubSection({
             </Link>
           )}
 
-          {/* Remaining: list rows */}
           {secondary.length > 0 && (
             <div className="mt-4 divide-y divide-line rounded-2xl border border-line overflow-hidden">
               {secondary.map((a: any, idx: number) => (
@@ -265,7 +271,8 @@ export function TodayOnClubSection({
                     <ImgOrFallback
                       src={a?.heroMedia?.url}
                       alt={a?.title}
-                      className="h-full w-full object-cover"
+                      sizes="80px"
+                      imgClassName="object-cover"
                     />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -276,7 +283,9 @@ export function TodayOnClubSection({
                       <div className="flex items-center gap-2">
                         <span>{timeAgo(a?.publishedAt)}</span>
                         <span className="text-ink/25">|</span>
-                        <span className="uppercase tracking-wide">{(a?.category || "news").toString()}</span>
+                        <span className="uppercase tracking-wide">
+                          {(a?.category || "news").toString()}
+                        </span>
                       </div>
                       <span className="text-ink/35">
                         <ShareIcon />
@@ -288,7 +297,6 @@ export function TodayOnClubSection({
             </div>
           )}
 
-          {/* Mobile MORE NEWS */}
           <div className="mt-6 flex justify-center">
             <Link
               href={moreHref}
