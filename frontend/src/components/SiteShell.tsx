@@ -1,13 +1,14 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import React, {
   useEffect,
   useLayoutEffect,
   useRef,
   useState,
-  ReactNode,
+  type ReactNode,
 } from "react";
 
 const ASSET_BASE =
@@ -220,6 +221,45 @@ function pickRandomIndex(length: number, exclude = -1) {
   return next;
 }
 
+function ShellImage({
+  src,
+  alt,
+  sizes,
+  wrapperClassName,
+  imageClassName = "object-contain",
+  fallback,
+  priority = false,
+}: {
+  src?: string | null;
+  alt: string;
+  sizes: string;
+  wrapperClassName: string;
+  imageClassName?: string;
+  fallback?: ReactNode;
+  priority?: boolean;
+}) {
+  const [failed, setFailed] = useState(false);
+  const resolved = resolveAssetUrl(src);
+
+  if (!resolved || failed) {
+    return <>{fallback ?? null}</>;
+  }
+
+  return (
+    <div className={wrapperClassName}>
+      <Image
+        src={resolved}
+        alt={alt}
+        fill
+        sizes={sizes}
+        className={imageClassName}
+        priority={priority}
+        onError={() => setFailed(true)}
+      />
+    </div>
+  );
+}
+
 export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
   const ads = (Array.isArray(items) ? items : []).filter(
     (x) => !!(x?.imageUrl || x?.desktopImageUrl || x?.mobileImageUrl)
@@ -274,7 +314,7 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
       ].filter(Boolean);
 
       sources.forEach((src) => {
-        const img = new Image();
+        const img = new window.Image();
         img.src = src;
       });
     });
@@ -430,7 +470,6 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
     >
       <picture>
         <source media="(max-width: 767px)" srcSet={mobileSrc} />
-        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={desktopSrc}
           alt={activeAd.title || headline}
@@ -1038,14 +1077,18 @@ export function SiteShell({
           <div className="container-ms flex h-16 items-center justify-between md:h-[72px]">
             <div className="flex min-w-0 shrink-0 items-center gap-2">
               <Link href="/" className="flex min-w-0 items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <ShellImage
                   src={clubLogo}
                   alt={clubName}
-                  className="h-12 w-auto max-w-[180px] shrink-0 object-contain bg-transparent md:h-14 md:max-w-[240px]"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
-                  }}
+                  sizes="(max-width: 767px) 180px, 240px"
+                  wrapperClassName="relative h-12 w-[180px] shrink-0 bg-transparent md:h-14 md:w-[240px]"
+                  imageClassName="object-contain"
+                  priority
+                  fallback={
+                    <div className="flex h-12 w-[180px] shrink-0 items-center justify-center rounded-xl bg-blue-900/30 text-white md:h-14 md:w-[240px]">
+                      <span className="text-sm font-black tracking-wide">MU</span>
+                    </div>
+                  }
                 />
                 <span className="hidden truncate text-sm font-extrabold uppercase tracking-wide text-white lg:block">
                   {clubName}
@@ -1138,14 +1181,18 @@ export function SiteShell({
                 <span className="text-[9px] uppercase tracking-wider text-white/30">
                   In partnership with
                 </span>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+
+                <ShellImage
                   src={partnerLogo}
                   alt={partnerName}
-                  className="h-8 w-auto object-contain opacity-80 transition-opacity hover:opacity-100"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  sizes="112px"
+                  wrapperClassName="relative h-8 w-[112px]"
+                  imageClassName="object-contain opacity-80 transition-opacity hover:opacity-100"
+                  fallback={
+                    <span className="text-xs font-bold text-white/60">
+                      {partnerName}
+                    </span>
+                  }
                 />
               </div>
 
@@ -1214,14 +1261,18 @@ export function SiteShell({
                 <span className="text-[9px] uppercase tracking-wider text-white/30">
                   In partnership with
                 </span>
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+
+                <ShellImage
                   src={partnerLogo}
                   alt={partnerName}
-                  className="h-5 w-auto object-contain brightness-0 invert opacity-60"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).style.display = "none";
-                  }}
+                  sizes="80px"
+                  wrapperClassName="relative h-5 w-[80px]"
+                  imageClassName="object-contain brightness-0 invert opacity-60"
+                  fallback={
+                    <span className="text-[10px] font-bold text-white/50">
+                      {partnerName}
+                    </span>
+                  }
                 />
               </div>
 
@@ -1268,14 +1319,17 @@ export function SiteShell({
                     className="grayscale opacity-60 transition-all hover:opacity-100 hover:grayscale-0"
                   >
                     {sLogo ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <ShellImage
                         src={sLogo}
                         alt={s.name}
-                        className="h-10 w-auto object-contain md:h-14"
-                        onError={(e) => {
-                          (e.currentTarget as HTMLImageElement).style.display = "none";
-                        }}
+                        sizes="(max-width: 767px) 120px, 160px"
+                        wrapperClassName="relative h-10 w-[120px] md:h-14 md:w-[160px]"
+                        imageClassName="object-contain"
+                        fallback={
+                          <span className="text-sm font-bold text-muted">
+                            {s.name}
+                          </span>
+                        }
                       />
                     ) : (
                       <span className="text-sm font-bold text-muted">{s.name}</span>
@@ -1293,14 +1347,17 @@ export function SiteShell({
           <div className="grid grid-cols-1 gap-10 md:grid-cols-5 md:gap-8">
             <div className="md:col-span-2">
               <div className="mb-5 flex items-center gap-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
+                <ShellImage
                   src={clubLogo}
                   alt={clubName}
-                  className="h-14 w-auto bg-transparent"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src = "/logos/club.png";
-                  }}
+                  sizes="56px"
+                  wrapperClassName="relative h-14 w-14 shrink-0 bg-transparent"
+                  imageClassName="object-contain"
+                  fallback={
+                    <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-blue-900/30 text-white">
+                      <span className="text-sm font-black">MU</span>
+                    </div>
+                  }
                 />
 
                 <div>
