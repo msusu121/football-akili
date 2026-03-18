@@ -2465,15 +2465,31 @@ function MediaPanel({ token, data, onChange }: any) {
         <p className="mt-1 text-xs text-muted-foreground">
           Uploads are sent to the S3/MinIO bucket. The DB stores only the object key/path.
         </p>
+
         <div className="mt-4 grid gap-3 sm:grid-cols-3">
-          <input className={inputCls} placeholder="folder" value={folder} onChange={(e) => setFolder(e.target.value)} />
-          <select className={inputCls} value={type} onChange={(e) => setType(e.target.value as any)}>
+          <input
+            className={inputCls}
+            placeholder="folder"
+            value={folder}
+            onChange={(e) => setFolder(e.target.value)}
+          />
+          <select
+            className={inputCls}
+            value={type}
+            onChange={(e) => setType(e.target.value as any)}
+          >
             <option value="IMAGE">IMAGE</option>
             <option value="VIDEO">VIDEO</option>
             <option value="DOC">DOC</option>
           </select>
-          <input className={inputCls} placeholder="title (optional)" value={title} onChange={(e) => setTitle(e.target.value)} />
+          <input
+            className={inputCls}
+            placeholder="title (optional)"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
         </div>
+
         <div className="mt-4">
           <input
             ref={fileRef}
@@ -2485,39 +2501,60 @@ function MediaPanel({ token, data, onChange }: any) {
             }}
           />
         </div>
-        {uploading && <p className="mt-3 text-xs text-muted-foreground animate-pulse">Uploading to media bucket…</p>}
+
+        {uploading && (
+          <p className="mt-3 animate-pulse text-xs text-muted-foreground">
+            Uploading to media bucket…
+          </p>
+        )}
       </div>
 
       {/* Media grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
         {items.map((m: any) => {
           const url = m.publicUrl || mediaUrl(m.path);
-          const isImage = m.type === "IMAGE" || m.mimeType?.startsWith("image/");
+          const isImage =
+            m.type === "IMAGE" || m.mimeType?.startsWith("image/");
+
           return (
             <div key={m.id} className={cardCls + " flex flex-col gap-2"}>
               {isImage ? (
-                <Image
-                  src={url}
-                  alt={m.title || m.path}
-                  fill
-                  className="w-full h-28 object-cover rounded-lg bg-muted"
-                  
-                />
+                <div className="relative h-28 w-full overflow-hidden rounded-lg bg-muted">
+                  <Image
+                    src={url}
+                    alt={m.title || m.path}
+                    fill
+                    sizes="(max-width: 639px) 50vw, (max-width: 1023px) 33vw, 25vw"
+                    className="object-cover"
+                  />
+                </div>
               ) : (
-                <div className="w-full h-28 rounded-lg bg-muted flex items-center justify-center text-muted-foreground text-xs">
+                <div className="flex h-28 w-full items-center justify-center rounded-lg bg-muted text-xs text-muted-foreground">
                   {m.type}
                 </div>
               )}
-              <p className="text-xs font-medium line-clamp-1 text-foreground">{m.title || m.path}</p>
-              <p className="text-[10px] text-muted-foreground break-all line-clamp-1">{m.path}</p>
-              <button onClick={() => del(m.id)} className={btnDanger + " mt-auto text-xs"}>
+
+              <p className="line-clamp-1 text-xs font-medium text-foreground">
+                {m.title || m.path}
+              </p>
+              <p className="line-clamp-1 break-all text-[10px] text-muted-foreground">
+                {m.path}
+              </p>
+
+              <button
+                onClick={() => del(m.id)}
+                className={btnDanger + " mt-auto text-xs"}
+              >
                 Delete
               </button>
             </div>
           );
         })}
       </div>
-      {!items.length && <p className="text-sm text-muted-foreground">No media yet.</p>}
+
+      {!items.length && (
+        <p className="text-sm text-muted-foreground">No media yet.</p>
+      )}
     </div>
   );
 }
