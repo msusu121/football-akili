@@ -2621,7 +2621,11 @@ function HighlightsPanel({ token, data, onChange }: any) {
         "VIDEO",
         file.name
       );
-      setDraft((d: any) => ({ ...d, videoMediaId: created.media.id, videoUrl: created.publicUrl }));
+      setDraft((d: any) => ({
+        ...d,
+        videoMediaId: created.media.id,
+        videoUrl: created.publicUrl,
+      }));
       setVideoPreview(created.publicUrl);
     } catch (err: any) {
       console.error(err);
@@ -2689,12 +2693,14 @@ function HighlightsPanel({ token, data, onChange }: any) {
       thumbnailId: h.thumbnailId || "",
       videoMediaId: h.videoMediaId || "",
     });
+
     setThumbPreview(
       h.thumbnailUrl ||
         h?.thumbnail?.publicUrl ||
         (h?.thumbnail?.path ? mediaUrlFromKey(h.thumbnail.path) : "") ||
         ""
     );
+
     setVideoPreview(
       h.videoMediaUrl ||
         h?.videoMedia?.publicUrl ||
@@ -2713,7 +2719,7 @@ function HighlightsPanel({ token, data, onChange }: any) {
   return (
     <div className="grid gap-6">
       <div className={cardCls}>
-        <h3 className="text-sm font-semibold mb-3 text-foreground">
+        <h3 className="mb-3 text-sm font-semibold text-foreground">
           {editingId ? "Edit highlight" : "Add highlight"}
         </h3>
 
@@ -2722,19 +2728,25 @@ function HighlightsPanel({ token, data, onChange }: any) {
             className={inputCls}
             placeholder="title"
             value={draft.title}
-            onChange={(e) => setDraft((d: any) => ({ ...d, title: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, title: e.target.value }))
+            }
           />
           <input
             className={inputCls}
             placeholder="video URL (YouTube, etc.)"
             value={draft.videoUrl}
-            onChange={(e) => setDraft((d: any) => ({ ...d, videoUrl: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, videoUrl: e.target.value }))
+            }
           />
           <input
             className={inputCls + " sm:col-span-2"}
             placeholder="match ID (optional)"
             value={draft.matchId}
-            onChange={(e) => setDraft((d: any) => ({ ...d, matchId: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, matchId: e.target.value }))
+            }
           />
         </div>
 
@@ -2744,6 +2756,7 @@ function HighlightsPanel({ token, data, onChange }: any) {
           <div className="mt-2 text-xs text-muted-foreground">
             Upload a thumbnail image for this highlight.
           </div>
+
           <div className="mt-4">
             <input
               type="file"
@@ -2755,21 +2768,28 @@ function HighlightsPanel({ token, data, onChange }: any) {
               }}
             />
           </div>
+
           {uploadingThumb ? (
-            <div className="mt-3 text-xs text-muted-foreground">Uploading thumbnail...</div>
+            <div className="mt-3 text-xs text-muted-foreground">
+              Uploading thumbnail...
+            </div>
           ) : null}
-          <div className="mt-3 text-xs text-muted-foreground break-all">
+
+          <div className="mt-3 break-all text-xs text-muted-foreground">
             thumbnailId: {draft.thumbnailId || "—"}
           </div>
+
           {thumbPreview ? (
             <div className="mt-4">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <Image
-                src={thumbPreview}
-                alt="Thumbnail preview"
-                className="h-24 w-auto rounded-lg object-cover border border-input"
-                fill
-              />
+              <div className="relative h-24 w-40 overflow-hidden rounded-lg border border-input">
+                <Image
+                  src={thumbPreview}
+                  alt="Thumbnail preview"
+                  fill
+                  sizes="160px"
+                  className="object-cover"
+                />
+              </div>
             </div>
           ) : null}
         </div>
@@ -2778,8 +2798,10 @@ function HighlightsPanel({ token, data, onChange }: any) {
         <div className="mt-4 rounded-2xl border border-input bg-muted/30 p-4">
           <div className="text-sm font-semibold text-foreground">Video file</div>
           <div className="mt-2 text-xs text-muted-foreground">
-            Upload a video file directly, or use the video URL field above for YouTube/external links.
+            Upload a video file directly, or use the video URL field above for
+            YouTube/external links.
           </div>
+
           <div className="mt-4">
             <input
               type="file"
@@ -2791,12 +2813,17 @@ function HighlightsPanel({ token, data, onChange }: any) {
               }}
             />
           </div>
+
           {uploadingVideo ? (
-            <div className="mt-3 text-xs text-muted-foreground">Uploading video...</div>
+            <div className="mt-3 text-xs text-muted-foreground">
+              Uploading video...
+            </div>
           ) : null}
-          <div className="mt-3 text-xs text-muted-foreground break-all">
+
+          <div className="mt-3 break-all text-xs text-muted-foreground">
             videoMediaId: {draft.videoMediaId || "—"}
           </div>
+
           {videoPreview ? (
             <div className="mt-4">
               <video
@@ -2836,35 +2863,41 @@ function HighlightsPanel({ token, data, onChange }: any) {
           return (
             <div
               key={h.id}
-              className={cardCls + " flex flex-col sm:flex-row sm:items-start gap-4"}
+              className={cardCls + " flex flex-col gap-4 sm:flex-row sm:items-start"}
             >
-              <div className="flex items-start gap-3 flex-1 min-w-0">
+              <div className="flex min-w-0 flex-1 items-start gap-3">
                 {tPreview ? (
-                  /* eslint-disable-next-line @next/next/no-img-element */
-                  <Image
-                    src={tPreview}
-                    alt={h.title || "Thumbnail"}
-                    fill
-                    className="h-16 w-24 rounded-lg object-cover border border-input flex-shrink-0"
-                  />
+                  <div className="relative h-16 w-24 flex-shrink-0 overflow-hidden rounded-lg border border-input">
+                    <Image
+                      src={tPreview}
+                      alt={h.title || "Thumbnail"}
+                      fill
+                      sizes="96px"
+                      className="object-cover"
+                    />
+                  </div>
                 ) : (
-                  <div className="h-16 w-24 rounded-lg bg-muted/50 border border-input flex-shrink-0 flex items-center justify-center text-xs text-muted-foreground">
+                  <div className="flex h-16 w-24 flex-shrink-0 items-center justify-center rounded-lg border border-input bg-muted/50 text-xs text-muted-foreground">
                     No thumb
                   </div>
                 )}
+
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-foreground">{h.title}</p>
-                  <p className="text-xs text-muted-foreground mt-0.5 break-all line-clamp-1">
+                  <p className="text-sm font-semibold text-foreground">
+                    {h.title}
+                  </p>
+                  <p className="mt-0.5 line-clamp-1 break-all text-xs text-muted-foreground">
                     {h.videoUrl || "No video URL"}
                   </p>
                   {h.matchId ? (
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="mt-0.5 text-xs text-muted-foreground">
                       Match: {h.matchId}
                     </p>
                   ) : null}
                 </div>
               </div>
-              <div className="flex items-center gap-2 flex-shrink-0">
+
+              <div className="flex flex-shrink-0 items-center gap-2">
                 <button onClick={() => startEdit(h)} className={btnOutline}>
                   Edit
                 </button>
@@ -2875,6 +2908,7 @@ function HighlightsPanel({ token, data, onChange }: any) {
             </div>
           );
         })}
+
         {!items.length && (
           <p className="text-sm text-muted-foreground">No highlights yet.</p>
         )}
@@ -2882,7 +2916,6 @@ function HighlightsPanel({ token, data, onChange }: any) {
     </div>
   );
 }
-
 
 /* ═══════════════════════════════════════════════════════════
    ADS / BANNERS
