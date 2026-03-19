@@ -1,7 +1,25 @@
+import Image from "next/image";
 import { SiteShell } from "@/components/SiteShell";
 import { apiGet } from "@/lib/api";
 import MembershipCheckout from "@/components/MembershipCheckout";
 import MembershipTiers from "@/components/MembershipTiers";
+
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return `https:${url}`;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
+}
 
 function Check() {
   return (
@@ -22,11 +40,12 @@ export default async function MembershipPage() {
   const clubName = String(home.settings?.clubName || "CLUB");
   const first = clubName.split(" ")[0] || "CLUB";
   const rest = clubName.split(" ").slice(1).join(" ");
+  const membershipImage = resolveAssetUrl(home.settings?.homeMembershipImage?.url);
 
   return (
     <SiteShell settings={home.settings} socials={home.socials}>
       <section className="container-ms py-12 md:py-16">
-        <div className="grid gap-12 lg:grid-cols-2 items-center">
+        <div className="grid items-center gap-12 lg:grid-cols-2">
           {/* LEFT CONTENT */}
           <div>
             <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight leading-[0.95]">
@@ -38,12 +57,12 @@ export default async function MembershipPage() {
               <div className="text-2xl md:text-3xl font-extrabold text-ink">
                 Official Membership
               </div>
-              <span className="rounded-full bg-brand text-white text-xs font-semibold px-3 py-1">
+              <span className="rounded-full bg-brand px-3 py-1 text-xs font-semibold text-white">
                 25/26 SEASON
               </span>
             </div>
 
-            <p className="mt-6 text-muted max-w-xl leading-relaxed">
+            <p className="mt-6 max-w-xl leading-relaxed text-muted">
               Join the pride and experience football like never before with exclusive member benefits including:
             </p>
 
@@ -73,7 +92,7 @@ export default async function MembershipPage() {
             <div className="mt-10 flex flex-wrap items-center gap-5">
               <a
                 href="#checkout"
-                className="inline-flex items-center justify-center rounded-xl bg-ink text-white px-7 py-3 font-semibold hover:opacity-95 transition"
+                className="inline-flex items-center justify-center rounded-xl bg-ink px-7 py-3 font-semibold text-white transition hover:opacity-95"
               >
                 JOIN NOW →
               </a>
@@ -82,7 +101,7 @@ export default async function MembershipPage() {
 
               <a
                 href={home.settings?.ticketsUrl || "/tickets"}
-                className="inline-flex items-center justify-center rounded-xl border border-line bg-white px-7 py-3 font-semibold text-ink hover:bg-black/5 transition"
+                className="inline-flex items-center justify-center rounded-xl border border-line bg-white px-7 py-3 font-semibold text-ink transition hover:bg-black/5"
               >
                 BUY TICKETS? →
               </a>
@@ -92,34 +111,36 @@ export default async function MembershipPage() {
           {/* RIGHT IMAGE */}
           <div className="flex justify-center lg:justify-end">
             <div className="relative w-full max-w-[520px]">
-              <div className="rounded-2xl border border-line bg-white/80 backdrop-blur shadow-[0_18px_40px_rgba(0,0,0,.10)] p-6">
-                {home.settings?.homeMembershipImage?.url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={home.settings.homeMembershipImage.url}
-                    alt="Membership"
-                    className="w-full h-[340px] object-contain"
-                  />
+              <div className="rounded-2xl border border-line bg-white/80 p-6 shadow-[0_18px_40px_rgba(0,0,0,.10)] backdrop-blur">
+                {membershipImage ? (
+                  <div className="relative h-[340px] w-full">
+                    <Image
+                      src={membershipImage}
+                      alt="Membership"
+                      fill
+                      sizes="(max-width: 1023px) 100vw, 520px"
+                      className="object-contain"
+                      priority
+                    />
+                  </div>
                 ) : (
-                  <div className="h-[340px] bg-black/5 rounded-xl" />
+                  <div className="h-[340px] rounded-xl bg-black/5" />
                 )}
               </div>
 
-              <div className="pointer-events-none absolute -bottom-5 left-1/2 -translate-x-1/2 w-[70%] h-8 blur-xl bg-black/20 rounded-full" />
+              <div className="pointer-events-none absolute -bottom-5 left-1/2 h-8 w-[70%] -translate-x-1/2 rounded-full bg-black/20 blur-xl" />
             </div>
           </div>
         </div>
       </section>
 
-      
-
       {/* TIER CARDS */}
-      <section className="max-w-7xl mx-auto px-4 py-16 sm:py-24">
-        <div className="text-center mb-12">
+      <section className="mx-auto max-w-7xl px-4 py-16 sm:py-24">
+        <div className="mb-12 text-center">
           <h2 className="text-3xl font-bold text-[#0a1628]">
             Choose Your Tier
           </h2>
-          <p className="text-gray-500 mt-2">
+          <p className="mt-2 text-gray-500">
             All memberships run for the full 2025/26 season
           </p>
         </div>
@@ -133,8 +154,8 @@ export default async function MembershipPage() {
       </section>
 
       {/* FAQ */}
-      <section className="max-w-3xl mx-auto px-4 py-16">
-        <h2 className="text-2xl font-bold text-center mb-10 text-[#0a1628]">
+      <section className="mx-auto max-w-3xl px-4 py-16">
+        <h2 className="mb-10 text-center text-2xl font-bold text-[#0a1628]">
           Frequently Asked Questions
         </h2>
 
@@ -161,9 +182,9 @@ export default async function MembershipPage() {
               key={item.q}
               className="group rounded-xl border border-gray-200 bg-white"
             >
-              <summary className="cursor-pointer px-6 py-4 font-semibold text-[#0a1628] flex items-center justify-between">
+              <summary className="flex cursor-pointer items-center justify-between px-6 py-4 font-semibold text-[#0a1628]">
                 {item.q}
-                <span className="text-gray-400 group-open:rotate-45 transition-transform text-xl">
+                <span className="text-xl text-gray-400 transition-transform group-open:rotate-45">
                   +
                 </span>
               </summary>
