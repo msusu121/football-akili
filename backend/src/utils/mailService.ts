@@ -180,7 +180,7 @@ export function buildEmailShell(title: string, content: string): string {
   // Brand colors (from your site shell)
   const primary = "#1a56db"; // Royal Blue
   const gold = "#d4a017";
-  const navy = "#0a1628";
+  const navy = "#f5f7fa";
   const muted = "#64748b";
   const bg = "#f8fafc";
   const card = "#ffffff";
