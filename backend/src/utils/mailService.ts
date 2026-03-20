@@ -183,7 +183,7 @@ export function buildEmailShell(title: string, content: string): string {
   const navy = "#f5f7fa";
   const muted = "#64748b";
   const bg = "#f8fafc";
-  const card = "#ffffff";
+  const card = "#ffffff";  
   const border = "#e2e8f0";
 
   // Use a shop logo/image that exists on your domain
