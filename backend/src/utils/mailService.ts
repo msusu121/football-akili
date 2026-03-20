@@ -180,10 +180,10 @@ export function buildEmailShell(title: string, content: string): string {
   // Brand colors (from your site shell)
   const primary = "#1a56db"; // Royal Blue
   const gold = "#d4a017";
-  const navy = "#f5f7fa";
+  const navy = "#0a1628";
   const muted = "#64748b";
   const bg = "#f8fafc";
-  const card = "#ffffff";  
+  const card = "#ffffff";
   const border = "#e2e8f0";
 
   // Use a shop logo/image that exists on your domain
@@ -207,7 +207,7 @@ export function buildEmailShell(title: string, content: string): string {
             <td style="background:linear-gradient(135deg, ${primary} 0%, ${navy} 100%); padding:28px 32px; text-align:center;">
               <div style="color:white; font-weight:800; letter-spacing:.12em; font-size:12px;">OFFICIAL SHOP</div>
               <div style="height:10px;"></div>
-              <img src="${logoUrl}" alt="${escapeHtml(APP_NAME)}" width="160" style="display:block; margin:0 auto; border-radius:10px; border:2px solid rgba(255,255,255,.12);" />
+              <img src="${logoUrl}" alt="${escapeHtml(APP_NAME)}" width="220" style="display:block; margin:0 auto; border-radius:10px; border:2px solid rgba(255,255,255,.12);" />
               <div style="height:12px;"></div>
               <div style="color:rgba(255,255,255,.85); font-size:13px;">${escapeHtml(APP_NAME)}</div>
               <div style="margin-top:8px; color:${gold}; font-weight:800; font-size:12px; letter-spacing:.08em;">PAYMENT CONFIRMATION</div>
