@@ -210,8 +210,8 @@ function clampPercent(value: unknown, fallback: number) {
 const INITIAL_TAKEOVER_MS = 60_000;
 const RETURN_TAKEOVER_MIN_MS = 18_000;
 const RETURN_TAKEOVER_MAX_MS = 30_000;
-const RETURN_GAP_MIN_MS = 4 * 60 * 1000;
-const RETURN_GAP_MAX_MS = 10 * 60 * 1000;
+const RETURN_GAP_MIN_MS = 4 * 60_000;
+const RETURN_GAP_MAX_MS = 10 * 60_000;
 const HIDDEN_TAB_RETRY_MIN_MS = 45_000;
 const HIDDEN_TAB_RETRY_MAX_MS = 90_000;
 const INTRO_MS = 2_200;
@@ -1124,35 +1124,33 @@ export function SiteShell({
             scrolled ? "bg-brand/95 backdrop-blur-md" : "bg-brand"
           }`}
         >
-          <div className="container-ms flex h-16 items-center justify-between md:h-[72px]">
-            {/* LEFT: logo only */}
-            <div className="min-w-0 flex-1">
-              <Link
-                href="/"
-                className="inline-flex min-w-0 items-center gap-3"
-                aria-label={clubName}
-              >
-                <ShellImage
-                  src={clubLogo}
-                  alt={clubName}
-                  sizes="(max-width: 767px) 64px, 240px"
-                  wrapperClassName="relative h-12 w-12 shrink-0 bg-transparent md:h-14 md:w-[240px]"
-                  imageClassName="object-contain object-left"
-                  priority
-                  fallback={
-                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-900/30 text-white md:h-14 md:w-[240px] md:justify-start md:px-4">
-                      <span className="text-sm font-black tracking-wide">MU</span>
-                    </div>
-                  }
-                />
-                <span className="hidden truncate text-sm font-extrabold uppercase tracking-wide text-white lg:block">
-                  {clubName}
-                </span>
-              </Link>
-            </div>
+          <div className="container-ms flex h-16 items-center gap-3 md:h-[72px]">
+            {/* LEFT */}
+            <Link
+              href="/"
+              className="flex shrink-0 items-center gap-3"
+              aria-label={clubName}
+            >
+              <ShellImage
+                src={clubLogo}
+                alt={clubName}
+                sizes="(max-width: 1023px) 56px, 220px"
+                wrapperClassName="relative h-11 w-[52px] shrink-0 bg-transparent md:h-12 md:w-[56px] lg:h-14 lg:w-[220px]"
+                imageClassName="object-contain object-left"
+                priority
+                fallback={
+                  <div className="flex h-11 w-[52px] shrink-0 items-center justify-center rounded-xl bg-blue-900/30 text-white md:h-12 md:w-[56px] lg:h-14 lg:w-[220px] lg:justify-start lg:px-4">
+                    <span className="text-sm font-black tracking-wide">MU</span>
+                  </div>
+                }
+              />
+              <span className="hidden truncate text-sm font-extrabold uppercase tracking-wide text-white lg:block">
+                {clubName}
+              </span>
+            </Link>
 
-            {/* CENTER: desktop nav */}
-            <nav className="hidden items-center gap-1 md:flex">
+            {/* DESKTOP NAV */}
+            <nav className="mx-auto hidden items-center gap-1 lg:flex">
               {NAV_LINKS.map((link) => {
                 const isActive =
                   pathname === link.href || pathname.startsWith(link.href + "/");
@@ -1176,9 +1174,9 @@ export function SiteShell({
               })}
             </nav>
 
-            {/* RIGHT: mobile actions / desktop extras */}
-            <div className="flex flex-1 items-center justify-end gap-1 md:gap-4">
-              <div className="hidden items-center gap-2 lg:flex">
+            {/* RIGHT ACTIONS */}
+            <div className="ml-auto flex items-center gap-2">
+              <div className="hidden items-center gap-2 xl:flex">
                 <span className="text-[9px] uppercase tracking-wider text-white/30">
                   In partnership with
                 </span>
@@ -1198,7 +1196,7 @@ export function SiteShell({
               </div>
 
               <button
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/85 transition hover:bg-white/10 hover:text-white md:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/85 transition hover:bg-white/10 hover:text-white lg:hidden"
                 aria-label="Search"
                 type="button"
               >
@@ -1206,7 +1204,7 @@ export function SiteShell({
                   className="h-5 w-5"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.2}
                   viewBox="0 0 24 24"
                 >
                   <path
@@ -1218,7 +1216,7 @@ export function SiteShell({
               </button>
 
               <button
-                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 hover:text-white md:hidden"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 hover:text-white lg:hidden"
                 onClick={() => setMobileOpen(!mobileOpen)}
                 aria-label={mobileOpen ? "Close menu" : "Open menu"}
                 aria-expanded={mobileOpen}
@@ -1256,7 +1254,7 @@ export function SiteShell({
               </button>
 
               <button
-                className="hidden p-2 text-white/60 transition hover:text-white md:inline-flex"
+                className="hidden h-10 w-10 items-center justify-center rounded-full text-white/70 transition hover:bg-white/10 hover:text-white lg:inline-flex"
                 aria-label="Search"
                 type="button"
               >
@@ -1264,7 +1262,7 @@ export function SiteShell({
                   className="h-5 w-5"
                   fill="none"
                   stroke="currentColor"
-                  strokeWidth={2}
+                  strokeWidth={2.1}
                   viewBox="0 0 24 24"
                 >
                   <path
@@ -1277,9 +1275,9 @@ export function SiteShell({
             </div>
           </div>
 
-          {/* Mobile menu */}
+          {/* MOBILE / TABLET MENU */}
           <div
-            className={`md:hidden ${mobileOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+            className={`lg:hidden ${mobileOpen ? "pointer-events-auto" : "pointer-events-none"}`}
           >
             <div
               className={`fixed inset-x-0 bottom-0 z-40 transition-opacity duration-300 ${
@@ -1423,8 +1421,8 @@ export function SiteShell({
 
       <footer className="footer-surface">
         <div className="container-ms py-14 md:py-16">
-          <div className="grid grid-cols-1 gap-10 md:grid-cols-5 md:gap-8">
-            <div className="md:col-span-2">
+          <div className="grid grid-cols-1 gap-10 lg:grid-cols-5 lg:gap-8">
+            <div className="lg:col-span-2">
               <div className="mb-5 flex items-center gap-3">
                 <ShellImage
                   src={clubLogo}
