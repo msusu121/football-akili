@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import React, {
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -27,6 +28,20 @@ function resolveAssetUrl(u?: string | null) {
     return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
   }
   return url;
+}
+
+const DEFAULT_SOCIAL_URLS: Record<string, string> = {
+  facebook: "https://www.facebook.com/mombasaunited001/",
+  fb: "https://www.facebook.com/mombasaunited001/",
+  instagram: "https://www.instagram.com/mombasa_united_fc/",
+  ig: "https://www.instagram.com/mombasa_united_fc/",
+};
+
+function resolveSocialUrl(platform?: string, url?: string | null) {
+  const direct = String(url || "").trim();
+  if (direct) return direct;
+  const key = String(platform || "").trim().toLowerCase();
+  return DEFAULT_SOCIAL_URLS[key] || "";
 }
 
 interface SiteSettings {
@@ -195,14 +210,13 @@ function clampPercent(value: unknown, fallback: number) {
 const INITIAL_TAKEOVER_MS = 60_000;
 const RETURN_TAKEOVER_MIN_MS = 18_000;
 const RETURN_TAKEOVER_MAX_MS = 30_000;
-const RETURN_GAP_MIN_MS = 4 * 60_000;
-const RETURN_GAP_MAX_MS = 10 * 60_000;
+const RETURN_GAP_MIN_MS = 4 * 60 * 1000;
+const RETURN_GAP_MAX_MS = 10 * 60 * 1000;
 const HIDDEN_TAB_RETRY_MIN_MS = 45_000;
 const HIDDEN_TAB_RETRY_MAX_MS = 90_000;
 const INTRO_MS = 2_200;
 const AD_ROTATE_MS = 8_000;
 
-// in-memory runtime only
 let runtimeInitialShown = false;
 let runtimeActiveUntil = 0;
 let runtimeNextAt = 0;
@@ -354,9 +368,7 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
       const safeDelay = Math.max(15_000, delayMs);
       runtimeNextAt = Date.now() + safeDelay;
 
-      if (returnTimerRef.current) {
-        window.clearTimeout(returnTimerRef.current);
-      }
+      if (returnTimerRef.current) window.clearTimeout(returnTimerRef.current);
 
       returnTimerRef.current = window.setTimeout(() => {
         if (document.visibilityState === "hidden") {
@@ -389,7 +401,10 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
       setPhase(withIntro && !reduced ? "INTRO" : "ADS");
 
       if (withIntro && !reduced) {
-        const introDuration = Math.min(INTRO_MS, Math.max(900, durationMs - 500));
+        const introDuration = Math.min(
+          INTRO_MS,
+          Math.max(900, durationMs - 500)
+        );
         introTimerRef.current = window.setTimeout(() => {
           setPhase("ADS");
         }, introDuration);
@@ -549,7 +564,8 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
               max-height: 0;
               opacity: 0;
               overflow: hidden;
-              transition: max-height 520ms cubic-bezier(0.22, 1, 0.36, 1),
+              transition:
+                max-height 520ms cubic-bezier(0.22, 1, 0.36, 1),
                 opacity 280ms ease;
               will-change: max-height, opacity;
             }
@@ -612,7 +628,9 @@ export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
               inset: 0;
               opacity: 0;
               transform: translateY(6px);
-              transition: opacity 380ms ease, transform 380ms ease;
+              transition:
+                opacity 380ms ease,
+                transform 380ms ease;
               will-change: opacity, transform;
             }
 
@@ -933,7 +951,8 @@ export function SiteShell({
     const el = headerRef.current;
     if (!el) return;
 
-    const update = () => setHeaderH(Math.round(el.getBoundingClientRect().height));
+    const update = () =>
+      setHeaderH(Math.round(el.getBoundingClientRect().height));
     update();
 
     const ro = new ResizeObserver(update);
@@ -1017,6 +1036,37 @@ export function SiteShell({
       settings?.partner?.logo?.url
   );
 
+  const normalizedSocials = useMemo(() => {
+    const seed = (Array.isArray(socials) ? socials : [])
+      .map((s) => ({
+        platform: String(s.platform || "").trim(),
+        url: resolveSocialUrl(s.platform, s.url),
+      }))
+      .filter((s) => s.platform && s.url);
+
+    const knownDefaults = [
+      { platform: "facebook", url: DEFAULT_SOCIAL_URLS.facebook },
+      { platform: "instagram", url: DEFAULT_SOCIAL_URLS.instagram },
+    ];
+
+    const merged = [...seed];
+
+    knownDefaults.forEach((d) => {
+      const exists = merged.some(
+        (x) => x.platform.toLowerCase() === d.platform.toLowerCase()
+      );
+      if (!exists) merged.push(d);
+    });
+
+    const seen = new Set<string>();
+    return merged.filter((s) => {
+      const key = s.platform.toLowerCase();
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [socials]);
+
   return (
     <div
       className={`min-h-screen flex flex-col text-ink ${className}`}
@@ -1075,17 +1125,22 @@ export function SiteShell({
           }`}
         >
           <div className="container-ms flex h-16 items-center justify-between md:h-[72px]">
-            <div className="flex min-w-0 shrink-0 items-center gap-2">
-              <Link href="/" className="flex min-w-0 items-center gap-3">
+            {/* LEFT: logo only */}
+            <div className="min-w-0 flex-1">
+              <Link
+                href="/"
+                className="inline-flex min-w-0 items-center gap-3"
+                aria-label={clubName}
+              >
                 <ShellImage
                   src={clubLogo}
                   alt={clubName}
-                  sizes="(max-width: 767px) 180px, 240px"
-                  wrapperClassName="relative h-12 w-[180px] shrink-0 bg-transparent md:h-14 md:w-[240px]"
-                  imageClassName="object-contain"
+                  sizes="(max-width: 767px) 64px, 240px"
+                  wrapperClassName="relative h-12 w-12 shrink-0 bg-transparent md:h-14 md:w-[240px]"
+                  imageClassName="object-contain object-left"
                   priority
                   fallback={
-                    <div className="flex h-12 w-[180px] shrink-0 items-center justify-center rounded-xl bg-blue-900/30 text-white md:h-14 md:w-[240px]">
+                    <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-900/30 text-white md:h-14 md:w-[240px] md:justify-start md:px-4">
                       <span className="text-sm font-black tracking-wide">MU</span>
                     </div>
                   }
@@ -1094,64 +1149,9 @@ export function SiteShell({
                   {clubName}
                 </span>
               </Link>
-
-              <button
-                className="p-2 text-white/80 transition hover:text-white md:hidden"
-                onClick={() => setMobileOpen(!mobileOpen)}
-                aria-label={mobileOpen ? "Close menu" : "Open menu"}
-                aria-expanded={mobileOpen}
-              >
-                {mobileOpen ? (
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M6 18L18 6M6 6l12 12"
-                    />
-                  </svg>
-                ) : (
-                  <svg
-                    className="h-6 w-6"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth={2}
-                    viewBox="0 0 24 24"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"
-                    />
-                  </svg>
-                )}
-              </button>
-
-              <button
-                className="p-2 text-white/60 transition hover:text-white md:hidden"
-                aria-label="Search"
-              >
-                <svg
-                  className="h-5 w-5"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth={2}
-                  viewBox="0 0 24 24"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
-                  />
-                </svg>
-              </button>
             </div>
 
+            {/* CENTER: desktop nav */}
             <nav className="hidden items-center gap-1 md:flex">
               {NAV_LINKS.map((link) => {
                 const isActive =
@@ -1176,7 +1176,8 @@ export function SiteShell({
               })}
             </nav>
 
-            <div className="hidden shrink-0 items-center gap-4 md:flex">
+            {/* RIGHT: mobile actions / desktop extras */}
+            <div className="flex flex-1 items-center justify-end gap-1 md:gap-4">
               <div className="hidden items-center gap-2 lg:flex">
                 <span className="text-[9px] uppercase tracking-wider text-white/30">
                   In partnership with
@@ -1197,8 +1198,67 @@ export function SiteShell({
               </div>
 
               <button
-                className="p-2 text-white/60 transition hover:text-white"
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/85 transition hover:bg-white/10 hover:text-white md:hidden"
                 aria-label="Search"
+                type="button"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  viewBox="0 0 24 24"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z"
+                  />
+                </svg>
+              </button>
+
+              <button
+                className="inline-flex h-10 w-10 items-center justify-center rounded-full text-white/90 transition hover:bg-white/10 hover:text-white md:hidden"
+                onClick={() => setMobileOpen(!mobileOpen)}
+                aria-label={mobileOpen ? "Close menu" : "Open menu"}
+                aria-expanded={mobileOpen}
+                type="button"
+              >
+                {mobileOpen ? (
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.25}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M6 6l12 12M18 6L6 18"
+                    />
+                  </svg>
+                ) : (
+                  <svg
+                    className="h-6 w-6"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth={2.25}
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      d="M4 7h16M4 12h16M4 17h16"
+                    />
+                  </svg>
+                )}
+              </button>
+
+              <button
+                className="hidden p-2 text-white/60 transition hover:text-white md:inline-flex"
+                aria-label="Search"
+                type="button"
               >
                 <svg
                   className="h-5 w-5"
@@ -1217,82 +1277,99 @@ export function SiteShell({
             </div>
           </div>
 
+          {/* Mobile menu */}
           <div
-            className={`fixed inset-0 z-40 bg-brand transition-all duration-300 md:hidden ${
-              mobileOpen
-                ? "pointer-events-auto translate-y-0 opacity-100"
-                : "pointer-events-none -translate-y-4 opacity-0"
-            }`}
-            style={{ top: headerH }}
+            className={`md:hidden ${mobileOpen ? "pointer-events-auto" : "pointer-events-none"}`}
           >
-            <nav className="flex flex-col space-y-1 p-6">
-              {NAV_LINKS.map((link) => {
-                const isActive =
-                  pathname === link.href || pathname.startsWith(link.href + "/");
+            <div
+              className={`fixed inset-x-0 bottom-0 z-40 transition-opacity duration-300 ${
+                mobileOpen ? "opacity-100" : "opacity-0"
+              }`}
+              style={{ top: headerH }}
+            >
+              <button
+                type="button"
+                aria-label="Close menu"
+                onClick={() => setMobileOpen(false)}
+                className="absolute inset-0 bg-ink/75"
+              />
 
-                return (
-                  <Link
-                    key={link.href}
-                    href={link.href}
-                    onClick={() => setMobileOpen(false)}
-                    className={`flex items-center justify-between border-b border-white/10 py-4 text-base font-extrabold uppercase tracking-[0.12em] transition-colors ${
-                      isActive ? "text-white" : "text-white/80"
-                    }`}
-                  >
-                    <span>{link.label}</span>
-                    <svg
-                      className="h-4 w-4 text-white/30"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth={2}
-                      viewBox="0 0 24 24"
-                    >
-                      <path
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        d="M8.25 4.5l7.5 7.5-7.5 7.5"
-                      />
-                    </svg>
-                  </Link>
-                );
-              })}
+              <div
+                className={`absolute inset-0 overflow-y-auto bg-brand shadow-[0_24px_60px_rgba(0,0,0,0.38)] transition-all duration-300 ${
+                  mobileOpen ? "translate-y-0" : "-translate-y-4"
+                }`}
+              >
+                <nav className="flex min-h-full flex-col px-6 pb-8 pt-5">
+                  {NAV_LINKS.map((link) => {
+                    const isActive =
+                      pathname === link.href ||
+                      pathname.startsWith(link.href + "/");
 
-              <div className="flex items-center gap-2 border-b border-white/10 pt-4 pb-2">
-                <span className="text-[9px] uppercase tracking-wider text-white/30">
-                  In partnership with
-                </span>
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setMobileOpen(false)}
+                        className={`flex items-center justify-between border-b border-white/10 py-4 text-base font-extrabold uppercase tracking-[0.12em] transition-colors ${
+                          isActive ? "text-white" : "text-white/90 hover:text-white"
+                        }`}
+                      >
+                        <span>{link.label}</span>
+                        <svg
+                          className="h-4 w-4 text-white/40"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth={2}
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                          />
+                        </svg>
+                      </Link>
+                    );
+                  })}
 
-                <ShellImage
-                  src={partnerLogo}
-                  alt={partnerName}
-                  sizes="80px"
-                  wrapperClassName="relative h-5 w-[80px]"
-                  imageClassName="object-contain brightness-0 invert opacity-60"
-                  fallback={
-                    <span className="text-[10px] font-bold text-white/50">
-                      {partnerName}
+                  <div className="flex items-center gap-2 border-b border-white/10 pb-3 pt-5">
+                    <span className="text-[9px] uppercase tracking-wider text-white/40">
+                      In partnership with
                     </span>
-                  }
-                />
-              </div>
 
-              <div className="flex items-center gap-4 pt-6">
-                <Link
-                  href="/login"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex-1 rounded-lg bg-white py-3 text-center text-sm font-extrabold uppercase tracking-wider text-ink"
-                >
-                  Sign In
-                </Link>
-                <Link
-                  href="/register"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex-1 rounded-lg border-2 border-white/30 py-3 text-center text-sm font-extrabold uppercase tracking-wider text-white"
-                >
-                  Register
-                </Link>
+                    <ShellImage
+                      src={partnerLogo}
+                      alt={partnerName}
+                      sizes="96px"
+                      wrapperClassName="relative h-6 w-[96px]"
+                      imageClassName="object-contain brightness-0 invert opacity-80"
+                      fallback={
+                        <span className="text-[10px] font-bold text-white/60">
+                          {partnerName}
+                        </span>
+                      }
+                    />
+                  </div>
+
+                  <div className="mt-6 flex items-center gap-4">
+                    <Link
+                      href="/login"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex-1 rounded-lg bg-white py-3 text-center text-sm font-extrabold uppercase tracking-wider text-ink"
+                    >
+                      Sign In
+                    </Link>
+                    <Link
+                      href="/register"
+                      onClick={() => setMobileOpen(false)}
+                      className="flex-1 rounded-lg border-2 border-white/30 py-3 text-center text-sm font-extrabold uppercase tracking-wider text-white"
+                    >
+                      Register
+                    </Link>
+                  </div>
+                </nav>
               </div>
-            </nav>
+            </div>
           </div>
         </div>
       </header>
@@ -1300,13 +1377,13 @@ export function SiteShell({
       <main className="flex-1">{children}</main>
 
       {sponsors.length > 0 ? (
-        <section className="border-t border-line bg-white py-10">
+        <section className="border-t border-line bg-white py-12 md:py-14">
           <div className="container-ms">
             <p className="mb-8 text-center text-[10px] font-extrabold uppercase tracking-[0.3em] text-muted">
               Official Partners
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-8 md:gap-14">
+            <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-8 md:gap-x-14 md:gap-y-10">
               {sponsors.map((s) => {
                 const sLogo = resolveAssetUrl(s.logo?.url || s.logoUrl);
 
@@ -1316,15 +1393,15 @@ export function SiteShell({
                     href={s.url || "#"}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="grayscale opacity-60 transition-all hover:opacity-100 hover:grayscale-0"
+                    className="group flex items-center justify-center"
                   >
                     {sLogo ? (
                       <ShellImage
                         src={sLogo}
                         alt={s.name}
-                        sizes="(max-width: 767px) 120px, 160px"
-                        wrapperClassName="relative h-10 w-[120px] md:h-14 md:w-[160px]"
-                        imageClassName="object-contain"
+                        sizes="(max-width: 767px) 180px, (max-width: 1279px) 240px, 280px"
+                        wrapperClassName="relative h-14 w-[180px] sm:h-16 sm:w-[210px] md:h-20 md:w-[240px] lg:h-24 lg:w-[280px]"
+                        imageClassName="object-contain opacity-80 grayscale transition-all duration-300 group-hover:opacity-100 group-hover:grayscale-0"
                         fallback={
                           <span className="text-sm font-bold text-muted">
                             {s.name}
@@ -1332,7 +1409,9 @@ export function SiteShell({
                         }
                       />
                     ) : (
-                      <span className="text-sm font-bold text-muted">{s.name}</span>
+                      <span className="text-sm font-bold text-muted">
+                        {s.name}
+                      </span>
                     )}
                   </a>
                 );
@@ -1375,16 +1454,16 @@ export function SiteShell({
                 Follow us for the latest news, fixtures, and more.
               </p>
 
-              {socials.length > 0 ? (
+              {normalizedSocials.length > 0 ? (
                 <div className="mt-6 flex items-center gap-3">
-                  {socials.map((s) => (
+                  {normalizedSocials.map((s) => (
                     <a
-                      key={s.platform}
+                      key={`${s.platform}-${s.url}`}
                       href={s.url}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="social-pill"
-                      aria-label={`Follow on ${s.platform}`}
+                      aria-label={`Follow ${clubName} on ${s.platform}`}
                     >
                       <SocialIcon platform={s.platform} />
                     </a>
