@@ -125,7 +125,7 @@ const FOOTER_LINKS = [
   {
     title: "Club",
     links: [
-      { label: "About Us", href: "/about" },
+      { label: "About Us", href: "/about-us" },
       { label: "History", href: "/history" },
       { label: "Squad", href: "/squad" },
       { label: "Academy", href: "/academy" },
@@ -1500,13 +1500,7 @@ export function SiteShell({
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] text-white/30">
-              <Link href="/privacy" className="transition hover:text-white/60">
-                Privacy Policy
-              </Link>
-
-              <Link href="/terms" className="transition hover:text-white/60">
-                Terms of Use
-              </Link>
+              
 
               <a
                 href="https://akilimatic.com"
