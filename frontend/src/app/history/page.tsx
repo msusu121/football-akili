@@ -294,7 +294,7 @@ export default async function HistoryPage() {
                   Winning Run
                 </div>
                 <div className="mt-3 text-4xl font-extrabold text-white">5</div>
-                <p className="mt-3 text-sm leading-7 text-white/68">
+                <p className="mt-3 text-sm leading-7 text-white">
                   A first-ever five-match winning streak in the NSL signalled that
                   the club had moved into a more serious competitive phase.
                 </p>
@@ -305,7 +305,7 @@ export default async function HistoryPage() {
                   Table Position
                 </div>
                 <div className="mt-3 text-4xl font-extrabold text-white">Top</div>
-                <p className="mt-3 text-sm leading-7 text-white/68">
+                <p className="mt-3 text-sm leading-7 text-white">
                   The rise was not symbolic only. It translated into position,
                   pressure and belief in the promotion race.
                 </p>
@@ -315,7 +315,7 @@ export default async function HistoryPage() {
                 <div className="text-[11px] font-extrabold uppercase tracking-[0.18em] text-brand">
                   What Comes Next
                 </div>
-                <p className="mt-3 text-sm leading-7 text-white/68">
+                <p className="mt-3 text-sm leading-7 text-white">
                   The next pages of the story are still being written — but now they
                   are being written with momentum.
                 </p>
