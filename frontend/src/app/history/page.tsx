@@ -165,7 +165,7 @@ export default async function HistoryPage() {
         {/* TIMELINE */}
         <section className="container-ms py-14 md:py-20">
           <SectionHeading
-            eyebrow="From Vision To Momentum"
+            eyebrow="CLUB HISTORY"
             title={
               <>
                 Five chapters that shaped the

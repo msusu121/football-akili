@@ -152,7 +152,7 @@ export default async function AboutUsPage() {
           <div className="grid gap-10 lg:grid-cols-[1.1fr_.9fr] lg:items-start">
             <div>
               <SectionHeading
-                eyebrow="Who We Are"
+                eyebrow="ABOUT US"
                 title={
                   <>
                     A club shaped by
