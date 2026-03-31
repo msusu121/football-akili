@@ -128,7 +128,7 @@ const FOOTER_LINKS = [
       { label: "About Us", href: "/about-us" },
       { label: "History", href: "/history" },
       { label: "Squad", href: "/squad" },
-      { label: "Academy", href: "/academy" },
+      
     ],
   },
   {
