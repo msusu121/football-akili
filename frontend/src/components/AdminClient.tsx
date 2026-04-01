@@ -1328,31 +1328,84 @@ function NewsPanel({
   data: any;
   onChange: () => void;
 }) {
-  const [draft, setDraft] = useState({
+  const emptyDraft = () => ({
     slug: "",
     title: "",
     excerpt: "",
     contentHtml: "<p></p>",
     isFeatured: false,
     publishedAt: new Date().toISOString(),
+    heroMediaId: "",
   });
+
+  const [draft, setDraft] = useState<any>(emptyDraft());
+  const [saving, setSaving] = useState(false);
+  const [uploadingHero, setUploadingHero] = useState(false);
+  const [heroPreview, setHeroPreview] = useState("");
+
   const items = data?.items || [];
 
+  const resetForm = () => {
+    setDraft(emptyDraft());
+    setHeroPreview("");
+  };
+
+  const uploadHeroImage = async (file: File) => {
+    try {
+      setUploadingHero(true);
+
+      const created = await uploadAndRegisterMedia(
+        token,
+        file,
+        "news",
+        "IMAGE",
+        file.name
+      );
+
+      setDraft((d: any) => ({
+        ...d,
+        heroMediaId: created.media.id,
+      }));
+
+      setHeroPreview(
+        created.publicUrl ||
+          (created.media?.path ? mediaUrlFromKey(created.media.path) : "") ||
+          ""
+      );
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "News image upload failed");
+    } finally {
+      setUploadingHero(false);
+    }
+  };
+
   const create = async () => {
-    await apiJson("/admin/news", {
-      method: "POST",
-      token,
-      body: { ...draft },
-    });
-    setDraft({
-      slug: "",
-      title: "",
-      excerpt: "",
-      contentHtml: "<p></p>",
-      isFeatured: false,
-      publishedAt: new Date().toISOString(),
-    });
-    onChange();
+    try {
+      setSaving(true);
+
+      await apiJson("/admin/news", {
+        method: "POST",
+        token,
+        body: {
+          slug: draft.slug,
+          title: draft.title,
+          excerpt: draft.excerpt,
+          contentHtml: draft.contentHtml,
+          isFeatured: !!draft.isFeatured,
+          heroMediaId: draft.heroMediaId || null,
+          publishedAt: draft.publishedAt || null,
+        },
+      });
+
+      resetForm();
+      onChange();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to create post");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const del = async (id: string) => {
@@ -1362,84 +1415,197 @@ function NewsPanel({
   };
 
   const togglePublish = async (item: any) => {
-    await apiJson(`/admin/news/${item.id}`, {
-      method: "PUT",
-      token,
-      body: { publishedAt: item.publishedAt ? null : new Date().toISOString() },
-    });
-    onChange();
+    try {
+      await apiJson(`/admin/news/${item.id}`, {
+        method: "PUT",
+        token,
+        body: {
+          publishedAt: item.publishedAt ? null : new Date().toISOString(),
+        },
+      });
+      onChange();
+    } catch (err: any) {
+      console.error(err);
+      alert(err?.message || "Failed to update publish state");
+    }
   };
 
   return (
     <div className="grid gap-6">
       {/* Create form */}
       <div className={cardCls}>
-        <h3 className="text-sm font-semibold mb-3 text-foreground">Create post</h3>
+        <h3 className="mb-3 text-sm font-semibold text-foreground">Create post</h3>
+
         <div className="grid gap-3">
           <input
             className={inputCls}
             placeholder="slug"
             value={draft.slug}
-            onChange={(e) => setDraft((d) => ({ ...d, slug: e.target.value }))}
+            onChange={(e) => setDraft((d: any) => ({ ...d, slug: e.target.value }))}
           />
+
           <input
             className={inputCls}
             placeholder="title"
             value={draft.title}
-            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+            onChange={(e) => setDraft((d: any) => ({ ...d, title: e.target.value }))}
           />
+
           <input
             className={inputCls}
             placeholder="excerpt"
             value={draft.excerpt}
-            onChange={(e) => setDraft((d) => ({ ...d, excerpt: e.target.value }))}
+            onChange={(e) => setDraft((d: any) => ({ ...d, excerpt: e.target.value }))}
           />
+
           <textarea
-            className={inputCls + " min-h-[80px] resize-y"}
+            className={inputCls + " min-h-[120px] resize-y"}
             placeholder="contentHtml"
             value={draft.contentHtml}
-            onChange={(e) => setDraft((d) => ({ ...d, contentHtml: e.target.value }))}
+            onChange={(e) =>
+              setDraft((d: any) => ({ ...d, contentHtml: e.target.value }))
+            }
           />
+
+          <div className="rounded-xl border border-border bg-muted/30 p-4">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-semibold text-foreground">Hero image</p>
+                <p className="text-xs text-muted-foreground">
+                  Upload image using the same media flow as other panels
+                </p>
+              </div>
+
+              <label className={btnOutline + " cursor-pointer"}>
+                <span>{uploadingHero ? "Uploading..." : "Upload image"}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadHeroImage(file);
+                    e.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </div>
+
+            <div className="mt-3 overflow-hidden rounded-xl border border-border bg-background">
+              {heroPreview ? (
+                <div className="relative aspect-[16/10] w-full">
+                  <Image
+                    src={heroPreview}
+                    alt="Hero preview"
+                    fill
+                    className="object-cover"
+                    sizes="(max-width: 768px) 100vw, 700px"
+                  />
+                </div>
+              ) : (
+                <div className="flex aspect-[16/10] items-center justify-center text-xs text-muted-foreground">
+                  No image selected
+                </div>
+              )}
+            </div>
+
+            {draft.heroMediaId ? (
+              <div className="mt-3 flex items-center justify-between gap-3">
+                <p className="truncate text-xs text-muted-foreground">
+                  media id: {draft.heroMediaId}
+                </p>
+                <button
+                  type="button"
+                  className={btnDanger}
+                  onClick={() => {
+                    setDraft((d: any) => ({ ...d, heroMediaId: "" }));
+                    setHeroPreview("");
+                  }}
+                >
+                  Remove image
+                </button>
+              </div>
+            ) : null}
+          </div>
+
           <label className="flex items-center gap-2 text-sm text-muted-foreground">
             <input
               type="checkbox"
               checked={draft.isFeatured}
-              onChange={(e) => setDraft((d) => ({ ...d, isFeatured: e.target.checked }))}
+              onChange={(e) =>
+                setDraft((d: any) => ({ ...d, isFeatured: e.target.checked }))
+              }
             />
             Featured
           </label>
         </div>
-        <button onClick={create} className={btnPrimary + " mt-4"}>
-          Create
+
+        <button onClick={create} disabled={saving} className={btnPrimary + " mt-4"}>
+          {saving ? "Creating..." : "Create"}
         </button>
       </div>
 
       {/* List */}
       <div className="grid gap-3">
-        {items.map((n: any) => (
-          <div
-            key={n.id}
-            className={cardCls + " flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3"}
-          >
-            <div className="min-w-0 flex-1">
-              <div className="text-sm font-semibold line-clamp-1 text-foreground">{n.title}</div>
-              <div className="mt-1 text-xs text-muted-foreground">
-                /{n.slug} • {n.publishedAt ? "Published" : "Draft"}
+        {items.map((n: any) => {
+          const preview =
+            n?.heroMedia?.publicUrl ||
+            (n?.heroMedia?.path ? mediaUrlFromKey(n.heroMedia.path) : "") ||
+            "";
+
+          return (
+            <div
+              key={n.id}
+              className={
+                cardCls +
+                " flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between"
+              }
+            >
+              <div className="flex min-w-0 flex-1 gap-3">
+                <div className="w-28 shrink-0 overflow-hidden rounded-xl border border-border bg-muted/30 sm:w-36">
+                  {preview ? (
+                    <div className="relative aspect-[16/10] w-full">
+                      <Image
+                        src={preview}
+                        alt={n.title || "News image"}
+                        fill
+                        className="object-cover"
+                        sizes="144px"
+                      />
+                    </div>
+                  ) : (
+                    <div className="flex aspect-[16/10] items-center justify-center text-[11px] text-muted-foreground">
+                      No image
+                    </div>
+                  )}
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <div className="line-clamp-1 text-sm font-semibold text-foreground">
+                    {n.title}
+                  </div>
+                  <div className="mt-1 text-xs text-muted-foreground">
+                    /{n.slug} • {n.publishedAt ? "Published" : "Draft"}
+                    {n.isFeatured ? " • Featured" : ""}
+                  </div>
+                  <div className="mt-1 line-clamp-2 text-sm text-muted-foreground">
+                    {n.excerpt}
+                  </div>
+                </div>
               </div>
-              <div className="mt-1 text-sm text-muted-foreground line-clamp-2">
-                {n.excerpt}
+
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => togglePublish(n)} className={btnOutline}>
+                  {n.publishedAt ? "Unpublish" : "Publish"}
+                </button>
+                <button onClick={() => del(n.id)} className={btnDanger}>
+                  Delete
+                </button>
               </div>
             </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button onClick={() => togglePublish(n)} className={btnOutline}>
-                {n.publishedAt ? "Unpublish" : "Publish"}
-              </button>
-              <button onClick={() => del(n.id)} className={btnDanger}>
-                Delete
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
+
         {!items.length && (
           <p className="text-sm text-muted-foreground">No posts yet.</p>
         )}
