@@ -128,7 +128,6 @@ const FOOTER_LINKS = [
       { label: "About Us", href: "/about-us" },
       { label: "History", href: "/history" },
       { label: "Squad", href: "/squad" },
-      
     ],
   },
   {
@@ -276,11 +275,11 @@ function ShellImage({
 
 export function HeaderTakeover({
   items,
-  onVisibilityChange,
+  hidden = false,
 }: {
   items: HeaderAdItem[];
-  onVisibilityChange?: (visible: boolean) => void;
-})  {
+  hidden?: boolean;
+}) {
   const ads = (Array.isArray(items) ? items : []).filter(
     (x) => !!(x?.imageUrl || x?.desktopImageUrl || x?.mobileImageUrl)
   );
@@ -325,7 +324,7 @@ export function HeaderTakeover({
   }, []);
 
   useEffect(() => {
-    if (!ads.length) return;
+    if (!ads.length || typeof window === "undefined") return;
 
     ads.forEach((ad) => {
       const sources = [
@@ -354,6 +353,13 @@ export function HeaderTakeover({
       returnTimerRef.current = null;
       rotateTimerRef.current = null;
     };
+
+    if (hidden) {
+      clearAllTimers();
+      setVisible(false);
+      setPhase("INTRO");
+      return;
+    }
 
     if (!ads.length) {
       clearAllTimers();
@@ -446,10 +452,10 @@ export function HeaderTakeover({
 
     scheduleReturn(returnGap());
     return clearAllTimers;
-  }, [ads.length, adSignature, reduced]);
+  }, [ads.length, adSignature, reduced, hidden]);
 
   useEffect(() => {
-    if (!visible || phase !== "ADS" || ads.length <= 1) return;
+    if (hidden || !visible || phase !== "ADS" || ads.length <= 1) return;
 
     rotateTimerRef.current = window.setInterval(() => {
       runtimeAdCursor = pickRandomIndex(ads.length, runtimeAdCursor);
@@ -460,10 +466,10 @@ export function HeaderTakeover({
       if (rotateTimerRef.current) window.clearInterval(rotateTimerRef.current);
       rotateTimerRef.current = null;
     };
-  }, [visible, phase, ads.length]);
+  }, [visible, phase, ads.length, hidden]);
 
   const activeAd = ads.length ? ads[idx % ads.length] : null;
-  if (!activeAd) return null;
+  if (hidden || !activeAd) return null;
 
   const desktopSrc = String(
     activeAd.desktopImageUrl || activeAd.imageUrl || ""
@@ -941,7 +947,8 @@ export function SiteShell({
   useEffect(() => setMobileOpen(false), [pathname]);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 20);
+    const onScroll = () => setScrolled(window.scrollY > 0);
+    onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
@@ -1089,7 +1096,7 @@ export function SiteShell({
           scrolled ? "shadow-soft" : ""
         }`}
       >
-        <HeaderTakeover items={headerAds} />
+        <HeaderTakeover items={headerAds} hidden={scrolled} />
 
         <div className="border-b border-white/10 bg-ink text-white">
           <div className="container-ms flex h-10 items-center justify-between">
@@ -1131,7 +1138,6 @@ export function SiteShell({
           }`}
         >
           <div className="container-ms flex h-16 items-center gap-3 md:h-[72px]">
-            {/* LEFT */}
             <Link
               href="/"
               className="flex shrink-0 items-center gap-3"
@@ -1155,7 +1161,6 @@ export function SiteShell({
               </span>
             </Link>
 
-            {/* DESKTOP NAV */}
             <nav className="mx-auto hidden items-center gap-1 lg:flex">
               {NAV_LINKS.map((link) => {
                 const isActive =
@@ -1180,7 +1185,6 @@ export function SiteShell({
               })}
             </nav>
 
-            {/* RIGHT ACTIONS */}
             <div className="ml-auto flex items-center gap-2">
               <div className="hidden items-center gap-2 xl:flex">
                 <span className="text-[9px] uppercase tracking-wider text-white/30">
@@ -1281,9 +1285,10 @@ export function SiteShell({
             </div>
           </div>
 
-          {/* MOBILE / TABLET MENU */}
           <div
-            className={`lg:hidden ${mobileOpen ? "pointer-events-auto" : "pointer-events-none"}`}
+            className={`lg:hidden ${
+              mobileOpen ? "pointer-events-auto" : "pointer-events-none"
+            }`}
           >
             <div
               className={`fixed inset-x-0 bottom-0 z-40 transition-opacity duration-300 ${
@@ -1315,7 +1320,9 @@ export function SiteShell({
                         href={link.href}
                         onClick={() => setMobileOpen(false)}
                         className={`flex items-center justify-between border-b border-white/10 py-4 text-base font-extrabold uppercase tracking-[0.12em] transition-colors ${
-                          isActive ? "text-white" : "text-white/90 hover:text-white"
+                          isActive
+                            ? "text-white"
+                            : "text-white/90 hover:text-white"
                         }`}
                       >
                         <span>{link.label}</span>
@@ -1506,8 +1513,6 @@ export function SiteShell({
             </p>
 
             <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-[11px] text-white/30">
-              
-
               <a
                 href="https://akilimatic.com"
                 target="_blank"
