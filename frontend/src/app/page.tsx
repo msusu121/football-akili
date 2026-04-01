@@ -161,6 +161,15 @@ export default async function HomePage() {
       <div className="homepage-bg relative min-h-screen">
         <div className="relative z-10">
           {/* HERO SLOT */}
+          
+
+          {/* TODAY ON */}
+          <TodayOnClubSection
+            items={latestNews}
+            title="Today on MombasaUnited.com"
+            moreHref="/news"
+            maxSecondary={4}
+          />
           {isMatchday && nextFixture ? (
             <MatchdayHero
               fixture={nextFixture}
@@ -176,16 +185,7 @@ export default async function HomePage() {
               maxSlides={5}
               intervalMs={7000}
             />
-          )}
-
-          {/* TODAY ON */}
-          <TodayOnClubSection
-            items={latestNews}
-            title="Today on MombasaUnited.com"
-            moreHref="/news"
-            maxSecondary={4}
-          />
-
+          )} 
           {/* HIGHLIGHTS */}
           <HighlightsSection highlights={highlights} />
 
