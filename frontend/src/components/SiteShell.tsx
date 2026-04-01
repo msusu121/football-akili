@@ -274,7 +274,13 @@ function ShellImage({
   );
 }
 
-export function HeaderTakeover({ items }: { items: HeaderAdItem[] }) {
+export function HeaderTakeover({
+  items,
+  onVisibilityChange,
+}: {
+  items: HeaderAdItem[];
+  onVisibilityChange?: (visible: boolean) => void;
+})  {
   const ads = (Array.isArray(items) ? items : []).filter(
     (x) => !!(x?.imageUrl || x?.desktopImageUrl || x?.mobileImageUrl)
   );
