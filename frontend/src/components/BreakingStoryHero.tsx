@@ -21,10 +21,15 @@ export function BreakingStoryHero({ story }: { story: any }) {
 
   return (
     <section className="relative w-full overflow-hidden">
-      <div className="absolute inset-0">
+      <div className="absolute inset-0 relative">
         {bg ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <Image src={bg} alt="" className="w-full h-full object-cover" />
+          <Image
+            src={bg}
+            alt=""
+            fill
+            sizes="100vw"
+            className="object-cover"
+          />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-ink via-ink-light to-ink" />
         )}
