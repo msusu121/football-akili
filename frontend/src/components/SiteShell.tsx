@@ -1092,7 +1092,7 @@ export function SiteShell({
     >
       <header
         ref={headerRef as any}
-        className={`sticky top-0 z-50 transition-all duration-300 ${
+        className={`relative sticky top-0 z-50 transition-all duration-300 ${
           scrolled ? "shadow-soft" : ""
         }`}
       >
@@ -1133,8 +1133,8 @@ export function SiteShell({
         </div>
 
         <div
-          className={`transition-all duration-300 ${
-            scrolled ? "bg-brand/95 backdrop-blur-md" : "bg-brand"
+          className={`relative transition-all duration-300 ${
+            scrolled ? "bg-brand/95" : "bg-brand"
           }`}
         >
           <div className="container-ms flex h-16 items-center gap-3 md:h-[72px]">
@@ -1285,103 +1285,105 @@ export function SiteShell({
             </div>
           </div>
 
-          <div
-            className={`lg:hidden ${
-              mobileOpen ? "pointer-events-auto" : "pointer-events-none"
-            }`}
-          >
-            <div
-              className={`fixed inset-x-0 bottom-0 z-40 transition-opacity duration-300 ${
-                mobileOpen ? "opacity-100" : "opacity-0"
-              }`}
-              style={{ top: headerH }}
-            >
+          {mobileOpen ? (
+            <>
               <button
                 type="button"
                 aria-label="Close menu"
                 onClick={() => setMobileOpen(false)}
-                className="absolute inset-0 bg-ink/75"
+                className="fixed inset-x-0 bottom-0 z-[54] bg-ink/72 lg:hidden"
+                style={{ top: headerH }}
               />
 
               <div
-                className={`absolute inset-0 overflow-y-auto bg-brand shadow-[0_24px_60px_rgba(0,0,0,0.38)] transition-all duration-300 ${
-                  mobileOpen ? "translate-y-0" : "-translate-y-4"
-                }`}
+                className="absolute left-0 right-0 top-full z-[60] lg:hidden"
+                aria-hidden={!mobileOpen}
               >
-                <nav className="flex min-h-full flex-col px-6 pb-8 pt-5">
-                  {NAV_LINKS.map((link) => {
-                    const isActive =
-                      pathname === link.href ||
-                      pathname.startsWith(link.href + "/");
+                <div
+                  className="overflow-hidden border-t border-white/10 bg-brand shadow-[0_24px_60px_rgba(0,0,0,0.38)]"
+                  style={{ maxHeight: `calc(100dvh - ${headerH}px)` }}
+                >
+                  <nav
+                    className="flex flex-col overflow-y-auto px-6 pb-8 pt-5"
+                    style={{
+                      maxHeight: `calc(100dvh - ${headerH}px)`,
+                      WebkitOverflowScrolling: "touch",
+                    }}
+                  >
+                    {NAV_LINKS.map((link) => {
+                      const isActive =
+                        pathname === link.href ||
+                        pathname.startsWith(link.href + "/");
 
-                    return (
-                      <Link
-                        key={link.href}
-                        href={link.href}
-                        onClick={() => setMobileOpen(false)}
-                        className={`flex items-center justify-between border-b border-white/10 py-4 text-base font-extrabold uppercase tracking-[0.12em] transition-colors ${
-                          isActive
-                            ? "text-white"
-                            : "text-white/90 hover:text-white"
-                        }`}
-                      >
-                        <span>{link.label}</span>
-                        <svg
-                          className="h-4 w-4 text-white/40"
-                          fill="none"
-                          stroke="currentColor"
-                          strokeWidth={2}
-                          viewBox="0 0 24 24"
+                      return (
+                        <Link
+                          key={link.href}
+                          href={link.href}
+                          onClick={() => setMobileOpen(false)}
+                          className={`flex items-center justify-between border-b border-white/10 py-4 text-base font-extrabold uppercase tracking-[0.12em] transition-colors ${
+                            isActive
+                              ? "text-white"
+                              : "text-white/90 hover:text-white"
+                          }`}
                         >
-                          <path
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            d="M8.25 4.5l7.5 7.5-7.5 7.5"
-                          />
-                        </svg>
+                          <span>{link.label}</span>
+                          <svg
+                            className="h-4 w-4 text-white/40"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth={2}
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              d="M8.25 4.5l7.5 7.5-7.5 7.5"
+                            />
+                          </svg>
+                        </Link>
+                      );
+                    })}
+
+                    <div className="flex items-center gap-2 border-b border-white/10 pb-3 pt-5">
+                      <span className="text-[9px] uppercase tracking-wider text-white/40">
+                        In partnership with
+                      </span>
+
+                      <ShellImage
+                        src={partnerLogo}
+                        alt={partnerName}
+                        sizes="96px"
+                        wrapperClassName="relative h-6 w-[96px]"
+                        imageClassName="object-contain brightness-0 invert opacity-80"
+                        fallback={
+                          <span className="text-[10px] font-bold text-white/60">
+                            {partnerName}
+                          </span>
+                        }
+                      />
+                    </div>
+
+                    <div className="mt-6 flex items-center gap-4">
+                      <Link
+                        href="/login"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex-1 rounded-lg bg-white py-3 text-center text-sm font-extrabold uppercase tracking-wider text-ink"
+                      >
+                        Sign In
                       </Link>
-                    );
-                  })}
-
-                  <div className="flex items-center gap-2 border-b border-white/10 pb-3 pt-5">
-                    <span className="text-[9px] uppercase tracking-wider text-white/40">
-                      In partnership with
-                    </span>
-
-                    <ShellImage
-                      src={partnerLogo}
-                      alt={partnerName}
-                      sizes="96px"
-                      wrapperClassName="relative h-6 w-[96px]"
-                      imageClassName="object-contain brightness-0 invert opacity-80"
-                      fallback={
-                        <span className="text-[10px] font-bold text-white/60">
-                          {partnerName}
-                        </span>
-                      }
-                    />
-                  </div>
-
-                  <div className="mt-6 flex items-center gap-4">
-                    <Link
-                      href="/login"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 rounded-lg bg-white py-3 text-center text-sm font-extrabold uppercase tracking-wider text-ink"
-                    >
-                      Sign In
-                    </Link>
-                    <Link
-                      href="/register"
-                      onClick={() => setMobileOpen(false)}
-                      className="flex-1 rounded-lg border-2 border-white/30 py-3 text-center text-sm font-extrabold uppercase tracking-wider text-white"
-                    >
-                      Register
-                    </Link>
-                  </div>
-                </nav>
+                      <Link
+                        href="/register"
+                        onClick={() => setMobileOpen(false)}
+                        className="flex-1 rounded-lg border-2 border-white/30 py-3 text-center text-sm font-extrabold uppercase tracking-wider text-white"
+                      >
+                        Register
+                      </Link>
+                    </div>
+                  </nav>
+                </div>
               </div>
-            </div>
-          </div>
+            </>
+          ) : null}
         </div>
       </header>
 
