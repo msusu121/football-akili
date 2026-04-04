@@ -160,7 +160,17 @@ export default async function HomePage() {
     >
       <div className="homepage-bg relative min-h-screen">
         <div className="relative z-10">
-          {/* HERO SLOT */}
+          {/* LATEST RESULT HERO */}
+          <LatestResultHero
+            latestResult={latestResult}
+            fixturesPageHref="/fixtures"
+            bgImages={[
+              "https://mombasaunited.com/club-media/home/match-bg-1.jpeg",
+              "https://mombasaunited.com/club-media/home/match-bg-2.jpeg",
+              "https://mombasaunited.com/club-media/home/match-bg-3.jpeg",
+              "https://mombasaunited.com/club-media/home/match-bg-4.jpeg",
+            ]}
+          />
           
 
           {/* TODAY ON */}
@@ -189,17 +199,7 @@ export default async function HomePage() {
           {/* HIGHLIGHTS */}
           <HighlightsSection highlights={highlights} />
 
-          {/* LATEST RESULT HERO */}
-          <LatestResultHero
-            latestResult={latestResult}
-            fixturesPageHref="/fixtures"
-            bgImages={[
-              "https://mombasaunited.com/club-media/home/match-bg-1.jpeg",
-              "https://mombasaunited.com/club-media/home/match-bg-2.jpeg",
-              "https://mombasaunited.com/club-media/home/match-bg-3.jpeg",
-              "https://mombasaunited.com/club-media/home/match-bg-4.jpeg",
-            ]}
-          />
+          
 
           {/* IN CASE YOU MISSED IT */}
           {moreNews.length > 0 && (
