@@ -279,7 +279,7 @@ export default async function HomePage() {
             defaultTab="fixtures"
           />
 
-          {/* MEMBERSHIP */}
+          {/* MEMBERSHIP 
           <section className="bg-white">
             <div className="container-ms pb-20 pt-8">
               <div className="overflow-hidden rounded-2xl border border-line shadow-soft">
@@ -399,7 +399,11 @@ export default async function HomePage() {
                 </div>
               )}
             </div>
-          </section>
+          </section> */}
+
+
+
+          
         </div>
       </div>
     </SiteShell>
