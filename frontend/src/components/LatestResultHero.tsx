@@ -1,17 +1,25 @@
-// FILE: frontend/src/components/LatestResultHero.tsx
-// Premium MU-style Latest Result hero (FT) — same mobile-safe typography strategy as MatchdayHero
-//
-// ✅ 3-column layout on ALL screens (Home | Score | Away)
-// ✅ Center column width constrained on mobile so names never lose letters
-// ✅ No truncation on mobile (prevents clipped letters). Clamp starts at sm+
-// ✅ Logos hidden on mobile
-// ✅ Rotating background preserved
-
 "use client";
 
 import Link from "next/link";
 import React, { useEffect, useState } from "react";
 import Image from "next/image";
+
+const ASSET_BASE =
+  process.env.NEXT_PUBLIC_ASSET_BASE_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  "";
+
+function resolveAssetUrl(u?: string | null) {
+  if (!u) return "";
+  const url = String(u).trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  if (url.startsWith("//")) return "https:" + url;
+  if (ASSET_BASE) {
+    return ASSET_BASE.replace(/\/$/, "") + "/" + url.replace(/^\//, "");
+  }
+  return url;
+}
 
 /* helpers */
 function fmtLongDate(d?: string | null) {
@@ -30,10 +38,35 @@ function pickTeamName(x: any, side: "home" | "away") {
     : x?.awayTeam?.name || x?.awayTeamName || x?.away || "TBD";
 }
 
-function pickLogo(x: any, side: "home" | "away") {
-  return side === "home"
-    ? x?.homeTeam?.logo?.url || x?.homeTeamLogo || null
-    : x?.awayTeam?.logo?.url || x?.awayTeamLogo || null;
+function pickStructuredLogo(x: any, side: "home" | "away") {
+  return resolveAssetUrl(
+    side === "home"
+      ? x?.homeTeam?.logo?.url || x?.homeTeamLogo || null
+      : x?.awayTeam?.logo?.url || x?.awayTeamLogo || null
+  );
+}
+
+function pickDisplayedLogos(x: any) {
+  const isHome = Boolean(x?.isHome);
+
+  const homeStructured = pickStructuredLogo(x, "home");
+  const awayStructured = pickStructuredLogo(x, "away");
+  const opponentLogo = resolveAssetUrl(
+    x?.opponentLogo?.url || x?.opponentLogoUrl || null
+  );
+
+  const homeLogo = isHome
+    ? homeStructured || awayStructured
+    : homeStructured || opponentLogo;
+
+  const awayLogo = isHome
+    ? awayStructured || opponentLogo
+    : opponentLogo || awayStructured;
+
+  return {
+    homeLogo: homeLogo || undefined,
+    awayLogo: awayLogo || undefined,
+  };
 }
 
 function pickLeague(x: any) {
@@ -45,13 +78,24 @@ function pickKickoff(x: any) {
 }
 
 /* rotating background */
-function RotatingBackground({ images, intervalMs = 6500 }: { images: string[]; intervalMs?: number }) {
+function RotatingBackground({
+  images,
+  intervalMs = 6500,
+}: {
+  images: string[];
+  intervalMs?: number;
+}) {
   const safe = images.filter(Boolean);
-  const [idx, setIdx] = useState(() => (safe.length ? Math.floor(Math.random() * safe.length) : 0));
+  const [idx, setIdx] = useState(() =>
+    safe.length ? Math.floor(Math.random() * safe.length) : 0
+  );
 
   useEffect(() => {
     if (safe.length <= 1) return;
-    const t = window.setInterval(() => setIdx((v) => (v + 1) % safe.length), intervalMs);
+    const t = window.setInterval(
+      () => setIdx((v) => (v + 1) % safe.length),
+      intervalMs
+    );
     return () => window.clearInterval(t);
   }, [safe.length, intervalMs]);
 
@@ -60,32 +104,40 @@ function RotatingBackground({ images, intervalMs = 6500 }: { images: string[]; i
   return (
     <div className="absolute inset-0">
       {safe.map((src, i) => (
-        // eslint-disable-next-line @next/next/no-img-element
         <Image
-          key={`${src}-${i}`} // in case same image appears multiple times
-          src={src} 
+          key={`${src}-${i}`}
+          src={src}
           alt=""
           fill
-          sizes="100vw"   
+          sizes="100vw"
           className={[
             "absolute inset-0 object-cover transition-opacity duration-700",
             i === idx ? "opacity-100" : "opacity-0",
           ].join(" ")}
-        />  
+          priority={i === idx}
+        />
       ))}
     </div>
   );
 }
 
-/* Team badge — logos hidden on mobile */
+/* Team badge — desktop only */
 function TeamBadge({ name, logoUrl }: { name: string; logoUrl?: string | null }) {
+  const resolved = resolveAssetUrl(logoUrl);
+
   return (
-    <div className="hidden sm:flex w-9 h-9 md:w-12 md:h-12 rounded-full bg-white/15 items-center justify-center flex-shrink-0">
-      {logoUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element
-        <img src={logoUrl} alt={name} className="w-7 h-7 md:w-9 md:h-9 object-contain" />
+    <div className="hidden lg:flex h-14 w-14 rounded-full border border-white/18 bg-white/12 backdrop-blur-[2px] items-center justify-center flex-shrink-0 overflow-hidden shadow-[0_10px_24px_rgba(0,0,0,0.18)]">
+      {resolved ? (
+        <Image
+          src={resolved}
+          alt={name}
+          width={44}
+          height={44}
+          sizes="56px"
+          className="h-11 w-11 object-contain"
+        />
       ) : (
-        <span className="text-[10px] md:text-[11px] font-extrabold text-white/60">
+        <span className="text-[11px] font-extrabold text-white/70 tracking-wide">
           {String(name || "").substring(0, 2).toUpperCase()}
         </span>
       )}
@@ -106,14 +158,10 @@ export function LatestResultHero({
 
   const homeTeam = pickTeamName(latestResult, "home");
   const awayTeam = pickTeamName(latestResult, "away");
-  const homeLogo = pickLogo(latestResult, "home");
-  const awayLogo = pickLogo(latestResult, "away");
+  const { homeLogo, awayLogo } = pickDisplayedLogos(latestResult);
   const league = pickLeague(latestResult);
   const kickoff = pickKickoff(latestResult);
 
-  // ✅ Same mobile-safe name rules as MatchdayHero:
-  // - mobile: no clamp, allow wrap (prevents missing letters)
-  // - sm+: clamp to 2 lines to keep it neat
   const nameCls = [
     "text-white font-extrabold uppercase",
     "tracking-[-0.015em]",
@@ -121,16 +169,17 @@ export function LatestResultHero({
     "py-0.5",
     "whitespace-normal",
     "break-words",
-    "text-[clamp(0.95rem,3.0vw,3.4rem)]",
+    "text-[clamp(0.95rem,3vw,3.4rem)]",
     "sm:leading-[1.02]",
     "sm:py-1",
     "sm:line-clamp-2",
     "text-balance",
   ].join(" ");
 
-  // Compact score sizing on mobile
-  const scoreCls = "text-white font-extrabold text-[clamp(1.8rem,6.0vw,4.6rem)] tabular-nums";
-  const dashCls = "text-white/50 font-extrabold text-[clamp(1.4rem,4.8vw,3.6rem)]";
+  const scoreCls =
+    "text-white font-extrabold text-[clamp(1.8rem,6vw,4.6rem)] tabular-nums";
+  const dashCls =
+    "text-white/50 font-extrabold text-[clamp(1.4rem,4.8vw,3.6rem)]";
 
   return (
     <section className="relative w-full overflow-hidden">
@@ -151,32 +200,29 @@ export function LatestResultHero({
               </span>
             </div>
 
-            {/* HOME | SCORE | AWAY (3-column always, center constrained on mobile) */}
             <div className="mt-6 sm:mt-8 md:mt-10 w-full max-w-[1100px]">
               <div
                 className="grid items-center gap-2.5 sm:gap-6 md:gap-8"
                 style={{
-                  gridTemplateColumns: "minmax(0,1fr) minmax(92px,160px) minmax(0,1fr)", // ✅ prevents name clipping on small phones
+                  gridTemplateColumns:
+                    "minmax(0,1fr) minmax(92px,160px) minmax(0,1fr)",
                 }}
               >
-                {/* HOME */}
                 <div className="min-w-0 text-right">
-                  <div className="flex items-center justify-end gap-2 sm:gap-3">
+                  <div className="flex items-center justify-end gap-2 sm:gap-3 lg:gap-4">
                     <div className={nameCls}>{homeTeam}</div>
                     <TeamBadge name={homeTeam} logoUrl={homeLogo} />
                   </div>
                 </div>
 
-                {/* SCORE */}
                 <div className="flex items-center justify-center gap-2 sm:gap-3">
                   <span className={scoreCls}>{latestResult.homeScore ?? "-"}</span>
                   <span className={dashCls}>-</span>
                   <span className={scoreCls}>{latestResult.awayScore ?? "-"}</span>
                 </div>
 
-                {/* AWAY */}
                 <div className="min-w-0 text-left">
-                  <div className="flex items-center gap-2 sm:gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 lg:gap-4">
                     <TeamBadge name={awayTeam} logoUrl={awayLogo} />
                     <div className={nameCls}>{awayTeam}</div>
                   </div>
@@ -190,16 +236,20 @@ export function LatestResultHero({
               {fmtLongDate(kickoff)}
               {latestResult.venue ? `, ${latestResult.venue}` : ""}
             </div>
-{/*
-            <Link
-              href={`${fixturesPageHref}?tab=results`}
-              className="mt-6 sm:mt-8 inline-flex items-center justify-center px-8 sm:px-10 py-3 rounded-full bg-brand text-ink font-extrabold text-[11px] tracking-[0.15em] uppercase hover:opacity-95 transition"
-            >
-              MATCH REVIEW
-            </Link>   */}
+
+            {false ? (
+              <Link
+                href={`${fixturesPageHref}?tab=results`}
+                className="mt-6 sm:mt-8 inline-flex items-center justify-center px-8 sm:px-10 py-3 rounded-full bg-brand text-ink font-extrabold text-[11px] tracking-[0.15em] uppercase hover:opacity-95 transition"
+              >
+                MATCH REVIEW
+              </Link>
+            ) : null}
           </div>
         </div>
       </div>
     </section>
   );
 }
+
+export default LatestResultHero;
